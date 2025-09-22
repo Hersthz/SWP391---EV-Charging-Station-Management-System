@@ -1,0 +1,23 @@
+
+server:
+  port: 8080
+  servlet:
+    context-path: /identity
+# Moi api se bat dau bang /identity (VD: /identity/users)
+spring:
+  application:
+      name: EVCharging
+    # Ten app, hien thi trong log vo dung khi lam microservice
+  datasource:
+      url: "jdbc:sqlserver://localhost\\MSSQLSERVER03;databaseName=EVChargingDB;encrypt=false"
+      username: sa
+      password: 12345
+      driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  jpa:
+      hibernate:
+        ddl-auto: update
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.SQLServerDialect
+      show-sql: true
