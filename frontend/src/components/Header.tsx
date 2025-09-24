@@ -20,16 +20,16 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">
-              Features
+              Tính năng
             </a>
             <a href="#map" className="text-muted-foreground hover:text-primary transition-colors">
-              Map
+              Bản đồ
             </a>
             <a href="#about" className="text-muted-foreground hover:text-primary transition-colors">
-              About
+              Giới thiệu
             </a>
             <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">
-              Contact
+              Liên hệ
             </a>
           </nav>
 
@@ -40,14 +40,14 @@ const Header = () => {
               size="sm"
               onClick={() => window.location.href = '/login'}
             >
-              Sign In
+              Đăng nhập
             </Button>
             <Button 
               variant="default" 
               size="sm"
               onClick={() => window.location.href = '/login'}
             >
-              Get Started
+              Bắt đầu
             </Button>
           </div>
 
@@ -69,16 +69,16 @@ const Header = () => {
           <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
             <nav className="flex flex-col gap-4 p-4">
               <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">
-                Features
+                Tính năng
               </a>
               <a href="#map" className="text-muted-foreground hover:text-primary transition-colors">
-                Map
+                Bản đồ
               </a>
               <a href="#about" className="text-muted-foreground hover:text-primary transition-colors">
-                About
+                Giới thiệu
               </a>
               <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">
-                Contact
+                Liên hệ
               </a>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <Button 
@@ -86,14 +86,14 @@ const Header = () => {
                   size="sm"
                   onClick={() => window.location.href = '/login'}
                 >
-                  Sign In
+                  Đăng nhập
                 </Button>
                 <Button 
                   variant="default" 
                   size="sm"
                   onClick={() => window.location.href = '/login'}
                 >
-                  Get Started
+                  Bắt đầu
                 </Button>
               </div>
             </nav>

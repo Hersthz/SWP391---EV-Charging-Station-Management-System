@@ -5,38 +5,38 @@ const Features = () => {
   const features = [
     {
       icon: MapPin,
-      title: "Real-time Station Finder",
-      description: "Locate nearby charging stations with live availability updates and accurate pricing information.",
+      title: "Tìm trạm theo thời gian thực",
+      description: "Định vị các trạm sạc gần bạn với thông tin tình trạng và giá cả chính xác.",
       color: "text-primary"
     },
     {
       icon: Zap,
-      title: "Fast Charging Network",
-      description: "Access to the largest network of fast-charging stations with speeds up to 350kW.",
+      title: "Mạng lưới sạc nhanh",
+      description: "Truy cập vào mạng lưới sạc nhanh lớn nhất với tốc độ lên đến 350kW.",
       color: "text-accent"
     },
     {
       icon: CreditCard,
-      title: "Seamless Payments",
-      description: "Pay directly through the app with automatic billing and detailed session history.",
+      title: "Thanh toán liền mạch",
+      description: "Thanh toán trực tiếp qua ứng dụng với hóa đơn tự động và lịch sử chi tiết.",
       color: "text-primary"
     },
     {
       icon: Clock,
-      title: "Smart Scheduling",
-      description: "Schedule charging sessions in advance and get notified when your spot is ready.",
+      title: "Lên lịch thông minh",
+      description: "Đặt lịch phiên sạc trước và nhận thông báo khi điểm sạc sẵn sàng.",
       color: "text-accent"
     },
     {
       icon: Smartphone,
-      title: "Remote Monitoring",
-      description: "Monitor your charging session remotely and receive notifications on completion.",
+      title: "Giám sát từ xa",
+      description: "Theo dõi phiên sạc của bạn từ xa và nhận thông báo khi hoàn tất.",
       color: "text-primary"
     },
     {
       icon: Battery,
-      title: "Battery Analytics",
-      description: "Track your battery health, charging patterns, and optimize for maximum efficiency.",
+      title: "Phân tích pin",
+      description: "Theo dõi tình trạng pin, thói quen sạc và tối ưu hóa để đạt hiệu suất cao nhất.",
       color: "text-accent"
     }
   ];
@@ -44,26 +44,26 @@ const Features = () => {
   return (
     <section className="py-24 px-4 bg-gradient-section">
       <div className="container mx-auto max-w-7xl">
-        {/* Section Header */}
+        {/* Tiêu đề Section */}
         <div className="text-center mb-16 space-y-4">
           <div className="flex items-center justify-center gap-2 text-primary mb-4">
             <Zap className="w-6 h-6" />
             <span className="text-sm font-semibold uppercase tracking-wider">
-              Powerful Features
+              Tính năng mạnh mẽ
             </span>
           </div>
           
           <h2 className="text-3xl md:text-5xl font-bold text-foreground">
-            Everything You Need for
-            <span className="block text-primary">Smart EV Charging</span>
+            Mọi thứ bạn cần cho
+            <span className="block text-primary">Sạc xe điện thông minh</span>
           </h2>
           
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Our comprehensive platform provides all the tools you need to manage your electric vehicle charging efficiently and conveniently.
+            Nền tảng toàn diện của chúng tôi mang đến tất cả công cụ bạn cần để quản lý việc sạc xe điện hiệu quả và tiện lợi.
           </p>
         </div>
 
-        {/* Features Grid */}
+        {/* Lưới tính năng */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <Card 
