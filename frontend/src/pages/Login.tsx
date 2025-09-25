@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,7 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { toast } from "sonner";
-import { Zap, Mail, Lock, User, Eye, EyeOff, Shield, ArrowLeft, CheckCircle } from "lucide-react";
+import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import api from "../api/axios";
+
+interface LoginResponse {
+  token: string;
+  username: string;
+  role: string;
+}
 
 const Login = () => {
   const [loginData, setLoginData] = useState({ username: "", password: "" });
@@ -21,82 +29,109 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+  const [tab, setTab] = useState<"login" | "register">("login");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Check demo account trước
-    if (loginData.username === "driver1" && loginData.password === "123") {
-      toast.success("Đăng nhập demo thành công (Driver)!");
-      localStorage.setItem("token", "demo-token-driver");
-      localStorage.setItem("currentUser", "driver1");
-      navigate("/dashboard");
+    if (isLoading) return;
+    const username = loginData.username.trim();
+    const password = loginData.password;
+    if (!username || !password) {
+      toast.error("Vui lòng nhập tài khoản và mật khẩu");
       return;
     }
 
-    if (loginData.username === "admin1" && loginData.password === "123") {
-      toast.success("Đăng nhập demo thành công (Admin)!");
-      localStorage.setItem("token", "demo-token-admin");
-      localStorage.setItem("currentUser", "admin1");
-      navigate("/admin");
-      return;
-    }
+    setIsLoading(true);
+    // Check demo account trước
+    // if (loginData.username === "driver1" && loginData.password === "123") {
+    //   toast.success("Đăng nhập demo thành công (Driver)!");
+    //   localStorage.setItem("token", "demo-token-driver");
+    //   localStorage.setItem("currentUser", "driver1");
+    //   navigate("/dashboard");
+    //   return;
+    // }
+
+    // if (loginData.username === "admin1" && loginData.password === "123") {
+    //   toast.success("Đăng nhập demo thành công (Admin)!");
+    //   localStorage.setItem("token", "demo-token-admin");
+    //   localStorage.setItem("currentUser", "admin1");
+    //   navigate("/admin");
+    //   return;
+    // }
     try {
-      const { data } = await api.post("/auth/login", {
-        username: loginData.username,
-        password: loginData.password,
+      const { data } = await api.post<LoginResponse>("/auth/login", {
+        username,
+        password,
       });
       localStorage.setItem("token", data.token);
-      localStorage.setItem("currentUser", data.user.username);
-      localStorage.setItem("role", data.user.role);
-      toast.success("Login successfully!");
-      switch (data.user.role) {
-        case "admin":
-          navigate("/admin");
-          break;
-        case "staff":
-          navigate("/staff");
-          break;
-        default: // user
-          navigate("/dashboard");
-          break;
-      }
+      localStorage.setItem("currentUser", data.username);
+      localStorage.setItem("role", data.role);
+      toast.success("Đăng nhập thành công!");
+      // Clear password from state for security 
+      setLoginData({ username: data.username, password: "" });
+
+      if (data.role === "admin") navigate("/admin");
+      else if (data.role === "staff") navigate("/staff");
+      else navigate("/dashboard");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? "Username or password is incorrect!");
+      const message = err?.response?.data?.message ?? "Username or password is incorrect!";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
 
-    if (registerData.password !== registerData.confirmPassword) {
+    const full_name = registerData.fullName.trim();
+    const email = registerData.email.trim();
+    const username = registerData.username.trim();
+    const password = registerData.password;
+    const confirmPassword = registerData.confirmPassword;
+
+    if (!full_name || !email || !username || !password || !confirmPassword) {
+      toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+    if (!validateEmail(email)) {
+      toast.error("Email không hợp lệ");
+      return;
+    }
+    if (password !== confirmPassword) {
       toast.error("Mật khẩu xác nhận không khớp!");
       return;
     }
-    if (registerData.password.length < 6) {
+    if (password.length < 6) {
       toast.error("Mật khẩu phải có ít nhất 6 ký tự!");
       return;
     }
-
+    setIsLoading(true);
     try {
       await api.post("/auth/register", {
-        fullName: registerData.fullName,
-        email: registerData.email,
-        username: registerData.username,
-        password: registerData.password,
+        full_name,
+        email,
+        username,
+        password,
       });
       toast.success("Đăng ký thành công! Bạn có thể đăng nhập ngay.");
-      setLoginData({
-        username: registerData.username,
-        password: registerData.password,
-      });
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? "Đăng ký thất bại");
-    }
 
-    // Switch to login tab
-    setTimeout(() => {
-      setLoginData({ username: registerData.username, password: registerData.password });
-    }, 1000);
+      setRegisterData(prev => ({ ...prev, password: "", confirmPassword: "" }));
+
+      setTab("login");
+      setLoginData({ username, password: "" });
+    } catch (err: any) {
+      const message = err?.response?.data?.message ?? "Đăng ký thất bại";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -135,7 +170,7 @@ const Login = () => {
           </CardHeader>
 
           <CardContent className="pt-4">
-            <Tabs defaultValue="login" className="space-y-6">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Đăng nhập</TabsTrigger>
                 <TabsTrigger value="register">Đăng ký</TabsTrigger>
@@ -188,9 +223,13 @@ const Login = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full h-12 text-base font-semibold">
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Đăng nhập an toàn
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    aria-busy={isLoading}
+                    className="w-full h-12 text-base font-semibold"
+                  >
+                    {isLoading ? "Đang xử lý..." : "Đăng nhập"}
                   </Button>
                 </form>
 
@@ -240,12 +279,12 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="regUsername" className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      Tài khoản
+                      Username
                     </Label>
                     <Input
                       id="regUsername"
                       type="text"
-                      placeholder="Chọn tài khoản"
+                      placeholder="Enter Username"
                       value={registerData.username}
                       onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
                       className="h-12"
@@ -309,9 +348,13 @@ const Login = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full h-12 text-base font-semibold">
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Tạo tài khoản
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-base font-semibold"
+                    disabled={isLoading}
+                    aria-busy={isLoading}
+                  >
+                    {isLoading ? "Đang xử lý..." : "Tạo tài khoản"}
                   </Button>
                 </form>
               </TabsContent>

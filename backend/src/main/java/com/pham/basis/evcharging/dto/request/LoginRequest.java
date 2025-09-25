@@ -3,10 +3,7 @@ package com.pham.basis.evcharging.dto.request;
 import lombok.Data;
 
 @Data
-public class UserCreationRequest {
-    private String full_name;
+public class LoginRequest {
     private String username;
-    private String email;
     private String password;
-    private String phone;
 }

@@ -8,8 +8,9 @@ spring:
   application:
       name: EVCharging
     # Ten app, hien thi trong log vo dung khi lam microservice
+
   datasource:
-      url: "jdbc:sqlserver://localhost\\MSSQLSERVER03;databaseName=EVChargingDB;encrypt=false"
+      url: "jdbc:sqlserver://localhost:1433;databaseName=EVChargingDB;encrypt=false"
       username: sa
       password: 12345
       driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -17,7 +18,8 @@ spring:
   jpa:
       hibernate:
         ddl-auto: update
+      show-sql: true
       properties:
         hibernate:
-          dialect: org.hibernate.dialect.SQLServerDialect
-      show-sql: true
+          format_sql: true
+          spring.jpa.entityManagerFactoryInterface: jakarta.persistence.EntityManagerFactory

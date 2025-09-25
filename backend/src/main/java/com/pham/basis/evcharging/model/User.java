@@ -1,68 +1,47 @@
 package com.pham.basis.evcharging.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Entity
-// @Entity: Đánh dấu class này là bảng trong database (JPA sẽ quản lý mapping)
-@Table(name = "users")   // map đến đúng bảng có sẵn trong DB
-public class User {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name= "users")
+public class User{
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
-    // Tự động tăng (SQL Server hỗ trợ)
-    private int user_id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
+    private Integer user_id;
+
+    @Column(name = "full_name", length=50)
+    private String full_name;
+
+    @Column(name = "username", length=50, nullable=false, unique=true)
     private String username;
+
+    @JsonIgnore
+    @Column(name = "password", length = 255, nullable=false)
     private String password;
+
+    @Column(name = "email",length = 100,unique = true)
     private String email;
-    private String role_id;
 
-    public User(int user_id, String username, String password, String email, String role_id) {
-        this.user_id = user_id;
-        this.username = username;
-        this.password = password;
-        this.email = email;
-        this.role_id = role_id;
-    }
+    @Column(name = "phone", length = 15, unique = true)
+    private String phone;
 
-    public User() {
-    }
+    @Column(name = "status", nullable = false)
+    private Boolean status = true;
 
-    public int getUser_id() {
-        return user_id;
-    }
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
-    public void setUser_id(int user_id) {
-        this.user_id = user_id;
-    }
+    @Column(name = "created_at")
+    private LocalDateTime created_at ;
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getRole_id() {
-        return role_id;
-    }
-
-    public void setRole_id(String role_id) {
-        this.role_id = role_id;
-    }
 }
