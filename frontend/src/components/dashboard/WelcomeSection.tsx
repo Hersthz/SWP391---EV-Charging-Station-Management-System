@@ -5,9 +5,9 @@ import { CalendarDays, Clock, MapPin, Zap, TrendingUp, Battery } from "lucide-re
 
 const WelcomeSection = () => {
   const currentHour = new Date().getHours();
-  const greeting = 
+  const greeting =
     currentHour < 12 ? "Chào buổi sáng" :
-    currentHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+      currentHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
 
   const currentDate = new Date();
   const dateString = currentDate.toLocaleDateString('vi-VN', {
@@ -28,13 +28,13 @@ const WelcomeSection = () => {
               <div className="space-y-3">
                 <div className="space-y-1">
                   <h1 className="text-3xl font-bold tracking-tight">
-                    {greeting}, John! 👋
+                    {greeting}, {localStorage.getItem("full_name")} 👋
                   </h1>
                   <p className="text-white/80 text-lg">
                     Sẵn sàng cho hành trình hôm nay chưa?
                   </p>
                 </div>
-                
+
                 <div className="flex items-center gap-4 text-white/70">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="w-4 h-4" />
@@ -43,15 +43,15 @@ const WelcomeSection = () => {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     <span className="text-sm">
-                      {currentDate.toLocaleTimeString('vi-VN', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
+                      {currentDate.toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit'
                       })}
                     </span>
                   </div>
                 </div>
               </div>
-              
+
               <div className="hidden md:flex items-center space-x-4">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-2">

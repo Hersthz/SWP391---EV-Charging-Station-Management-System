@@ -17,7 +17,7 @@ import com.pham.basis.evcharging.security.JwtUtil;
 @RestController
 @RequestMapping("/auth")
 @CrossOrigin
-public class UserController {
+public class AuthController {
     @Autowired
     private UserService userService;
     @Autowired
@@ -37,13 +37,14 @@ public class UserController {
         );
         return ResponseEntity.ok(response);
     }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
             User user =  userService.login(request.getUsername(), request.getPassword());
             String roleName = user.getRole() != null ? user.getRole().getName() : "UNKNOWN";
             String token = jwtUtil.generateToken(request.getUsername());
-            LoginResponse response = new LoginResponse(token,request.getUsername(),roleName);
+            LoginResponse response = new LoginResponse(token,request.getUsername(),roleName,user.getFull_name());
             return ResponseEntity.ok(response);
         }catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(e.getMessage()));

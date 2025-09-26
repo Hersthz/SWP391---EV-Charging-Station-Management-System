@@ -1,14 +1,14 @@
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { Zap, MapPin, Battery, Shield, Clock, Star, Users, TrendingUp, ArrowRight, Play } from "lucide-react";
-import heroImage from "../assets/hero-charging.jpg";
-import heroBackground from "../assets/hero-background.jpg";
+import heroImage from "../../assets/hero-charging.jpg";
+import heroBackground from "../../assets/hero-background.jpg";
 
 const Hero = () => {
   return (
     <>
       {/* Khu vực Hero chính */}
-      <section 
+      <section
         className="min-h-screen flex items-center justify-center py-20 px-4 pt-36 relative overflow-hidden"
         style={{
           backgroundImage: `url(${heroBackground})`,
@@ -20,7 +20,7 @@ const Hero = () => {
         {/* Lớp phủ màu */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-secondary/60 to-accent/70 backdrop-blur-[1px]"></div>
         <div className="absolute inset-0 bg-gradient-to-tr from-tertiary/20 via-transparent to-primary-glow/30"></div>
-        
+
         {/* Hiệu ứng nền động */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-primary-glow/30 to-secondary/20 rounded-full blur-3xl animate-float"></div>
@@ -45,7 +45,7 @@ const Hero = () => {
                   V3.0 ⚡
                 </Badge>
               </div>
-              
+
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight">
                 <span className="block bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent drop-shadow-lg">
                   Nạp năng lượng
@@ -54,16 +54,16 @@ const Hero = () => {
                   Cho tương lai
                 </span>
               </h1>
-              
+
               <p className="text-xl md:text-2xl text-white/95 leading-relaxed max-w-2xl font-light">
-                Hãy tham gia cuộc cách mạng với mạng lưới sạc <span className="font-bold text-tertiary glow-text">tích hợp AI</span> của chúng tôi. 
+                Hãy tham gia cuộc cách mạng với mạng lưới sạc <span className="font-bold text-tertiary glow-text">tích hợp AI</span> của chúng tôi.
                 <span className="text-accent">Định tuyến thông minh</span>, <span className="text-secondary">dự đoán khả năng sẵn có</span>, và <span className="text-primary-glow">thanh toán liền mạch</span> – tất cả trên một nền tảng.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 pt-8">
-                <Button 
-                  variant="hero" 
-                  size="xl" 
+                <Button
+                  variant="hero"
+                  size="xl"
                   className="group relative overflow-hidden"
                   onClick={() => window.location.href = '/login'}
                 >
@@ -71,10 +71,10 @@ const Hero = () => {
                   <Zap className="w-5 h-5 group-hover:animate-bounce relative z-10" />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                 </Button>
-                
-                <Button 
-                  variant="map" 
-                  size="xl" 
+
+                <Button
+                  variant="map"
+                  size="xl"
                   className="group backdrop-blur-sm"
                   onClick={() => window.location.href = '/map'}
                 >
@@ -105,14 +105,14 @@ const Hero = () => {
             <div className="relative animate-fade-in" style={{ animationDelay: "0.3s" }}>
               <div className="relative">
                 <div className="relative group">
-                  <img 
-                    src={heroImage} 
+                  <img
+                    src={heroImage}
                     alt="Xe điện đang sạc tại trạm hiện đại"
                     className="w-full rounded-3xl shadow-glow animate-float group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-3xl"></div>
                 </div>
-                
+
                 {/* Thẻ nổi */}
                 <div className="absolute -top-6 -left-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-glow animate-float border border-primary/10" style={{ animationDelay: "1s" }}>
                   <div className="flex items-center gap-4">
@@ -184,7 +184,7 @@ const Hero = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Lưới thống kê */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div className="space-y-2">

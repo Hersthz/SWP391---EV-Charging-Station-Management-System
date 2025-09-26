@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { ScrollArea } from "../components/ui/scroll-area";
-import { 
-  Bell, 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
-  Zap, 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  Bell,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Zap,
   CreditCard,
   Car,
   X
@@ -81,15 +81,15 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
   ]);
 
   const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+    setNotifications(prev =>
+      prev.map(notif =>
         notif.id === id ? { ...notif, read: true } : notif
       )
     );
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(notif => ({ ...notif, read: true }))
     );
   };
@@ -120,9 +120,9 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
                 </Badge>
               )}
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={markAllAsRead}
               className="text-primary"
             >
@@ -130,7 +130,7 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
             </Button>
           </div>
         </DialogHeader>
-        
+
         <ScrollArea className="h-[400px] pr-4">
           <div className="space-y-3">
             {notifications.map((notification) => {
@@ -138,11 +138,10 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
               return (
                 <div
                   key={notification.id}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                    notification.read 
-                      ? 'bg-background border-border/50' 
+                  className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${notification.read
+                      ? 'bg-background border-border/50'
                       : 'bg-primary/5 border-primary/20 shadow-sm'
-                  }`}
+                    }`}
                   onClick={() => markAsRead(notification.id)}
                 >
                   <div className="flex items-start gap-3">
@@ -151,9 +150,8 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className={`font-medium text-sm ${
-                          notification.read ? 'text-muted-foreground' : 'text-foreground'
-                        }`}>
+                        <h4 className={`font-medium text-sm ${notification.read ? 'text-muted-foreground' : 'text-foreground'
+                          }`}>
                           {notification.title}
                         </h4>
                         {!notification.read && (
@@ -173,7 +171,7 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
             })}
           </div>
         </ScrollArea>
-        
+
         <div className="pt-4 border-t">
           <Button variant="outline" className="w-full" onClick={onClose}>
             Đóng

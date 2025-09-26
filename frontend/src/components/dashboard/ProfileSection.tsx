@@ -18,14 +18,14 @@ const ProfileSection = () => {
             <AvatarFallback className="bg-primary text-primary-foreground">JD</AvatarFallback>
           </Avatar>
           <div>
-            <div className="font-medium">John Doe</div>
+            <div className="font-medium">{localStorage.getItem("full_name")}</div>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground">Premium Member</span>
               <Badge variant="secondary" className="text-xs">Active</Badge>
             </div>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <div className="text-muted-foreground">Member Since</div>

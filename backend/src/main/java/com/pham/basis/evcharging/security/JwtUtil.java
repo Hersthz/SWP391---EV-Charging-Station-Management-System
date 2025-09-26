@@ -17,7 +17,7 @@ public class JwtUtil {
     // Sinh token
     public String generateToken(String username) {
         return Jwts.builder()
-                .setSubject(username) // gán username làm subject
+                .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(key, SignatureAlgorithm.HS256)

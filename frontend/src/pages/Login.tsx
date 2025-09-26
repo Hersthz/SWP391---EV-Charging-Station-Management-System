@@ -11,10 +11,37 @@ import { toast } from "sonner";
 import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import api from "../api/axios";
 
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.8 6 29.1 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.5-.4-3.5z" />
+    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.8 6 29.1 4 24 4 16.1 4 9.2 8.5 6.3 14.7z" />
+    <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.3-5.3l-6.1-5c-2 1.5-4.6 2.3-7.2 2.3-5.2 0-9.6-3.3-11.2-8l-6.6 5C9.1 39.4 16 44 24 44z" />
+    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 2.9-3.1 5.3-5.9 6.7l6.1 5C38.9 36.8 44 31.1 44 24c0-1.3-.1-2.5-.4-3.5z" />
+  </svg>
+);
+
+const GoogleButton = ({ onClick }: { onClick?: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full h-11 rounded-lg bg-white border border-gray-200
+               flex items-center justify-center gap-3
+               hover:border-gray-300 hover:shadow-md active:scale-[0.99]
+               transition-all duration-200"
+    aria-label="Đăng nhập bằng Google"
+  >
+    <GoogleIcon />
+    <span className="text-sm font-medium text-gray-700">
+      Đăng nhập bằng Google
+    </span>
+  </button>
+);
+
 interface LoginResponse {
   token: string;
   username: string;
   role: string;
+  full_name: string;
 }
 
 const Login = () => {
@@ -27,7 +54,8 @@ const Login = () => {
     confirmPassword: ""
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmPasswordRegister, setShowConfirmPasswordRegister] = useState(false);
+  const [showConfirmPasswordLogin, setShowConfirmPasswordLogin] = useState(false);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -71,12 +99,13 @@ const Login = () => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("currentUser", data.username);
       localStorage.setItem("role", data.role);
+      localStorage.setItem("full_name", data.full_name);
       toast.success("Đăng nhập thành công!");
       // Clear password from state for security 
       setLoginData({ username: data.username, password: "" });
 
-      if (data.role === "admin") navigate("/admin");
-      else if (data.role === "staff") navigate("/staff");
+      if (data.role === "Admin") navigate("/admin");
+      else if (data.role === "Staff") navigate("/staff");
       else navigate("/dashboard");
     } catch (err: any) {
       const message = err?.response?.data?.message ?? "Username or password is incorrect!";
@@ -140,17 +169,17 @@ const Login = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
 
       <div className="relative z-10 w-full max-w-md">
-        {/* nút về trang chủ */}
-        <Link
-          to="/"
-          className="flex items-center text-white mb-6 hover:text-white/80 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Về trang chủ
-        </Link>
-
         <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
-          <CardHeader className="text-center space-y-4 pb-2">
+          <CardHeader className="relative text-center space-y-4 pb-2">
+            {/* nút về trang chủ – ở trong Card, góc trên trái */}
+            <Link
+              to="/"
+              className="absolute left-4 top-4 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Về trang chủ
+            </Link>
+
             <div className="flex justify-center">
               <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-primary relative overflow-hidden group">
                 <div className="mx-auto w-16 h-16 bg-gradient-hero rounded-2xl flex items-center justify-center shadow-primary relative overflow-hidden group">
@@ -162,10 +191,7 @@ const Login = () => {
 
             <div>
               <CardTitle className="text-2xl font-bold text-primary">ChargeStation</CardTitle>
-              <CardDescription>Hệ thống quản lý trạm sạc thông minh</CardDescription>
-              <div className="mt-2">
-                <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>
-              </div>
+              <CardDescription>Hệ thống quản lý trạm sạc thông minh</CardDescription>            -
             </div>
           </CardHeader>
 
@@ -216,7 +242,7 @@ const Login = () => {
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
                         onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        aria-label={showConfirmPasswordLogin ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -232,13 +258,14 @@ const Login = () => {
                     {isLoading ? "Đang xử lý..." : "Đăng nhập"}
                   </Button>
                 </form>
-
-                {/* Hàng demo như ảnh */}
-                <div className="bg-accent/50 p-4 rounded-lg">
-                  <p className="text-sm text-muted-foreground text-center">
-                    <strong>Demo:</strong> Tài xế: <code>driver1/123</code> | Admin: <code>admin1/123</code>
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-muted" />
+                  <span className="text-xs text-muted-foreground">hoặc</span>
+                  <div className="flex-1 h-px bg-muted" />
                 </div>
+
+                {/* Nút Google – UI only */}
+                <GoogleButton />
               </TabsContent>
 
               {/* ===== REGISTER ===== */}
@@ -259,7 +286,6 @@ const Login = () => {
                       required
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="email" className="flex items-center gap-2">
                       <Mail className="w-4 h-4" />
@@ -328,7 +354,7 @@ const Login = () => {
                     <div className="relative">
                       <Input
                         id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
+                        type={showConfirmPasswordRegister ? "text" : "password"}
                         placeholder="Nhập lại mật khẩu"
                         value={registerData.confirmPassword}
                         onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
@@ -340,10 +366,10 @@ const Login = () => {
                         variant="ghost"
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        onClick={() => setShowConfirmPasswordRegister(!showConfirmPasswordRegister)}
+                        aria-label={showConfirmPasswordRegister ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                       >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showConfirmPasswordRegister ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
                     </div>
                   </div>

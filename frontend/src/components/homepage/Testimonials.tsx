@@ -1,5 +1,5 @@
-import { Card, CardContent } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
+import { Card, CardContent } from "../ui/card";
+import { Badge } from "../ui/badge";
 import { Star, Quote } from "lucide-react";
 
 const Testimonials = () => {
@@ -14,7 +14,7 @@ const Testimonials = () => {
     },
     {
       name: "Trần Thị Hương",
-      role: "Tài xế VinFast VF8", 
+      role: "Tài xế VinFast VF8",
       avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
       content: "Từ khi dùng ChargeStation, tôi không còn lo hết pin giữa đường. Mạng lưới trạm sạc rộng khắp và luôn ổn định.",
       rating: 5,
@@ -23,7 +23,7 @@ const Testimonials = () => {
     {
       name: "Lê Minh Khôi",
       role: "Chủ xe BMW iX",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face", 
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
       content: "Tính năng lên lịch cực kỳ tiện. Tôi có thể lên kế hoạch chuyến đi dài mà không lo điểm dừng sạc. Dịch vụ 5 sao!",
       rating: 5,
       verified: true
@@ -41,12 +41,12 @@ const Testimonials = () => {
               Khách hàng nói gì
             </span>
           </div>
-          
+
           <h2 className="text-3xl md:text-5xl font-bold text-foreground">
             Được tin tưởng bởi
             <span className="block text-primary">Hàng nghìn tài xế</span>
           </h2>
-          
+
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             Khám phá trải nghiệm thực tế từ những tài xế EV sử dụng ChargeStation mỗi ngày.
           </p>
@@ -55,7 +55,7 @@ const Testimonials = () => {
         {/* Lưới đánh giá */}
         <div className="grid md:grid-cols-3 gap-8">
           {testimonials.map((testimonial, index) => (
-            <Card 
+            <Card
               key={index}
               className="p-6 bg-gradient-card border-0 shadow-card hover:shadow-primary transition-all duration-300 hover:-translate-y-2 group animate-fade-in"
               style={{ animationDelay: `${index * 0.2}s` }}
@@ -79,7 +79,7 @@ const Testimonials = () => {
                 {/* Thông tin người dùng */}
                 <div className="flex items-center gap-4 pt-4 border-t border-border/50">
                   <div className="relative">
-                    <img 
+                    <img
                       src={testimonial.avatar}
                       alt={testimonial.name}
                       className="w-12 h-12 rounded-full object-cover"

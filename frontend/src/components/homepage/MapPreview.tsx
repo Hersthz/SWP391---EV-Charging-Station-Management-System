@@ -1,5 +1,5 @@
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
 import { MapPin, Navigation, Zap, Clock } from "lucide-react";
 
 const MapPreview = () => {
@@ -13,7 +13,7 @@ const MapPreview = () => {
       price: "$0.45/kWh"
     },
     {
-      name: "Trạm TTTM #2", 
+      name: "Trạm TTTM #2",
       distance: "0.8 km",
       availability: "2/4 Còn trống",
       status: "Trực tuyến",
@@ -22,7 +22,7 @@ const MapPreview = () => {
     },
     {
       name: "Trạm Cao tốc #7",
-      distance: "2.1 km", 
+      distance: "2.1 km",
       availability: "6/8 Còn trống",
       status: "Trực tuyến",
       charging: "350kW • Cực nhanh",
@@ -47,7 +47,7 @@ const MapPreview = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Ghim vị trí */}
                 <div className="relative z-10 flex flex-col items-center animate-float">
                   <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center shadow-glow">
@@ -82,12 +82,12 @@ const MapPreview = () => {
                   Trạm gần bạn
                 </span>
               </div>
-              
+
               <h2 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
                 Tìm & Dẫn đường đến
                 <span className="block text-primary">Bất kỳ trạm sạc nào</span>
               </h2>
-              
+
               <p className="text-xl text-muted-foreground leading-relaxed">
                 Khám phá các trạm sạc gần bạn với tình trạng theo thời gian thực,
                 giá và thông tin chi tiết để lên kế hoạch hành trình hiệu quả.
@@ -105,8 +105,8 @@ const MapPreview = () => {
               </div>
 
               {nearbyStations.map((station, index) => (
-                <Card 
-                  key={index} 
+                <Card
+                  key={index}
                   className="p-6 bg-gradient-card border-0 shadow-card hover:shadow-primary transition-all duration-300 group animate-fade-in"
                   style={{ animationDelay: `${(index + 2) * 0.1}s` }}
                 >
@@ -118,7 +118,7 @@ const MapPreview = () => {
                         </h4>
                         <span className="text-sm text-muted-foreground">cách {station.distance}</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-primary">
                           <div className="w-2 h-2 bg-primary rounded-full"></div>
@@ -129,7 +129,7 @@ const MapPreview = () => {
                           <span>{station.charging}</span>
                         </div>
                       </div>
-                      
+
                       <p className="text-sm text-muted-foreground">{station.price}</p>
                     </div>
 

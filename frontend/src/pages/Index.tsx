@@ -1,9 +1,9 @@
-import Header from "../components/Header";
-import Hero from "../components/Hero";
-import Testimonials from "../components/Testimonials";
-import Footer from "../components/Footer";
-import Features from "../components/Features";
-import MapPreview from "../components/MapPreview";
+import Header from "../components/homepage/Header";
+import Hero from "../components/homepage/Hero";
+import Testimonials from "../components/homepage/Testimonials";
+import Footer from "../components/homepage/Footer";
+import Features from "../components/homepage/Features";
+import MapPreview from "../components/homepage/MapPreview";
 
 const Index = () => {
   return (

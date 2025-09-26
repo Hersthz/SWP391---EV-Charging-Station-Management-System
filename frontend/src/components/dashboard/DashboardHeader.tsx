@@ -11,7 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Zap } from "lucide-react";
-import NotificationModal from "../../components/NotificationModal";
+import NotificationModal from "../homepage/NotificationModal";
 
 
 const DashboardHeader = () => {
@@ -28,18 +28,21 @@ const DashboardHeader = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+        {/* Logo */}
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold">ChargeStation</span>
+          <span className="text-xl font-bold">ChargeHub</span>
         </div>
 
+        {/* Right icons */}
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          {/* Notifications */}
+          <Button
+            variant="ghost"
+            size="icon"
             className="relative hover:bg-primary/10"
             onClick={() => setShowNotifications(true)}
           >
@@ -49,15 +52,7 @@ const DashboardHeader = () => {
             </Badge>
           </Button>
 
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="hover:bg-primary/10"
-            onClick={() => setShowSettings(true)}
-          >
-            <Settings className="w-5 h-5" />
-          </Button>
-
+          {/* User menu (vẫn có Cài đặt) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -79,19 +74,14 @@ const DashboardHeader = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <div className="text-sm">
-            <div className="font-medium">John</div>
-          </div>
         </div>
       </div>
-      
-      {/* Modals */}
-      <NotificationModal 
-        isOpen={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
+
+      {/* Notifications modal */}
+      <NotificationModal
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
-      
     </header>
   );
 };

@@ -1,4 +1,4 @@
-import { Button } from "../components/ui/button";
+import { Button } from "../ui/button";
 import { Menu, X, Zap } from "lucide-react";
 import { useState } from "react";
 
@@ -35,15 +35,15 @@ const Header = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => window.location.href = '/login'}
             >
               Đăng nhập
             </Button>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               size="sm"
               onClick={() => window.location.href = '/login'}
             >
@@ -81,15 +81,15 @@ const Header = () => {
                 Liên hệ
               </a>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => window.location.href = '/login'}
                 >
                   Đăng nhập
                 </Button>
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   size="sm"
                   onClick={() => window.location.href = '/login'}
                 >

@@ -1,5 +1,5 @@
 import { MapPin, Zap, CreditCard, Clock, Smartphone, Battery } from "lucide-react";
-import { Card } from "../components/ui/card";
+import { Card } from "../ui/card";
 
 const Features = () => {
   const features = [
@@ -52,12 +52,12 @@ const Features = () => {
               Tính năng mạnh mẽ
             </span>
           </div>
-          
+
           <h2 className="text-3xl md:text-5xl font-bold text-foreground">
             Mọi thứ bạn cần cho
             <span className="block text-primary">Sạc xe điện thông minh</span>
           </h2>
-          
+
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             Nền tảng toàn diện của chúng tôi mang đến tất cả công cụ bạn cần để quản lý việc sạc xe điện hiệu quả và tiện lợi.
           </p>
@@ -66,8 +66,8 @@ const Features = () => {
         {/* Lưới tính năng */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <Card 
-              key={index} 
+            <Card
+              key={index}
               className="p-8 bg-gradient-card border-0 shadow-card hover:shadow-primary transition-all duration-300 hover:-translate-y-2 group animate-fade-in"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
@@ -75,11 +75,11 @@ const Features = () => {
                 <div className={`w-14 h-14 rounded-xl bg-gradient-hero flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
-                
+
                 <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
                   {feature.title}
                 </h3>
-                
+
                 <p className="text-muted-foreground leading-relaxed">
                   {feature.description}
                 </p>
