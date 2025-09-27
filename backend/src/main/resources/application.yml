@@ -23,3 +23,21 @@ spring:
         hibernate:
           format_sql: true
           spring.jpa.entityManagerFactoryInterface: jakarta.persistence.EntityManagerFactory
+
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: tranpham7689@gmail.com   # phải đúng chính xác email
+    password: abozeytyxgytqsjb         # App Password 16 ký tự
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          starttls.required: true
+          ssl.trust: smtp.gmail.com
+jwt:
+  secret: your-secret-key
+  expiration: 86400000

@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 
@@ -17,7 +18,8 @@ public class UserServiceImpl implements UserService {
     private UserRepository userRepository;
     @Autowired
     private RoleRepository roleRepository;
-
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public User getUserByName(String username) {
@@ -29,8 +31,9 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setFull_name(request.getFull_name());
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
+        user.setIs_verified(false);
         user.setCreated_at(LocalDateTime.now());
         Role defaultRole = roleRepository.getReferenceById(1);
         user.setRole(defaultRole);
@@ -49,7 +52,6 @@ public class UserServiceImpl implements UserService {
         return user.getRole().getName();
     }
 
-
     @Override
     public boolean updateUser(User user) {
         return false;
@@ -61,9 +63,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+
+    @Override
     public User login(String username, String password) {
         User user = userRepository.findUserByUsername(username);
-        if (user == null || !password.equals(user.getPassword())) {
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("Invalid username or password");
         }
         return user;

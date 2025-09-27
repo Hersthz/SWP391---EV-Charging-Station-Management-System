@@ -37,6 +37,9 @@ public class User{
     @Column(name = "status", nullable = false)
     private Boolean status = true;
 
+    @Column(name = "is_verified", nullable = false)
+    private Boolean is_verified = false;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;

@@ -143,13 +143,19 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
-      await api.post("/auth/register", {
+      const res = await api.post("/auth/register", {
         full_name,
         email,
         username,
         password,
       });
-      toast.success("Đăng ký thành công! Bạn có thể đăng nhập ngay.");
+
+      const message =
+        typeof res.data === "string"
+          ? res.data
+          : "Đăng ký thành công! Vui lòng kiểm tra email để xác minh.";
+
+      toast.success(message);
 
       setRegisterData(prev => ({ ...prev, password: "", confirmPassword: "" }));
 

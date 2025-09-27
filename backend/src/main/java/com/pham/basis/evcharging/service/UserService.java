@@ -11,5 +11,6 @@ public interface UserService {
     String getUserRole(String username);
     boolean updateUser(User user);
     boolean deleteUser(User user);
+    User save(User user);
     User login(String username, String password);
 }
