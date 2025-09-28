@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Staff from "./pages/Staff";
+import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/staff" element={<Staff />} />
           <Route path="/map" element={<StationMap />} />
+          <Route path="/verify" element={<VerifyEmail />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

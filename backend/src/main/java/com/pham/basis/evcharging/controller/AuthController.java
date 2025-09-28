@@ -61,6 +61,10 @@
         public ResponseEntity<?> login(@RequestBody LoginRequest request) {
             try {
                 User user =  userService.login(request.getUsername(), request.getPassword());
+                if (Boolean.FALSE.equals(user.getIs_verified())) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("message", "Email not verified! Please check your inbox."));
+                }
                 String roleName = user.getRole() != null ? user.getRole().getName() : "UNKNOWN";
                 String token = jwtUtil.generateToken(request.getUsername(), user.getRole().getName());
                 LoginResponse response = new LoginResponse(token,request.getUsername(),roleName,user.getFull_name());
@@ -69,24 +73,20 @@
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(e.getMessage()));
             }
         }
+
         @GetMapping("/verify")
         public ResponseEntity<Map<String, String>> verifyUser(@RequestParam("token") String token) {
             User user = tokenService.validateVerificationToken(token);
-
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("message", "Invalid or expired verification token"));
             }
-
             if (Boolean.TRUE.equals(user.getIs_verified())) {
                 return ResponseEntity.ok(Map.of("message", "Email already verified"));
             }
-
-            // Xác minh thành công
             user.setIs_verified(true);
             userService.save(user);
             tokenService.removeTokenByUser(user);
-
             return ResponseEntity.ok(Map.of("message", "Email verified successfully!"));
         }
 

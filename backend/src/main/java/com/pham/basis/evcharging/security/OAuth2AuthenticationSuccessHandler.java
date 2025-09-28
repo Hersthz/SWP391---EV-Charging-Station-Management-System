@@ -44,9 +44,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         }
 
         String role = user.getRole() != null ? user.getRole().getName() : "ROLE_USER";
-        // dùng JwtUtil.generateToken(username, role)
         String token = jwtUtil.generateToken(user.getUsername(), role);
-
         ResponseCookie cookie = ResponseCookie.from("JWT", token)
                 .httpOnly(true)
                 .secure(false) // true nếu HTTPS

@@ -37,6 +37,7 @@ const GoogleButton = ({ onClick }: { onClick?: () => void }) => (
   </button>
 );
 
+
 interface LoginResponse {
   token: string;
   username: string;
@@ -271,7 +272,11 @@ const Login = () => {
                 </div>
 
                 {/* Nút Google – UI only */}
-                <GoogleButton />
+                <GoogleButton
+                  onClick={() => {
+                    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+                  }}
+                />
               </TabsContent>
 
               {/* ===== REGISTER ===== */}

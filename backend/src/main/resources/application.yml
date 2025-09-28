@@ -56,5 +56,5 @@ jwt:
   secret: O9TclINZGLYWW7TZcm8uAzugCmMZkTzHFsgBS3qfsxk=
   expiration: 86400000
 app:
-  frontend-url: http://localhost:3000
+  frontend-url: http://localhost:5173
   base-url: http://localhost:8080

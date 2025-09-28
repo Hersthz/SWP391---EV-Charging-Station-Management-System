@@ -69,6 +69,7 @@ public class UserServiceImpl implements UserService {
             u.setPassword("null");
             Role defaultRole = roleRepository.getReferenceById(1);
             u.setRole(defaultRole);
+            u.setCreated_at(LocalDateTime.now());
             userRepository.save(u);
         }else {
             boolean changed = false;
