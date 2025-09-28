@@ -3,55 +3,50 @@ package com.pham.basis.evcharging.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 
 @Component
 public class JwtUtil {
-
     private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
-    // logger (bộ ghi log) ghi thông tin cảnh báo lỗi ...
-    //Có thể cấu hình mức log (INFO, DEBUG, WARN, ERROR).
 
-    // Inject từ application.properties: jwt.secret (Base64-encoded secret)
     @Value("${jwt.secret}")
-    private String SECRET;
-    //SECRET là secret key dùng để:Ký (sign) JWT token khi tạo.Xác thực (verify) token khi parse lại.
-    // ms * s * m
-    private final long EXPIRATION_TIME = 1000 * 60 * 30;
+    private String SECRET_BASE64;
 
+    @Value("${jwt.expiration:86400000}")
+    private long EXPIRATION_TIME;
 
     private SecretKey getSigningKey() {
-        if (SECRET == null || SECRET.trim().isEmpty()) {
+        if (SECRET_BASE64 == null || SECRET_BASE64.trim().isEmpty()) {
             throw new IllegalStateException("JWT secret is not configured (jwt.secret).");
         }
-        byte[] keyBytes = SECRET.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_BASE64);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
     private String stripBearer(String token) {
         if (token == null) return null;
         token = token.trim();
-        if (token.startsWith("Bearer ")) // Nếu chuỗi bắt đầu bằng "Bearer "
-            return token.substring(7);// Cắt bỏ 7 ký tự đầu ("Bearer ")
+        if (token.startsWith("Bearer ")) return token.substring(7);
         return token;
     }
 
     public String generateToken(String username, String role) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + EXPIRATION_TIME);
         return Jwts.builder()
                 .setSubject(username)
                 .claim("role", role)
                 .setIssuer("EV-Charging-API")
                 .setId(UUID.randomUUID().toString())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .setIssuedAt(now)
+                .setExpiration(exp)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -75,8 +70,8 @@ public class JwtUtil {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        Object role = claims.get("role");
-        return role != null ? role.toString() : null;
+        Object r = claims.get("role");
+        return r != null ? r.toString() : null;
     }
 
     public boolean validateToken(String token) {

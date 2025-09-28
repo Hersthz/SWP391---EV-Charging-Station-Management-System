@@ -1,9 +1,6 @@
 
 server:
   port: 8080
-  servlet:
-    context-path: /identity
-# Moi api se bat dau bang /identity (VD: /identity/users)
 spring:
   application:
       name: EVCharging
@@ -28,8 +25,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: tranpham7689@gmail.com   # phải đúng chính xác email
-    password: abozeytyxgytqsjb         # App Password 16 ký tự
+    username: tranpham7689@gmail.com
+    password: abozeytyxgytqsjb
     properties:
       mail:
         smtp:
@@ -38,6 +35,26 @@ spring:
             enable: true
           starttls.required: true
           ssl.trust: smtp.gmail.com
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 923020885723-s2jqbps9j9rb7vfftbd2adpatvtcvbrq.apps.googleusercontent.com
+            client-secret: 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
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
 jwt:
-  secret: your-secret-key
+  secret: O9TclINZGLYWW7TZcm8uAzugCmMZkTzHFsgBS3qfsxk=
   expiration: 86400000
+app:
+  frontend-url: http://localhost:3000
+  base-url: http://localhost:8080

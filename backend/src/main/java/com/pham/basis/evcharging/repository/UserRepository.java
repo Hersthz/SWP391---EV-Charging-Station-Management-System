@@ -16,6 +16,6 @@ public interface UserRepository extends JpaRepository<User,Integer> {
     User findUserByUsername(String username);
 // JpaRepository đã có sẵn các method cơ bản:
 // findAll(), findById(), save(), deleteById()...
-
+    User findByEmail(String email);
 }
 

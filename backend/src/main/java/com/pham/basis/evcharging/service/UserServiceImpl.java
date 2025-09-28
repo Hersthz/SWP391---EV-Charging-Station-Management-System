@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -20,11 +21,6 @@ public class UserServiceImpl implements UserService {
     private RoleRepository roleRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @Override
-    public User getUserByName(String username) {
-        return null;
-    }
 
     @Override
     public User createUser(UserCreationRequest request) {
@@ -41,25 +37,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User getAllUser() {
-        return null;
-    }
-
-    @Override
     public String getUserRole(String username) {
         User user = userRepository.findUserByUsername(username);
         if (user == null) throw new RuntimeException("User not found");
         return user.getRole().getName();
-    }
-
-    @Override
-    public boolean updateUser(User user) {
-        return false;
-    }
-
-    @Override
-    public boolean deleteUser(User user) {
-        return false;
     }
 
     @Override
@@ -74,5 +55,41 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Invalid username or password");
         }
         return user;
+    }
+
+    @Override
+    public void createOrUpdateFromOAuth(String email, String full_name, boolean emailVerified) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            User u = new User();
+            u.setEmail(email);
+            u.setUsername(email);
+            u.setFull_name(full_name);
+            u.setIs_verified(emailVerified);
+            u.setPassword("null");
+            Role defaultRole = roleRepository.getReferenceById(1);
+            u.setRole(defaultRole);
+            userRepository.save(u);
+        }else {
+            boolean changed = false;
+            if (!Objects.equals(user.getFull_name(), full_name)) {
+                user.setFull_name(full_name);
+                changed = true;
+            }
+            if (emailVerified && !Boolean.TRUE.equals(user.getIs_verified())) {
+                user.setIs_verified(true);
+                changed = true;
+            }
+            if (changed) userRepository.save(user);
+        }
+    }
+    @Override
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Override
+    public User findByUsername(String username) {
+        return userRepository.findUserByUsername( username);
     }
 }
