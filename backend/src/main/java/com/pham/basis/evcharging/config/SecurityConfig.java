@@ -30,6 +30,7 @@ public class SecurityConfig {
                 JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtUtil, userService);
                 http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
                                 .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers("/charging-stations/**").permitAll()
                                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2
