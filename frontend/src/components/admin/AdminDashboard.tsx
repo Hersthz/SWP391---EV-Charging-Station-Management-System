@@ -1,8 +1,8 @@
 import { ReactNode, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Zap, 
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import {
+  Zap,
   Bell,
   Settings,
   LogOut,
@@ -66,7 +66,7 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
                   </Badge>
                 )}
               </Button>
-              
+
               <Button variant="ghost" size="sm">
                 <Settings className="w-4 h-4" />
               </Button>
@@ -90,16 +90,15 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-              
+
               return (
-                <Link 
+                <Link
                   key={item.path}
-                  to={item.path} 
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    active 
-                      ? "bg-primary/10 text-primary border border-primary/20 font-medium shadow-sm" 
+                  to={item.path}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${active
+                      ? "bg-primary/10 text-primary border border-primary/20 font-medium shadow-sm"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>

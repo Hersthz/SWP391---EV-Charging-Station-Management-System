@@ -13,31 +13,31 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
-        @Autowired
-        private CustomOAuth2UserService customOAuth2UserService;
+    @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
 
-        @Autowired
-        private OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
+    @Autowired
+    private OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
 
-        @Autowired
-        private JwtUtil jwtUtil;
+    @Autowired
+    private JwtUtil jwtUtil;
 
-        @Autowired
-        private UserService userService;
+    @Autowired
+    private UserService userService;
 
-        @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-                JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtUtil, userService);
-                http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/auth/**").permitAll()
-                                .requestMatchers("/charging-stations/**").permitAll()
-                                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                                .anyRequest().authenticated())
-                                .oauth2Login(oauth2 -> oauth2
-                                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                                        .successHandler(oauth2SuccessHandler))
-                                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtUtil, userService);
+        http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/charging-stations/**").permitAll()
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oauth2SuccessHandler))
+                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
-                return http.build();
-        }
+        return http.build();
+    }
 }

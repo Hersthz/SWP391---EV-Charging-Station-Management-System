@@ -12,7 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/charging-stations")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin
 public class ChargingStationController {
 
     private final ChargingStationService stationService;
@@ -21,18 +21,17 @@ public class ChargingStationController {
     public ResponseEntity<List<ChargingStationResponse>> getNearbyStations(
             @RequestBody LocationRequest request) {
 
-        // Validate input
         if (request.getLatitude() == null || request.getLongitude() == null) {
             return ResponseEntity.badRequest().build();
         }
-        List<ChargingStationResponse> stations = List.of(
+        List<ChargingStationResponse> dummyStations = List.of(
                 new ChargingStationResponse(1L, "Station A", "123 Street", 10.123, 106.456, 1.2),
                 new ChargingStationResponse(2L, "Station B", "456 Avenue", 10.234, 106.567, 2.8),
                 new ChargingStationResponse(3L, "Station C", "789 Boulevard", 10.345, 106.678, 5.5)
         );
 
-//        List<ChargingStationResponse> stations = stationService.findNearbyStations(request);
-        return ResponseEntity.ok(stations);
+        //List<ChargingStationResponse> stations = stationService.findNearbyStations(request);
+        return ResponseEntity.ok(dummyStations);
     }
 
 }
