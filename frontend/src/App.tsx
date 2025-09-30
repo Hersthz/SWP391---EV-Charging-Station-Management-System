@@ -11,6 +11,9 @@ import AdminStations from "./components/admin/AdminStations";
 import StaffDashboard from "./pages/StaffDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
+import StaffStation from "./components/staff/StaffStation";
+import StaffIncidents from "./components/staff/StaffIncidents";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -24,6 +27,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
+          <Route path="/staff/stations" element={<StaffStation />} />
+          <Route path="/staff/incidents" element={<StaffIncidents />} />
+          <Route path="/staff/payments" element={<StaffDashboard />} />
           <Route path="/map" element={<StationMap />} />
           <Route path="/verify" element={<VerifyEmail />} />
           <Route path="/admin" element={<AdminDashboard />} />
