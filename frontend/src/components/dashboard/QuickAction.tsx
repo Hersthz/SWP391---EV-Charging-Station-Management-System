@@ -8,44 +8,44 @@ const QuickActions = () => {
   const actions = [
     {
       icon: Map,
-      title: "Xem bản đồ",
-      desc: "Khám phá các trạm sạc gần bạn",
+      title: "View Map",
+      desc: "Explore charging stations near you",
       color: "bg-green-500",
-      btnText: "Mở bản đồ",
+      btnText: "Open Map",
       btnAction: () => navigate("/map"),
       bg: "from-green-50 to-green-100 border-green-200",
     },
     {
       icon: History,
-      title: "Lịch sử sạc",
-      desc: "Xem các phiên sạc trước đây",
+      title: "Charging History",
+      desc: "See your previous sessions",
       color: "bg-orange-500",
-      btnText: "Xem lịch sử",
+      btnText: "View History",
       btnAction: () => navigate("/reports"),
       bg: "from-orange-50 to-orange-100 border-orange-200",
     },
     {
       icon: Wallet,
-      title: "Ví & Thanh toán",
-      desc: "Quản lý số dư và lịch sử giao dịch",
+      title: "Wallet & Payments",
+      desc: "Manage balance and transactions",
       color: "bg-purple-500",
-      btnText: "Xem ví",
-      btnAction: () => { },
+      btnText: "Open Wallet",
+      btnAction: () => {},
       bg: "from-purple-50 to-purple-100 border-purple-200",
     },
     {
       icon: HeadphonesIcon,
-      title: "Hỗ trợ 24/7",
-      desc: "Liên hệ khi cần trợ giúp",
+      title: "24/7 Support",
+      desc: "Contact us for help",
       color: "bg-teal-500",
-      btnText: "Liên hệ",
-      btnAction: () => { },
+      btnText: "Contact",
+      btnAction: () => {},
       bg: "from-teal-50 to-teal-100 border-teal-200",
     },
   ];
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Hành động nhanh</h2>
+      <h2 className="text-xl font-semibold">Quick Actions</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {actions.map((item, i) => (
           <Card
@@ -58,22 +58,16 @@ const QuickActions = () => {
                 <item.icon className="w-6 h-6 text-white" />
               </div>
 
-              {/* Text block: TITLE + DESC có chiều cao cố định */}
+              {/* Text block */}
               <div className="flex flex-col items-center justify-center w-full">
-                {/* Title: cố định chiều cao, tối đa 2 dòng để mọi card đều nhau */}
-                <h3
-                  className="mt-3 text-lg font-semibold leading-tight antialiased line-clamp-2 min-h-[44px]"
-                >
+                <h3 className="mt-3 text-lg font-semibold leading-tight antialiased line-clamp-2 min-h-[44px]">
                   {item.title}
                 </h3>
-
-                {/* Description: tối đa 2 dòng và cùng chiều cao */}
                 <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
                   {item.desc}
                 </p>
               </div>
 
-              {/* Button… (giữ như bạn đang dùng) */}
               <Button
                 size="sm"
                 className="w-full rounded-lg font-medium

@@ -6,15 +6,16 @@ import { CalendarDays, Clock, MapPin, Zap, TrendingUp, Battery } from "lucide-re
 const WelcomeSection = () => {
   const currentHour = new Date().getHours();
   const greeting =
-    currentHour < 12 ? "Chào buổi sáng" :
-      currentHour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+    currentHour < 12 ? "Good morning" :
+    currentHour < 18 ? "Good afternoon" : "Good evening";
 
   const currentDate = new Date();
-  const dateString = currentDate.toLocaleDateString('vi-VN', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  // You can change locale as needed:
+  const dateString = currentDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
   });
 
   return (
@@ -31,7 +32,7 @@ const WelcomeSection = () => {
                     {greeting}, {localStorage.getItem("full_name")} 👋
                   </h1>
                   <p className="text-white/80 text-lg">
-                    Sẵn sàng cho hành trình hôm nay chưa?
+                    Ready for today’s journey?
                   </p>
                 </div>
 
@@ -43,9 +44,9 @@ const WelcomeSection = () => {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     <span className="text-sm">
-                      {currentDate.toLocaleTimeString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit'
+                      {currentDate.toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit"
                       })}
                     </span>
                   </div>
@@ -57,13 +58,13 @@ const WelcomeSection = () => {
                   <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-2">
                     <Zap className="w-8 h-8 text-white" />
                   </div>
-                  <div className="text-xs text-white/70">Sạc nhanh</div>
+                  <div className="text-xs text-white/70">Fast charge</div>
                 </div>
                 <div className="text-center">
                   <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-2">
                     <Battery className="w-8 h-8 text-white" />
                   </div>
-                  <div className="text-xs text-white/70">85% Pin</div>
+                  <div className="text-xs text-white/70">85% Battery</div>
                 </div>
               </div>
             </div>
@@ -77,7 +78,7 @@ const WelcomeSection = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-600 text-sm font-medium">Phiên sạc tuần này</p>
+                <p className="text-green-600 text-sm font-medium">Sessions this week</p>
                 <p className="text-2xl font-bold text-green-700">12</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -86,7 +87,7 @@ const WelcomeSection = () => {
             </div>
             <div className="mt-2">
               <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300">
-                +3 từ tuần trước
+                +3 from last week
               </Badge>
             </div>
           </CardContent>
@@ -96,7 +97,7 @@ const WelcomeSection = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-600 text-sm font-medium">Tiết kiệm tháng này</p>
+                <p className="text-blue-600 text-sm font-medium">Savings this month</p>
                 <p className="text-2xl font-bold text-blue-700">$45.80</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -105,7 +106,7 @@ const WelcomeSection = () => {
             </div>
             <div className="mt-2">
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
-                So với xăng
+                Compared to gas
               </Badge>
             </div>
           </CardContent>
@@ -115,7 +116,7 @@ const WelcomeSection = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium">Trạm yêu thích</p>
+                <p className="text-purple-600 text-sm font-medium">Favorite station</p>
                 <p className="text-lg font-bold text-purple-700">Downtown #3</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -124,7 +125,7 @@ const WelcomeSection = () => {
             </div>
             <div className="mt-2">
               <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-300">
-                2.1km
+                2.1 km
               </Badge>
             </div>
           </CardContent>

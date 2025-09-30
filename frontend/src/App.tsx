@@ -6,8 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Admin from "./pages/Admin";
-import Staff from "./pages/Staff";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminStations from "./components/admin/AdminStations";
+import StaffDashboard from "./pages/StaffDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 const queryClient = new QueryClient();
@@ -22,10 +23,11 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/staff" element={<Staff />} />
+          <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/map" element={<StationMap />} />
           <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/stations" element={<AdminStations />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

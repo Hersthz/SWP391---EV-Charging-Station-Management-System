@@ -5,33 +5,9 @@ import { Button } from "../../components/ui/button";
 
 const RecentSessions = () => {
   const sessions = [
-    {
-      id: 1,
-      station: "Mall Station #2",
-      date: "Yesterday 3:30 PM",
-      duration: "2h 15m",
-      energy: "45 kWh",
-      cost: "$18.50",
-      status: "Completed"
-    },
-    {
-      id: 2,
-      station: "Highway Station #7",
-      date: "3 days ago",
-      duration: "1h 45m", 
-      energy: "52 kWh",
-      cost: "$22.10",
-      status: "Completed"
-    },
-    {
-      id: 3,
-      station: "Downtown Station #3",
-      date: "1 week ago",
-      duration: "45 min",
-      energy: "28 kWh",
-      cost: "$15.80",
-      status: "Scheduled"
-    }
+    { id: 1, station: "Mall Station #2", date: "Yesterday 3:30 PM", duration: "2h 15m", energy: "45 kWh", cost: "$18.50", status: "Completed" },
+    { id: 2, station: "Highway Station #7", date: "3 days ago", duration: "1h 45m", energy: "52 kWh", cost: "$22.10", status: "Completed" },
+    { id: 3, station: "Downtown Station #3", date: "1 week ago", duration: "45 min", energy: "28 kWh", cost: "$15.80", status: "Scheduled" }
   ];
 
   return (
@@ -63,15 +39,14 @@ const RecentSessions = () => {
               >
                 {session.status}
               </Badge>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" aria-label="View details">
                 <Eye className="w-4 h-4" />
               </Button>
             </div>
           </div>
         ))}
-        
         <Button variant="outline" className="w-full mt-4">
-          View Payment
+          View Payments
         </Button>
       </CardContent>
     </Card>

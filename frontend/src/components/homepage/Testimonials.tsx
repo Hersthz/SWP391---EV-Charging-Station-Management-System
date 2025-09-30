@@ -5,26 +5,26 @@ import { Star, Quote } from "lucide-react";
 const Testimonials = () => {
   const testimonials = [
     {
-      name: "Nguyễn Văn An",
-      role: "Chủ xe Tesla Model 3",
+      name: "Nguyen Van An",
+      role: "Tesla Model 3 Owner",
       avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-      content: "Ứng dụng này thật sự thay đổi cách tôi sạc xe điện. Tìm trạm nhanh, đặt chỗ dễ dàng và thanh toán tự động. Tuyệt vời!",
+      content: "This app truly changed how I charge my EV. Quick station search, easy reservations, and automatic payments. Amazing!",
       rating: 5,
       verified: true
     },
     {
-      name: "Trần Thị Hương",
-      role: "Tài xế VinFast VF8",
+      name: "Tran Thi Huong",
+      role: "VinFast VF8 Driver",
       avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
-      content: "Từ khi dùng ChargeStation, tôi không còn lo hết pin giữa đường. Mạng lưới trạm sạc rộng khắp và luôn ổn định.",
+      content: "Since using ChargeStation, I never worry about running out of power. The network is wide and consistently reliable.",
       rating: 5,
       verified: true
     },
     {
-      name: "Lê Minh Khôi",
-      role: "Chủ xe BMW iX",
+      name: "Le Minh Khoi",
+      role: "BMW iX Owner",
       avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-      content: "Tính năng lên lịch cực kỳ tiện. Tôi có thể lên kế hoạch chuyến đi dài mà không lo điểm dừng sạc. Dịch vụ 5 sao!",
+      content: "Scheduling is super convenient. I can plan long trips without stressing about charging stops. Five-star service!",
       rating: 5,
       verified: true
     }
@@ -33,26 +33,26 @@ const Testimonials = () => {
   return (
     <section className="py-24 px-4 bg-gradient-section">
       <div className="container mx-auto max-w-7xl">
-        {/* Tiêu đề Section */}
+        {/* Section header */}
         <div className="text-center mb-16 space-y-4">
           <div className="flex items-center justify-center gap-2 text-primary mb-4">
             <Quote className="w-6 h-6" />
             <span className="text-sm font-semibold uppercase tracking-wider">
-              Khách hàng nói gì
+              What customers say
             </span>
           </div>
 
           <h2 className="text-3xl md:text-5xl font-bold text-foreground">
-            Được tin tưởng bởi
-            <span className="block text-primary">Hàng nghìn tài xế</span>
+            Trusted by
+            <span className="block text-primary">Thousands of Drivers</span>
           </h2>
 
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Khám phá trải nghiệm thực tế từ những tài xế EV sử dụng ChargeStation mỗi ngày.
+            Explore real experiences from EV drivers who use ChargeStation every day.
           </p>
         </div>
 
-        {/* Lưới đánh giá */}
+        {/* Cards */}
         <div className="grid md:grid-cols-3 gap-8">
           {testimonials.map((testimonial, index) => (
             <Card
@@ -61,14 +61,14 @@ const Testimonials = () => {
               style={{ animationDelay: `${index * 0.2}s` }}
             >
               <CardContent className="p-0 space-y-6">
-                {/* Xếp hạng */}
+                {/* Rating */}
                 <div className="flex items-center gap-1">
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
                     <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
 
-                {/* Trích dẫn */}
+                {/* Quote */}
                 <div className="relative">
                   <Quote className="w-8 h-8 text-primary/20 absolute -top-2 -left-2" />
                   <p className="text-muted-foreground leading-relaxed italic pl-6">
@@ -76,7 +76,7 @@ const Testimonials = () => {
                   </p>
                 </div>
 
-                {/* Thông tin người dùng */}
+                {/* User */}
                 <div className="flex items-center gap-4 pt-4 border-t border-border/50">
                   <div className="relative">
                     <img
@@ -95,7 +95,7 @@ const Testimonials = () => {
                       <h4 className="font-semibold text-foreground">{testimonial.name}</h4>
                       {testimonial.verified && (
                         <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
-                          Đã xác thực
+                          Verified
                         </Badge>
                       )}
                     </div>
@@ -107,24 +107,24 @@ const Testimonials = () => {
           ))}
         </div>
 
-        {/* Lời kêu gọi (CTA) cuối */}
+        {/* CTA */}
         <div className="text-center mt-16">
           <div className="bg-gradient-hero/10 rounded-2xl p-8 max-w-2xl mx-auto">
             <h3 className="text-2xl font-bold text-foreground mb-4">
-              Tham gia cộng đồng của chúng tôi
+              Join our community
             </h3>
             <p className="text-muted-foreground mb-6">
-              Hơn 50.000 tài xế tin dùng ChargeStation cho mọi hành trình
+              Over 50,000 drivers rely on ChargeStation for every journey
             </p>
             <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Star className="w-4 h-4 text-yellow-400" />
-                <span>Đánh giá 4.9/5</span>
+                <span>Rated 4.9/5</span>
               </div>
               <div>•</div>
-              <div>2M+ phiên sạc thành công</div>
+              <div>2M+ successful sessions</div>
               <div>•</div>
-              <div>99.9% thời gian hoạt động</div>
+              <div>99.9% uptime</div>
             </div>
           </div>
         </div>
