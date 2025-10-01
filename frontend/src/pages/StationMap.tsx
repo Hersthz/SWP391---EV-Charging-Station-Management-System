@@ -12,7 +12,7 @@ import mockStations from "../../stations.json";
 // ===== Leaflet imports =====
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import * as L from "leaflet";
 // fix default icon paths for Vite/webpack so markers appear
 // import images so bundler can resolve paths
 import 'leaflet-defaulticon-compatibility';
@@ -172,93 +172,94 @@ const StationMap = () => {
 
 
                     {/* Stations List */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                    <Card className="h-[500px]">
+                        <CardContent className="p-4 h-full flex flex-col">
+                            {/* Header nhỏ + trạng thái */}
+                            <div className="flex items-center justify-between mb-3">
                             <h2 className="text-lg font-semibold">Nearby Charging Stations</h2>
-                            <Badge variant="secondary">
-                                Stations within 10km
-                            </Badge>
-                        </div>
+                            <Badge variant="secondary">Stations within 10km</Badge>
+                            </div>
 
-                        <div className="text-sm text-muted-foreground flex items-center space-x-2">
+                            <div className="text-sm text-muted-foreground flex items-center space-x-2 mb-3">
                             <span>Last updated: 2 minutes ago</span>
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span>Real-time data</span>
-                        </div>
+                            </div>
 
-                        <div className="space-y-3">
+                            {/* Danh sách: chiếm phần còn lại, có scroll */}
+                            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
                             {stations.map((station) => (
-                                <Card key={station.id} className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold">{station.name}</h3>
-                                                <p className="text-sm text-muted-foreground">{station.address}</p>
-                                                <p className="text-xs text-muted-foreground">Updated: {station.updated}</p>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Badge
-                                                    variant={station.status === "Available" ? "default" : "secondary"}
-                                                    className={
-                                                        station.status === "Available"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : station.offline
-                                                                ? "bg-red-100 text-red-800"
-                                                                : "bg-yellow-100 text-yellow-800"
-                                                    }
-                                                >
-                                                    {station.offline ? "Offline" : station.status}
-                                                </Badge>
-                                                {station.live && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
-                                            </div>
+                                <Card key={station.id} className="hover:shadow-md transition-shadow h-[200px] flex">
+                                <CardContent className="p-4 flex-1 flex flex-col">
+                                    <div className="flex items-start justify-between mb-3">
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold">{station.name}</h3>
+                                        <p className="text-sm text-muted-foreground">{station.address}</p>
+                                        <p className="text-xs text-muted-foreground">Updated: {station.updated}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Badge
+                                        variant={station.status === "Available" ? "default" : "secondary"}
+                                        className={
+                                            station.status === "Available"
+                                            ? "bg-green-100 text-green-800"
+                                            : station.offline
+                                                ? "bg-red-100 text-red-800"
+                                                : "bg-yellow-100 text-yellow-800"
+                                        }
+                                        >
+                                        {station.offline ? "Offline" : station.status}
+                                        </Badge>
+                                        {station.live && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
+                                    </div>
+                                    </div>
+
+                                    <div className="space-y-2 mb-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-green-600 font-medium">{station.available}</span>
+                                        <span className="text-blue-600 font-medium">{station.power}</span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex space-x-1">
+                                        <span className="text-muted-foreground">Connectors:</span>
+                                        {(station.connectors ?? []).map((connector) => (
+                                            <Badge key={connector} variant="outline" className="text-xs">
+                                            {connector}
+                                            </Badge>
+                                        ))}
                                         </div>
+                                        <span className="font-medium">{station.price}</span>
+                                    </div>
+                                    </div>
 
-                                        <div className="space-y-2 mb-4">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="text-green-600 font-medium">{station.available}</span>
-                                                <span className="text-blue-600 font-medium">{station.power}</span>
-                                            </div>
-
-                                            <div className="flex items-center justify-between text-sm">
-                                                <div className="flex space-x-1">
-                                                    <span className="text-muted-foreground">Connectors:</span>
-                                                    {(station.connectors ?? []).map((connector) => (
-                                                        <Badge key={connector} variant="outline" className="text-xs">
-                                                            {connector}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                                <span className="font-medium">{station.price}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex space-x-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-
-                                                className="flex-1"
-                                                disabled={station.offline}
-                                                onClick={() => navigate("/booking", { state: { station } })}
-                                            >
-                                                <Bookmark className="w-4 h-4 mr-1" />
-                                                Book Station
-                                            </Button>
-                                            <Button
-                                                variant="default"
-                                                size="sm"
-                                                className="flex-1"
-                                                onClick={() => navigateToStation(station)}
-                                            >
-                                                <Navigation className="w-4 h-4 mr-1" />
-                                                Navigate
-                                            </Button>
-                                        </div>
-                                    </CardContent>
+                                    <div className="mt-auto flex space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1"
+                                        disabled={station.offline}
+                                        onClick={() => navigate("/booking", { state: { station } })}
+                                    >
+                                        <Bookmark className="w-4 h-4 mr-1" />
+                                        Book Station
+                                    </Button>
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="flex-1"
+                                        onClick={() => navigateToStation(station)}
+                                    >
+                                        <Navigation className="w-4 h-4 mr-1" />
+                                        Navigate
+                                    </Button>
+                                    </div>
+                                </CardContent>
                                 </Card>
                             ))}
-                        </div>
-                    </div>
+                            </div>
+                        </CardContent>
+                        </Card>
                 </div>
             </div>
         </div>

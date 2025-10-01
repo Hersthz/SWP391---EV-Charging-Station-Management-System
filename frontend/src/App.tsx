@@ -8,9 +8,15 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStations from "./components/admin/AdminStations";
+import AdminUsers from "./components/admin/AdminUsers";
+import AdminSubscriptions from "./components/admin/AdminSubscriptions";
+import AdminReports from "./components/admin/AdminReports";
+import AdminInsights from "./components/admin/AdminInsights";
 import StaffDashboard from "./pages/StaffDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
+
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -28,6 +34,10 @@ const App = () => (
           <Route path="/verify" element={<VerifyEmail />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stations" element={<AdminStations />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/insights" element={<AdminInsights />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
