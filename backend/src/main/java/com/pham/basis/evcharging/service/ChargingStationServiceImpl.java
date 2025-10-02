@@ -34,6 +34,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         List<ChargingStation> stations = stationRepository.findAll();
 
         return stations.stream()
+                .filter(s->hasAvailablePillar(s))
                 .peek(s -> {
                     if (s.getDistance() == null
                             && s.getLatitude() != null
@@ -46,6 +47,12 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 .sorted(Comparator.comparing(ChargingStation::getDistance))
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
+    }
+
+    //Kiểm tra có ít nhất 1 pillar available
+    private boolean hasAvailablePillar(ChargingStation station) {
+        List<ChargerPillar> pillars = Optional.ofNullable(station.getPillars()).orElse(Collections.emptyList());
+        return pillars.stream().anyMatch(p->p.getStatus()!= null && p.getStatus().equalsIgnoreCase("Available"));
     }
 
     // Tính khoảng cách bằng Haversine (trả null nếu bất kỳ input nào null)
