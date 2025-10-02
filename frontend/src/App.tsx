@@ -16,7 +16,9 @@ import StaffDashboard from "./pages/StaffDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 import Profile from "./pages/Profile";
-
+import StaffStations from "./components/staff/StaffStation";
+import StaffIncidents from "./components/staff/StaffIncidents";
+import StaffPayments from "./components/staff/StaffPayments";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -30,6 +32,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
+          <Route path="/staff/stations" element={<StaffStations />} />
+          <Route path="/staff/incidents" element={<StaffIncidents />} />
+          <Route path="/staff/payments" element={<StaffPayments />} />
           <Route path="/map" element={<StationMap />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/verify" element={<VerifyEmail />} />
