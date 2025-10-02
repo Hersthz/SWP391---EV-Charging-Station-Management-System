@@ -31,7 +31,7 @@ import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 // ================================================
 
-// DÙNG CÙNG DATA VỚI BÊN USER (cho "trùng" hoàn toàn phần map + list)
+// DÙNG CÙNG DATA VỚI BÊN USER 
 import mockStations from "../../../stations.json";
 
 // ===== Kiểu dữ liệu giống bên User =====
@@ -64,7 +64,7 @@ const AdminStations = () => {
   const [userLikeStations, setUserLikeStations] = useState<Station[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | StationStatus>("all");
 
-  // Dữ liệu bảng quản trị gốc của bạn (giữ nguyên)
+  // Dữ liệu bảng quản trị gốc 
   const adminTableStations = [
     {
       id: "DT-003",
@@ -132,7 +132,7 @@ const AdminStations = () => {
     mapRef.current?.setView([station.latitude, station.longitude], 17, { animate: true });
   };
 
-  // ====== Badge trạng thái cho bảng quản trị (giữ nguyên) ======
+  // ====== Badge trạng thái cho bảng quản trị ======
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       online: { 
@@ -169,7 +169,7 @@ const AdminStations = () => {
     return adminTableStations.filter(s => s.status === statusFilter);
   }, [statusFilter, adminTableStations]);
 
-  // ====== Hành động bảng quản trị (giữ nguyên) ======
+  // ====== Hành động bảng quản trị ======
   const handleRemoteControl = (stationId: string, action: string) => {
     toast({
       title: "Remote Command Sent",
@@ -204,7 +204,7 @@ const AdminStations = () => {
     </>
   );
 
-  // ====== Audit log (giữ nguyên) ======
+  // ====== Audit log ======
   const auditLogs = [
     {
       timestamp: "2024-09-11 14:30:25",
@@ -315,7 +315,7 @@ const AdminStations = () => {
             {userLikeStations.map((station) => (
               <Card
                 key={station.id}
-                className="hover:shadow-md transition-shadow h-[200px] flex"  /* 👈 cố định chiều cao mỗi item để đúng 2 item/khung */
+                className="hover:shadow-md transition-shadow h-[200px] flex"  /* cố định chiều cao mỗi item để đúng 2 item/khung */
               >
                 <CardContent className="p-4 flex-1 flex flex-col">
                   <div className="flex items-start justify-between mb-3">
@@ -367,7 +367,7 @@ const AdminStations = () => {
                       className="flex-1"
                       onClick={() => navigateToStation(station)}
                     >
-                      <Navigation className="w-4 h-4 mr-1" />
+                    <Navigation className="w-4 h-4 mr-1" />
                       Navigate
                     </Button>
                   </div>

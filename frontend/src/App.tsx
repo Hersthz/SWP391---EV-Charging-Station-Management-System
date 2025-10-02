@@ -15,7 +15,7 @@ import AdminInsights from "./components/admin/AdminInsights";
 import StaffDashboard from "./pages/StaffDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
-
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +31,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/map" element={<StationMap />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/verify" element={<VerifyEmail />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stations" element={<AdminStations />} />
