@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Settings, User, LogOut, Zap } from "lucide-react";
+import { Bell, User, LogOut, Settings } from "lucide-react"; // ⬅️ bỏ Settings icon ở đây
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -10,6 +10,7 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Zap } from "lucide-react";
 import NotificationModal from "../homepage/NotificationModal";
 
 const DashboardHeader = () => {
@@ -19,10 +20,7 @@ const DashboardHeader = () => {
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("currentUser");
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("full_name");
-    toast.success("Signed out successfully!");
+    toast.success("Đăng xuất thành công!");
     navigate("/");
   };
 
@@ -45,7 +43,6 @@ const DashboardHeader = () => {
             size="icon"
             className="relative hover:bg-primary/10"
             onClick={() => setShowNotifications(true)}
-            aria-label="Open notifications"
           >
             <Bell className="w-5 h-5" />
             <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground">
@@ -53,25 +50,25 @@ const DashboardHeader = () => {
             </Badge>
           </Button>
 
-          {/* User menu */}
+          {/* User menu (vẫn có Cài đặt) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open user menu">
+              <Button variant="ghost" size="icon">
                 <User className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>
                 <User className="w-4 h-4 mr-2" />
-                Profile
+                Hồ sơ
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
-                Settings
+                Cài đặt
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
-                Sign out
+                Đăng xuất
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Progress } from  "../ui/progress";
+import { useState } from "react";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Progress } from  "../../components/ui/progress";
 import {
   Power,
   Play,
@@ -16,7 +16,7 @@ import {
 import { useToast } from "../../hooks/use-toast";
 import StaffLayout from "./StaffLayout";
 
-const StaffStation = () => {
+const StaffStations = () => {
   const { toast } = useToast();
 
   const stations = [
@@ -294,4 +294,4 @@ const StaffStation = () => {
   );
 };
 
-export default StaffStation;
+export default StaffStations;
