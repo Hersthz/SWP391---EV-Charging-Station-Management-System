@@ -1,0 +1,161 @@
+[
+  {
+    "name": "Station #1",
+    "address": "Mock Address 1",
+    "latitude": 10.8618942110713,
+    "longitude": 106.79798794919327,
+    "status": "Occupied",
+    "pillars": [
+      {
+        "code": "P1-1",
+        "status": "Occupied",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
+        ]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #2",
+    "address": "Mock Address 2",
+    "latitude": 10.849267289775822,
+    "longitude": 106.77615902281468,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P2-1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "P2-2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "AC" }]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #3",
+    "address": "Mock Address 3",
+    "latitude": 10.87769840457074,
+    "longitude": 106.78908488926061,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P3-1",
+        "status": "Available",
+        "power": 100.0,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "AC" }]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #4",
+    "address": "Mock Address 4",
+    "latitude": 10.839816793279379,
+    "longitude": 106.7877466819761,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P4-1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CCS" }, { "type": "AC" }]
+      },
+      {
+        "code": "P4-2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CHAdeMO" }]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #5",
+    "address": "Mock Address 5",
+    "latitude": 10.860861443602067,
+    "longitude": 106.78464586241712,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P5-1",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.35,
+        "connectors": [{ "type": "AC" }]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #6",
+    "address": "Mock Address 6",
+    "latitude": 10.854379681064374,
+    "longitude": 106.78272259504136,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P6-1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CHAdeMO" }]
+      },
+      {
+        "code": "P6-2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CCS" }]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #7",
+    "address": "Mock Address 7",
+    "latitude": 10.859567051585286,
+    "longitude": 106.77050612996604,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P7-1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      }
+    ]
+  },
+
+  {
+    "name": "Station #8",
+    "address": "Mock Address 8",
+    "latitude": 10.844467549310396,
+    "longitude": 106.8021035518178,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "P8-1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "AC" }]
+      }
+    ]
+  }
+]

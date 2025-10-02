@@ -3,12 +3,15 @@ package com.pham.basis.evcharging.service;
 
 import com.pham.basis.evcharging.dto.request.LocationRequest;
 import com.pham.basis.evcharging.dto.response.ChargingStationResponse;
+import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.ChargingStation;
+import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,42 +20,104 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
     private final ChargingStationRepository stationRepository;
 
+    @Override
+    @Transactional(readOnly = true)
     public List<ChargingStationResponse> findNearbyStations(LocationRequest request) {
-        List<ChargingStation> stations = stationRepository.findNearbyStations(
-                request.getLatitude(),
-                request.getLongitude(),
-                request.getRadius()
-        );
+        Double reqLat = request.getLatitude();
+        Double reqLon = request.getLongitude();
+        Double radius = request.getRadius();
+
+        if (reqLat == null || reqLon == null) {
+            return List.of();
+        }
+
+        List<ChargingStation> stations = stationRepository.findAll();
 
         return stations.stream()
+                .peek(s -> {
+                    if (s.getDistance() == null
+                            && s.getLatitude() != null
+                            && s.getLongitude() != null) {
+                        Double dist = calculateDistance(reqLat, reqLon, s.getLatitude(), s.getLongitude());
+                        s.setDistance(dist);
+                    }
+                })
+                .filter(s -> s.getDistance() != null && s.getDistance() <= radius)
+                .sorted(Comparator.comparing(ChargingStation::getDistance))
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
+    // Tính khoảng cách bằng Haversine (trả null nếu bất kỳ input nào null)
+    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
+            return null;
+        }
+        final int R = 6371; // km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double sinLat = Math.sin(latDistance / 2);
+        double sinLon = Math.sin(lonDistance / 2);
+        double a = sinLat * sinLat
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * sinLon * sinLon;
+        double tmp = Math.min(1.0, Math.max(-1.0, Math.sqrt(a)));
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0.0, 1 - a)));
+
+        return R * c;
+    }
+
+
     public ChargingStationResponse convertToResponse(ChargingStation station) {
+        // Guard null pillars
+        List<ChargerPillar> pillars = Optional.ofNullable(station.getPillars()).orElse(Collections.emptyList());
+
+        int totalPillars = pillars.size();
+        int availablePillars = (int) pillars.stream()
+                .filter(p -> p.getStatus() != null && p.getStatus().equalsIgnoreCase("Available"))
+                .count();
+
+        // connectors: distinct types across all pillars
+        List<String> connectorTypes = pillars.stream()
+                .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(Collections.emptyList()).stream())
+                .map(Connector::getType)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // cheapest price across pillars (nullable)
+        Double cheapest = pillars.stream()
+                .map(ChargerPillar::getPricePerKwh)
+                .filter(Objects::nonNull)
+                .min(Double::compareTo)
+                .orElse(null);
+
+        // max power across pillars (nullable)
+        Double maxPower = pillars.stream()
+                .map(ChargerPillar::getPower)
+                .filter(Objects::nonNull)
+                .max(Double::compareTo)
+                .orElse(null);
+
+        // Format fields to match frontend expectations (strings)
+        String powerStr = (maxPower != null) ? String.format("%.0f kW", maxPower) : null;
+        String availableStr = totalPillars > 0 ? String.format("%d/%d available", availablePillars, totalPillars) : null;
+        String priceStr = (cheapest != null) ? String.format("%.2f /kWh", cheapest) : null;
+
         return new ChargingStationResponse(
-                station.getStationId(),
+                station.getId(),
                 station.getName(),
                 station.getAddress(),
                 station.getLatitude(),
                 station.getLongitude(),
-                station.getDistance()
+                station.getDistance(), // giữ nguyên nếu DB đã tính
+                station.getStatus(),
+                powerStr,
+                availableStr,
+                connectorTypes.isEmpty() ? null : connectorTypes,
+                priceStr
         );
     }
 
-    // Tính khoảng cách bằng Haversine formula
-    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-        final int R = 6371; // Bán kính trái đất (km)
 
-        Double latDistance = Math.toRadians(lat2 - lat1);
-        Double lonDistance = Math.toRadians(lon2 - lon1);
 
-        Double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-
-        Double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c;
-    }
 }

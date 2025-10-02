@@ -19,6 +19,12 @@ import 'leaflet-defaulticon-compatibility';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 
 // ===========================
+const userIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png", // icon user
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+});
+
 
 interface Station {
     id: number;
@@ -27,10 +33,7 @@ interface Station {
     latitude: number;
     longitude: number;
     distance?: number;
-    updated?: string;
     status?: string;
-    offline?: boolean;
-    live?: boolean;
     power?: string;
     available?: string;
     connectors?: string[];
@@ -40,10 +43,10 @@ const StationMap = () => {
     const [loading, setLoading] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
     const navigate = useNavigate();
-
+    const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
     // map ref so we can control map (pan/zoom) from list buttons
     const mapRef = useRef<L.Map | null>(null);
-    const USE_MOCK = true; // neu sai mock
+    const USE_MOCK = false; // neu sai mock
     useEffect(() => {
         if (USE_MOCK) {
             setStations(mockStations);
@@ -57,13 +60,18 @@ const StationMap = () => {
                     const { data } = await api.post<Station[]>("/charging-stations/nearby", {
                         latitude,
                         longitude,
-                        radius: 10,
+                        radius: 5,
                     });
                     setStations(data);
                     // center map to user location if map ready
                     if (mapRef.current) {
                         mapRef.current.setView([latitude, longitude], 13);
                     }
+                    setUserPosition([pos.coords.latitude, pos.coords.longitude]);
+                    if (mapRef.current) {
+                        mapRef.current.setView([latitude, longitude], 13);
+                    }
+
                 } catch (error) {
                     console.error("Fetch stations error:", error);
                     alert("Không thể tải danh sách trạm sạc, vui lòng thử lại!");
@@ -135,7 +143,6 @@ const StationMap = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Map Section */}
-                    {/* Map Section */}
                     <Card className="h-[500px]">
                         <CardContent className="h-full p-0 relative">
                             <MapContainer
@@ -149,7 +156,11 @@ const StationMap = () => {
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 />
-
+                                {userPosition && (
+                                    <Marker position={userPosition} icon={userIcon}>
+                                        <Popup>📍 Bạn đang ở đây</Popup>
+                                    </Marker>
+                                )}
                                 {stations.map((station) => (
                                     <Marker
                                         key={station.id}
@@ -176,90 +187,83 @@ const StationMap = () => {
                         <CardContent className="p-4 h-full flex flex-col">
                             {/* Header nhỏ + trạng thái */}
                             <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-lg font-semibold">Nearby Charging Stations</h2>
-                            <Badge variant="secondary">Stations within 10km</Badge>
+                                <h2 className="text-lg font-semibold">Nearby Charging Stations</h2>
+                                <Badge variant="secondary">Stations within 5km</Badge>
                             </div>
 
                             <div className="text-sm text-muted-foreground flex items-center space-x-2 mb-3">
-                            <span>Last updated: 2 minutes ago</span>
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span>Real-time data</span>
+                                <span>Last updated: 2 minutes ago</span>
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span>Real-time data</span>
                             </div>
 
                             {/* Danh sách: chiếm phần còn lại, có scroll */}
                             <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-                            {stations.map((station) => (
-                                <Card key={station.id} className="hover:shadow-md transition-shadow h-[200px] flex">
-                                <CardContent className="p-4 flex-1 flex flex-col">
-                                    <div className="flex items-start justify-between mb-3">
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold">{station.name}</h3>
-                                        <p className="text-sm text-muted-foreground">{station.address}</p>
-                                        <p className="text-xs text-muted-foreground">Updated: {station.updated}</p>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Badge
-                                        variant={station.status === "Available" ? "default" : "secondary"}
-                                        className={
-                                            station.status === "Available"
-                                            ? "bg-green-100 text-green-800"
-                                            : station.offline
-                                                ? "bg-red-100 text-red-800"
-                                                : "bg-yellow-100 text-yellow-800"
-                                        }
-                                        >
-                                        {station.offline ? "Offline" : station.status}
-                                        </Badge>
-                                        {station.live && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
-                                    </div>
-                                    </div>
+                                {stations.map((station) => (
+                                    <Card key={station.id} className="hover:shadow-md transition-shadow h-[200px] flex">
+                                        <CardContent className="p-4 flex-1 flex flex-col">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold">{station.name}</h3>
+                                                    <p className="text-sm text-muted-foreground">{station.address}</p>
+                                                </div>
+                                                <Badge
+                                                    variant={station.status === "Available" ? "default" : "secondary"}
+                                                    className={
+                                                        station.status === "Available"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : "bg-yellow-100 text-yellow-800"
+                                                    }
+                                                >
+                                                    {station.status}
+                                                </Badge>
+                                            </div>
 
-                                    <div className="space-y-2 mb-3">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="text-green-600 font-medium">{station.available}</span>
-                                        <span className="text-blue-600 font-medium">{station.power}</span>
-                                    </div>
+                                            <div className="space-y-2 mb-3">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-green-600 font-medium">{station.available}</span>
+                                                    <span className="text-blue-600 font-medium">{station.power}</span>
+                                                </div>
 
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex space-x-1">
-                                        <span className="text-muted-foreground">Connectors:</span>
-                                        {(station.connectors ?? []).map((connector) => (
-                                            <Badge key={connector} variant="outline" className="text-xs">
-                                            {connector}
-                                            </Badge>
-                                        ))}
-                                        </div>
-                                        <span className="font-medium">{station.price}</span>
-                                    </div>
-                                    </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <div className="flex space-x-1">
+                                                        <span className="text-muted-foreground">Connectors:</span>
+                                                        {(station.connectors ?? []).map((connector) => (
+                                                            <Badge key={connector} variant="outline" className="text-xs">
+                                                                {connector}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                    <span className="font-medium">{station.price}</span>
+                                                </div>
+                                            </div>
 
-                                    <div className="mt-auto flex space-x-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1"
-                                        disabled={station.offline}
-                                        onClick={() => navigate("/booking", { state: { station } })}
-                                    >
-                                        <Bookmark className="w-4 h-4 mr-1" />
-                                        Book Station
-                                    </Button>
-                                    <Button
-                                        variant="default"
-                                        size="sm"
-                                        className="flex-1"
-                                        onClick={() => navigateToStation(station)}
-                                    >
-                                        <Navigation className="w-4 h-4 mr-1" />
-                                        Navigate
-                                    </Button>
-                                    </div>
-                                </CardContent>
-                                </Card>
-                            ))}
+                                            <div className="mt-auto flex space-x-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() => navigate("/booking", { state: { station } })}
+                                                >
+                                                    <Bookmark className="w-4 h-4 mr-1" />
+                                                    Book Station
+                                                </Button>
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() => navigateToStation(station)}
+                                                >
+                                                    <Navigation className="w-4 h-4 mr-1" />
+                                                    Navigate
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
                         </CardContent>
-                        </Card>
+                    </Card>
                 </div>
             </div>
         </div>
