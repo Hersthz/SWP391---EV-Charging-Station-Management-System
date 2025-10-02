@@ -37,13 +37,16 @@
         private String getBaseUrl() {
             return env.getProperty("app.base-url", "http://localhost:8080");
         }
-
+        private String getFrontendBase() {
+            return env.getProperty("app.frontend-url", "http://localhost:5173");
+        }
         @PostMapping("/register")
         public ResponseEntity<UserResponse> createUser(@RequestBody UserCreationRequest request) {
             User user = userService.createUser(request);
 
             String token = tokenService.createVerificationToken(user);
-            String link = getBaseUrl() + "/auth/verify?token=" + token;
+//            String link = getBaseUrl() + "/auth/verify?token=" + token;
+            String link = getFrontendBase() + "/verify?token=" + token;
             emailService.sendVerificationEmail(user.getEmail(),"Verify your email", "Click here: "+ link);
 
             UserResponse response = new UserResponse(

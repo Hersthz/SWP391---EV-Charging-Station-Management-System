@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
@@ -9,14 +8,24 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary hover:shadow-glow",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary hover:shadow-glow",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        hero: "bg-gradient-hero text-primary-foreground hover:scale-105 shadow-primary hover:shadow-glow animate-pulse-glow",
-        map: "bg-accent text-accent-foreground hover:bg-accent/90 border border-primary/20 hover:border-primary/40 shadow-card hover:shadow-primary",
+        hero:
+          "bg-gradient-hero text-primary-foreground hover:scale-105 shadow-primary hover:shadow-glow animate-pulse-glow",
+        map:
+          "bg-accent text-accent-foreground hover:bg-accent/90 border border-primary/20 hover:border-primary/40 shadow-card hover:shadow-primary",
+
+        // ✅ Thêm variant "electric"
+        electric:
+          "text-white bg-gradient-to-r from-emerald-500 to-sky-500 hover:opacity-90 shadow-lg hover:shadow-xl"
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -30,7 +39,7 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  },
+  }
 );
 
 export interface ButtonProps
@@ -42,8 +51,14 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  },
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
 );
 Button.displayName = "Button";
 
