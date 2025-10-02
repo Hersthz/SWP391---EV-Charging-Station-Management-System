@@ -1,6 +1,6 @@
 package com.pham.basis.evcharging.controller;
 
-import com.pham.basis.evcharging.dto.request.LocationRequest;
+import com.pham.basis.evcharging.dto.request.StationFilterRequest;
 import com.pham.basis.evcharging.dto.response.ChargingStationResponse;
 import com.pham.basis.evcharging.service.ChargingStationService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ public class ChargingStationController {
 
     @PostMapping("/nearby")
     public ResponseEntity<List<ChargingStationResponse>> getNearbyStations(
-            @RequestBody LocationRequest request) {
+            @RequestBody StationFilterRequest request) {
 
         if (request.getLatitude() == null || request.getLongitude() == null) {
             return ResponseEntity.badRequest().build();

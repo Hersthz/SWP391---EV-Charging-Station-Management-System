@@ -6,25 +6,21 @@ import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import mockStations from "../../stations.json";
-
 
 // ===== Leaflet imports =====
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as L from "leaflet";
 // fix default icon paths for Vite/webpack so markers appear
-// import images so bundler can resolve paths
 import 'leaflet-defaulticon-compatibility';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
-
 // ===========================
+
 const userIcon = new L.Icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png", // icon user
     iconSize: [32, 32],
     iconAnchor: [16, 32],
 });
-
 
 interface Station {
     id: number;
@@ -39,44 +35,74 @@ interface Station {
     connectors?: string[];
     price?: string;
 }
+
+type SortOption = "distance" | "price" | "power" | "availability";
+
+interface Filters {
+    radius: number;
+    connectors: string[];
+    availableOnly: boolean;
+    minPower?: number;
+    maxPower?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    sort: SortOption;
+    page: number;
+    size: number;
+}
+
+const defaultFilters: Filters = {
+    radius: 5,
+    connectors: [],
+    availableOnly: false,
+    minPower: 0,
+    maxPower: 350,
+    minPrice: 0,
+    maxPrice: 10,
+    sort: "distance",
+    page: 0,
+    size: 50
+};
 const StationMap = () => {
     const [loading, setLoading] = useState(false);
     const [stations, setStations] = useState<Station[]>([]);
     const navigate = useNavigate();
     const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
-    // map ref so we can control map (pan/zoom) from list buttons
     const mapRef = useRef<L.Map | null>(null);
-    const USE_MOCK = false; // neu sai mock
-    useEffect(() => {
-        if (USE_MOCK) {
-            setStations(mockStations);
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                setLoading(true);
-                try {
-                    const { latitude, longitude } = pos.coords;
-                    const { data } = await api.post<Station[]>("/charging-stations/nearby", {
-                        latitude,
-                        longitude,
-                        radius: 5,
-                    });
-                    setStations(data);
-                    // center map to user location if map ready
-                    if (mapRef.current) {
-                        mapRef.current.setView([latitude, longitude], 13);
-                    }
-                    setUserPosition([pos.coords.latitude, pos.coords.longitude]);
-                    if (mapRef.current) {
-                        mapRef.current.setView([latitude, longitude], 13);
-                    }
 
-                } catch (error) {
-                    console.error("Fetch stations error:", error);
-                    alert("Không thể tải danh sách trạm sạc, vui lòng thử lại!");
-                } finally {
-                    setLoading(false);
+    // filters: appliedFilters used for fetching; filtersDraft used in panel
+    const [appliedFilters, setAppliedFilters] = useState<Filters>(defaultFilters);
+    const [filtersDraft, setFiltersDraft] = useState<Filters>(defaultFilters);
+
+    // panel visibility
+    const [showFilters, setShowFilters] = useState(false);
+
+    // get count of active filters for badge on button (simple heuristic)
+    const activeFiltersCount = (() => {
+        let c = 0;
+        if (filtersDraft.radius !== defaultFilters.radius) c++;
+        if ((filtersDraft.connectors ?? []).length > 0) c += filtersDraft.connectors.length;
+        if (filtersDraft.availableOnly) c++;
+        if ((filtersDraft.minPower ?? 0) !== defaultFilters.minPower) c++;
+        if ((filtersDraft.maxPower ?? 350) !== defaultFilters.maxPower) c++;
+        if ((filtersDraft.minPrice ?? 0) !== defaultFilters.minPrice) c++;
+        if ((filtersDraft.maxPrice ?? 10) !== defaultFilters.maxPrice) c++;
+        if (filtersDraft.sort !== defaultFilters.sort) c++;
+        return c;
+    })();
+
+    // initial geolocation and first fetch
+    useEffect(() => {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                setUserPosition([lat, lon]);
+                // fetch using appliedFilters (default radius=5)
+                fetchStations(appliedFilters, lat, lon);
+                // center map if ready
+                if (mapRef.current) {
+                    mapRef.current.setView([lat, lon], 13);
                 }
             },
             (error) => {
@@ -84,17 +110,73 @@ const StationMap = () => {
                 alert("Không lấy được vị trí hiện tại, hãy bật GPS.");
             }
         );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // whenever appliedFilters changes and we have userPosition -> fetch
+    useEffect(() => {
+        if (!userPosition) return;
+        fetchStations(appliedFilters, userPosition[0], userPosition[1]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appliedFilters]);
+
+    // core fetch function
+    const fetchStations = async (filters: Filters, lat?: number, lon?: number) => {
+        if (lat == null || lon == null) return;
+        setLoading(true);
+
+        try {
+            const payload = {
+                latitude: lat,
+                longitude: lon,
+                radius: filters.radius,
+                connectors: filters.connectors,
+                availableOnly: filters.availableOnly,
+                minPower: filters.minPower,
+                maxPower: filters.maxPower,
+                minPrice: filters.minPrice,
+                maxPrice: filters.maxPrice,
+                sort: filters.sort,
+                page: filters.page,
+                size: filters.size
+            };
+
+            const { data } = await api.post<Station[]>("/charging-stations/nearby", payload);
+            setStations(data);
+        } catch (error) {
+            console.error("Fetch stations error:", error);
+            alert("Không thể tải danh sách trạm sạc, vui lòng thử lại!");
+            setStations([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // apply & reset handlers
+    const handleApplyFilters = () => {
+        // set applied filters -> useEffect will trigger fetch
+        setAppliedFilters(prev => ({ ...prev, ...filtersDraft, page: 0 }));
+        setShowFilters(false);
+    };
+
+    const handleResetFilters = () => {
+        setFiltersDraft(defaultFilters);
+    };
+
+    // toggle connector helper
+    const toggleConnector = (c: string) => {
+        setFiltersDraft(prev => {
+            const next = prev.connectors.includes(c) ? prev.connectors.filter(x => x !== c) : [...prev.connectors, c];
+            return { ...prev, connectors: next };
+        });
+    };
 
     // helper: navigate map to station
     const navigateToStation = (station: Station) => {
         if (mapRef.current) {
             mapRef.current.setView([station.latitude, station.longitude], 17, { animate: true });
-            // open popup programmatically: find marker and open? simplest: use flyTo & rely on clicking list -> user can click marker
-            // For auto-open, you'd need to keep refs for each marker.
         }
     };
-
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
@@ -134,19 +216,172 @@ const StationMap = () => {
                             className="pl-10"
                         />
                     </div>
-                    <Button variant="outline">
 
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filters
-                    </Button>
+                    {/* Filters Button (with badge count) */}
+                    <div>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowFilters(true)}
+                            aria-expanded={showFilters}
+                            aria-controls="filter-panel"
+                            className="relative"
+                        >
+                            <Filter className="w-4 h-4 mr-2" />
+                            Filters
+                            {activeFiltersCount > 0 && (
+                                <span className="absolute -top-1 -right-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium leading-none text-white bg-blue-600 rounded-full">
+                                    {activeFiltersCount}
+                                </span>
+                            )}
+                        </Button>
+                    </div>
                 </div>
+
+                {/* FILTER PANEL (slide-over) */}
+                {showFilters && (
+                    <div
+                        id="filter-panel"
+                        role="dialog"
+                        aria-modal="true"
+                        className="fixed inset-0 z-50 flex"
+                        onClick={() => setShowFilters(false)} // click backdrop thì tắt
+                    >
+                        {/* backdrop */}
+                        <div className="absolute inset-0 bg-black/30" />
+
+                        {/* panel */}
+                        <div
+                            className="ml-auto w-full max-w-md bg-white h-full shadow-xl p-4 overflow-auto relative z-50"
+                            onClick={(e) => e.stopPropagation()} // chặn click trong panel
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold">Filters</h3>
+                                <button
+                                    aria-label="Close filters"
+                                    onClick={() => setShowFilters(false)}
+                                    className="text-muted-foreground"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {/* Radius */}
+                            <div className="mb-4">
+                                <label className="block text-sm mb-1">
+                                    Radius: <span className="font-medium">{filtersDraft.radius} km</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min={1}
+                                    max={20}
+                                    value={filtersDraft.radius}
+                                    onChange={(e) =>
+                                        setFiltersDraft((prev) => ({
+                                            ...prev,
+                                            radius: Number(e.target.value),
+                                        }))
+                                    }
+                                    className="w-full"
+                                />
+                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                    <span>1km</span>
+                                    <span>20km</span>
+                                </div>
+                            </div>
+
+                            {/* Connectors */}
+                            <div className="mb-4">
+                                <label className="block text-sm mb-1">Connectors</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {["CCS", "CHAdeMO", "Type2", "AC"].map((c) => {
+                                        const active = filtersDraft.connectors.includes(c);
+                                        return (
+                                            <button
+                                                key={c}
+                                                onClick={() => toggleConnector(c)}
+                                                className={`px-2 py-1 rounded text-sm border ${active
+                                                    ? "bg-blue-600 text-white border-blue-600"
+                                                    : "bg-white text-muted-foreground"
+                                                    }`}
+                                            >
+                                                {c}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Availability */}
+                            <div className="mb-4">
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={filtersDraft.availableOnly}
+                                        onChange={(e) =>
+                                            setFiltersDraft((prev) => ({
+                                                ...prev,
+                                                availableOnly: e.target.checked,
+                                            }))
+                                        }
+                                        className="mr-2"
+                                    />
+                                    <span className="text-sm">Available only</span>
+                                </label>
+                            </div>
+
+                            {/* Sort */}
+                            <div className="mb-6">
+                                <label className="block text-sm mb-1">Sort by</label>
+                                <select
+                                    value={filtersDraft.sort}
+                                    onChange={(e) =>
+                                        setFiltersDraft((prev) => ({
+                                            ...prev,
+                                            sort: e.target.value as SortOption,
+                                        }))
+                                    }
+                                    className="w-full p-2 border rounded"
+                                >
+                                    <option value="distance">Distance</option>
+                                    <option value="price">Price</option>
+                                    <option value="power">Max Power</option>
+                                    <option value="availability">Availability</option>
+                                </select>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <button
+                                    onClick={handleResetFilters}
+                                    className="px-4 py-2 rounded border"
+                                >
+                                    Reset
+                                </button>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => setShowFilters(false)}
+                                        className="px-4 py-2 rounded border"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleApplyFilters}
+                                        className="px-4 py-2 rounded bg-blue-600 text-white"
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Map Section */}
                     <Card className="h-[500px]">
                         <CardContent className="h-full p-0 relative">
                             <MapContainer
-                                center={[10.8618942110713, 106.79798794919327]} // mặc định lấy từ 1 trạm hoặc location user
+                                center={[10.8618942110713, 106.79798794919327]}
                                 zoom={13}
                                 scrollWheelZoom={true}
                                 className="w-full h-full rounded-lg z-0"
@@ -181,23 +416,20 @@ const StationMap = () => {
                         </CardContent>
                     </Card>
 
-
                     {/* Stations List */}
                     <Card className="h-[500px]">
                         <CardContent className="p-4 h-full flex flex-col">
-                            {/* Header nhỏ + trạng thái */}
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-lg font-semibold">Nearby Charging Stations</h2>
-                                <Badge variant="secondary">Stations within 5km</Badge>
+                                <Badge variant="secondary">Stations within {appliedFilters.radius}km</Badge>
                             </div>
 
                             <div className="text-sm text-muted-foreground flex items-center space-x-2 mb-3">
-                                <span>Last updated: 2 minutes ago</span>
+                                <span>Last updated: {loading ? "loading..." : "a few seconds ago"}</span>
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 <span>Real-time data</span>
                             </div>
 
-                            {/* Danh sách: chiếm phần còn lại, có scroll */}
                             <div className="flex-1 overflow-y-auto space-y-3 pr-2">
                                 {stations.map((station) => (
                                     <Card key={station.id} className="hover:shadow-md transition-shadow h-[200px] flex">
