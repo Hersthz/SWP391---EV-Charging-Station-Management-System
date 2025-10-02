@@ -362,16 +362,6 @@ const AdminStations = () => {
 
                   <div className="mt-auto flex space-x-2">
                     <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      disabled={station.offline}
-                      onClick={() => navigate("/booking", { state: { station } })}
-                    >
-                      <Bookmark className="w-4 h-4 mr-1" />
-                      Book Station
-                    </Button>
-                    <Button
                       variant="default"
                       size="sm"
                       className="flex-1"
