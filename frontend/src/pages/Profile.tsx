@@ -92,7 +92,6 @@ const Profile = () => {
         };
 
         const { data } = await api.put("/users/me", payload); 
-
         // Đồng bộ lại localStorage theo dữ liệu server trả về
         localStorage.setItem("full_name", data.full_name);
         localStorage.setItem("email", data.email);
@@ -100,7 +99,6 @@ const Profile = () => {
         localStorage.setItem("vehicle_make", data.vehicle_make ?? "");
         localStorage.setItem("vehicle_model", data.vehicle_model ?? "");
         localStorage.setItem("vehicle_year", data.vehicle_year ?? "");
-
         toast({ title: "Profile updated", description: "Saved to server." });
     } catch (err: any) {
         // Nếu lỗi, giữ nguyên editing hoặc khôi phục state nếu cần
