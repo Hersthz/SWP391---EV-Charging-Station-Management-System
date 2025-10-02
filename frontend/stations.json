@@ -10,10 +10,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "1/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "CHAdeMO", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -28,10 +25,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "2/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["Type2", "CCS"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -46,10 +40,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "1/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CHAdeMO", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -64,10 +55,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "5/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "Type2"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -82,10 +70,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "0/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -100,10 +85,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "4/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CHAdeMO", "Type2"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -118,10 +100,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "4/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "CHAdeMO", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -136,10 +115,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "1/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["Type2", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -154,10 +130,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "1/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -172,10 +145,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "0/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CHAdeMO", "Type2", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -190,10 +160,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "6/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "Type2"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -208,10 +175,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "4/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "CHAdeMO"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -226,10 +190,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "3/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["AC", "Type2"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -244,10 +205,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "5/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CCS", "CHAdeMO", "Type2"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   },
@@ -262,10 +220,7 @@
     "live": true,
     "power": "150kW • Fast",
     "available": "0/8 Available",
-    "connectors": [
-      "CCS",
-      "CHAdeMO"
-    ],
+    "connectors": ["CHAdeMO", "AC"],
     "price": "$0.50/kWh",
     "updated": "Just now"
   }

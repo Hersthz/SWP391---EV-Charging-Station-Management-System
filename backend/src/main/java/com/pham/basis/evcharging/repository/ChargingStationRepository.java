@@ -20,6 +20,7 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
             "HAVING distance < :radius " +
             "ORDER BY distance",
             nativeQuery = true)
+
     List<ChargingStation> findNearbyStations(
             @Param("latitude") Double latitude,
             @Param("longitude") Double longitude,
