@@ -2,6 +2,9 @@ package com.pham.basis.evcharging.dto.request;
 
 import lombok.Data;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Data
 public class UserCreationRequest {
     private String full_name;
@@ -9,4 +12,5 @@ public class UserCreationRequest {
     private String email;
     private String password;
     private String phone;
+
 }

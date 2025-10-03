@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -48,5 +50,5 @@ public class User{
     private LocalDateTime created_at ;
 
     @Column(name = "date_of_birth")
-    private LocalDateTime date_of_birth;
+    private LocalDate date_of_birth;
 }

@@ -1,8 +1,10 @@
 package com.pham.basis.evcharging.service;
 
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
+import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
+import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.repository.UserRepository;
@@ -97,12 +99,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User updateUserProfile(UserCreationRequest userCreationRequest) {
-//        User user = userRepository.findUserByUsername(userCreationRequest.getUsername());
-//        if(user != null){
-//            User u = new User();
-//            u.setFull_name(userCreationRequest.getFull_name());
-//            u.
+    public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request) {
+//        User user = userRepository.findUserByUsername(userName);
+//        if(user == null){
+//            throw new RuntimeException("User not found");
+//        }
+//        user.setFull_name(request.getFull_name());
+//
+//        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
+//           // Does exist?
+//            User existingUser = userRepository.findByPhone(request.getPhone());
+//            if (existingUser != null && !existingUser.getUsername().equals(userName)) {
+//                return new UpdateUserResponse(false, "Số điện thoại đã được sử dụng bởi tài khoản khác");
+//            }
+//            user.setPhone(request.getPhone());
 //        }
         return null;
     }
