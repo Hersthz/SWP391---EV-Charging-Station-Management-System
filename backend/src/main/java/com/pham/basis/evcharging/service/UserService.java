@@ -1,6 +1,8 @@
 package com.pham.basis.evcharging.service;
 
+import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
+import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
 import com.pham.basis.evcharging.model.User;
 
 
@@ -12,4 +14,7 @@ public interface UserService {
     void createOrUpdateFromOAuth (String email, String full_name,boolean verified);
     User findByEmail(String email);
     User findByUsername(String username);
+    User updateUserProfile(UserCreationRequest userCreationRequest);
+    ChangePasswordResponse changePassword(String userName ,ChangePasswordRequest changePasswordRequest);
 }
+

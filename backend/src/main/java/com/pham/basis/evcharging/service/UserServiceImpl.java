@@ -1,6 +1,8 @@
 package com.pham.basis.evcharging.service;
 
+import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
+import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.repository.UserRepository;
@@ -93,4 +95,43 @@ public class UserServiceImpl implements UserService {
     public User findByUsername(String username) {
         return userRepository.findUserByUsername( username);
     }
+
+    @Override
+    public User updateUserProfile(UserCreationRequest userCreationRequest) {
+//        User user = userRepository.findUserByUsername(userCreationRequest.getUsername());
+//        if(user != null){
+//            User u = new User();
+//            u.setFull_name(userCreationRequest.getFull_name());
+//            u.
+//        }
+        return null;
+    }
+
+    @Override
+    public ChangePasswordResponse changePassword(String userName, ChangePasswordRequest request) {
+        User user = userRepository.findUserByUsername(userName);
+        if(user == null){
+            throw new RuntimeException("User not found");
+        }
+        if("null".equals(user.getPassword())){
+            return new ChangePasswordResponse(false,
+                    "Google's account can not change password");
+        }
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            return new ChangePasswordResponse(false, "The current password is incorrect");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            return new ChangePasswordResponse(false, "The confirmation password does not match");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            return new ChangePasswordResponse(false,
+                    "The new password must be different from the current password");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return new ChangePasswordResponse(true, "Change password successfully");
+
+    }
+
 }

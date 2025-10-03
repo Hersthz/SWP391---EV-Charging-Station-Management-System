@@ -47,4 +47,6 @@ public class User{
     @Column(name = "created_at")
     private LocalDateTime created_at ;
 
+    @Column(name = "date_of_birth")
+    private LocalDateTime date_of_birth;
 }
