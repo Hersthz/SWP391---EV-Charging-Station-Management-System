@@ -18,7 +18,7 @@ public class User{
     @Column(name = "user_id")
     private Integer user_id;
 
-    @Column(name = "full_name", length=50)
+    @Column(name = "full_name",columnDefinition = "NVarchar(50)")
     private String full_name;
 
     @Column(name = "username", length=50, nullable=false, unique=true)
