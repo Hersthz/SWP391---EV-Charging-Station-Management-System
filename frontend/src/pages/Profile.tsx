@@ -67,7 +67,7 @@ const Profile = () => {
 
   useEffect(() => {
     (async () => {
-        try {
+      try {
         const { data } = await api.get("/users/me");
         setFullName(data.full_name ?? "");
         setEmail(data.email ?? "");
@@ -75,38 +75,38 @@ const Profile = () => {
         setVehicleMake(data.vehicle_make ?? "");
         setVehicleModel(data.vehicle_model ?? "");
         setVehicleYear(data.vehicle_year ?? "");
-        } catch {}
+      } catch { }
     })();
-    }, []);
+  }, []);
 
   const handleSave = async () => {
     try {
-        setIsEditing(false); 
-        const payload = {
+      setIsEditing(false);
+      const payload = {
         full_name: fullName.trim(),
         email,
         phone,
         vehicle_make: vehicleMake,
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear,
-        };
+      };
 
-        const { data } = await api.put("/users/me", payload); 
-        // Đồng bộ lại localStorage theo dữ liệu server trả về
-        localStorage.setItem("full_name", data.full_name);
-        localStorage.setItem("email", data.email);
-        localStorage.setItem("phone", data.phone);
-        localStorage.setItem("vehicle_make", data.vehicle_make ?? "");
-        localStorage.setItem("vehicle_model", data.vehicle_model ?? "");
-        localStorage.setItem("vehicle_year", data.vehicle_year ?? "");
-        toast({ title: "Profile updated", description: "Saved to server." });
+      const { data } = await api.put("/users/me", payload);
+      // Đồng bộ lại localStorage theo dữ liệu server trả về
+      localStorage.setItem("full_name", data.full_name);
+      localStorage.setItem("email", data.email);
+      localStorage.setItem("phone", data.phone);
+      localStorage.setItem("vehicle_make", data.vehicle_make ?? "");
+      localStorage.setItem("vehicle_model", data.vehicle_model ?? "");
+      localStorage.setItem("vehicle_year", data.vehicle_year ?? "");
+      toast({ title: "Profile updated", description: "Saved to server." });
     } catch (err: any) {
-        // Nếu lỗi, giữ nguyên editing hoặc khôi phục state nếu cần
-        setIsEditing(true);
-        const message = err?.response?.data?.message ?? "Update failed";
-        toast({ title: "Error", description: message, variant: "destructive" });
+      // Nếu lỗi, giữ nguyên editing hoặc khôi phục state nếu cần
+      setIsEditing(true);
+      const message = err?.response?.data?.message ?? "Update failed";
+      toast({ title: "Error", description: message, variant: "destructive" });
     }
-    };
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-sm">
@@ -149,58 +149,58 @@ const Profile = () => {
       <main className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
         {/* Profile Header */}
         <Card className="overflow-hidden border-none shadow-xl">
-        {/* Banner */}
-        <div className="relative h-44 md:h-52 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500">
+          {/* Banner */}
+          <div className="relative h-44 md:h-52 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500">
             <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_20%_10%,rgba(255,255,255,0.18),transparent_60%)] pointer-events-none" />
-        </div>
+          </div>
 
-        {/* Info area */}
-        <CardContent className="relative z-10 px-6 md:px-8 pb-8 -mt-7 md:-mt-8">
+          {/* Info area */}
+          <CardContent className="relative z-10 px-6 md:px-8 pb-8 -mt-7 md:-mt-8">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-8 pt-4">
-            {/* Avatar + basic info */}
-            <div className="flex items-center gap-4 md:gap-5">
+              {/* Avatar + basic info */}
+              <div className="flex items-center gap-4 md:gap-5">
                 <Avatar className="w-28 h-28 border-4 border-white shadow-2xl ring-2 ring-blue-200">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-3xl font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-3xl font-bold">
                     JD
-                </AvatarFallback>
+                  </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 mt-3">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 leading-snug">
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 leading-snug">
                     {fullName}
-                </h2>
-                <p className="mt-1 flex items-center gap-2 text-sm md:text-[15px] text-gray-600">
+                  </h2>
+                  <p className="mt-1 flex items-center gap-2 text-sm md:text-[15px] text-gray-600">
                     <User className="w-4 h-4 shrink-0 text-gray-500" />
                     <span className="truncate">{email}</span>
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Badge className="bg-blue-600 text-white shadow-sm rounded-full h-6 px-2.5 text-xs">
-                    <Zap className="w-3 h-3 mr-1" />
-                    Premium
+                      <Zap className="w-3 h-3 mr-1" />
+                      Premium
                     </Badge>
                     <Badge variant="outline" className="rounded-full h-6 px-2.5 text-xs border-gray-300 text-gray-700 bg-white/60 backdrop-blur">
-                    Since Jan 2023
+                      Since Jan 2023
                     </Badge>
+                  </div>
                 </div>
-                </div>
-            </div>
+              </div>
 
-            {/* Stats: chắc chắn ở nền trắng, không dính gradient */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
+              {/* Stats: chắc chắn ở nền trắng, không dính gradient */}
+              <div className="grid grid-cols-3 gap-3 md:gap-4">
                 <div className="min-w-[110px] rounded-xl border border-black/5 bg-white p-3 md:p-4 shadow-sm">
-                <div className="text-lg md:text-2xl font-semibold text-blue-700 leading-none">147</div>
-                <div className="text-[11px] md:text-xs text-gray-500 mt-1">Sessions</div>
+                  <div className="text-lg md:text-2xl font-semibold text-blue-700 leading-none">147</div>
+                  <div className="text-[11px] md:text-xs text-gray-500 mt-1">Sessions</div>
                 </div>
                 <div className="min-w-[110px] rounded-xl border border-black/5 bg-white p-3 md:p-4 shadow-sm">
-                <div className="text-lg md:text-2xl font-semibold text-indigo-700 leading-none">3,420</div>
-                <div className="text-[11px] md:text-xs text-gray-500 mt-1">kWh</div>
+                  <div className="text-lg md:text-2xl font-semibold text-indigo-700 leading-none">3,420</div>
+                  <div className="text-[11px] md:text-xs text-gray-500 mt-1">kWh</div>
                 </div>
                 <div className="min-w-[110px] rounded-xl border border-black/5 bg-white p-3 md:p-4 shadow-sm">
-                <div className="text-lg md:text-2xl font-semibold text-purple-700 leading-none">₫2.1M</div>
-                <div className="text-[11px] md:text-xs text-gray-500 mt-1">Spend</div>
+                  <div className="text-lg md:text-2xl font-semibold text-purple-700 leading-none">₫2.1M</div>
+                  <div className="text-[11px] md:text-xs text-gray-500 mt-1">Spend</div>
                 </div>
+              </div>
             </div>
-            </div>
-        </CardContent>
+          </CardContent>
         </Card>
 
         {/* Two Column Layout */}
@@ -341,7 +341,7 @@ const Profile = () => {
                   </Label>
                   <Input
                     id="battery"
-                    value={batteryCapacity}                  
+                    value={batteryCapacity}
                     disabled={!isEditing}
                     className={
                       !isEditing
@@ -373,7 +373,7 @@ const Profile = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/5 hover:border-destructive/40 transition-all"                 
+                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/5 hover:border-destructive/40 transition-all"
                 >
                   <Shield className="w-4 h-4 mr-2" />
                   2-step verification
@@ -381,7 +381,7 @@ const Profile = () => {
               </CardContent>
             </Card>
           </div>
-        
+
           {/* Right Column */}
           <div className="space-y-6">
             {/* Wallet & Payments */}
