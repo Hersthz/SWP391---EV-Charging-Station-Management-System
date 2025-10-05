@@ -11,19 +11,22 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import NotificationModal from "../homepage/NotificationModal";
+import api from "../../api/axios";
 
 const DashboardHeader = () => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("full_name");
-    toast.success("Signed out successfully!");
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout", {}, { withCredentials: true });
+      localStorage.clear();
+      toast.success("Signed out successfully!");
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      toast.error("Logout failed!");
+    }
   };
 
   return (
