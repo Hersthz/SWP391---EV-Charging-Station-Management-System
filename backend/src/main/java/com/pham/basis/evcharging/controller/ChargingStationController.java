@@ -27,4 +27,9 @@ public class ChargingStationController {
         List<ChargingStationResponse> stations = stationService.findNearbyStations(request);
         return ResponseEntity.ok(stations);
     }
+
+    @PostMapping("/booking")
+    public ResponseEntity<?> getStations(){
+        return ResponseEntity.ok("");
+    }
 }
