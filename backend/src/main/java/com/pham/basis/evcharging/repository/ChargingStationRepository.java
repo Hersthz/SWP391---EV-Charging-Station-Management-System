@@ -7,11 +7,11 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChargingStationRepository extends JpaRepository<ChargingStation, Long> {
 
-    // Tìm trạm sạc trong bán kính (sử dụng Haversine formula)
     @Query(value = "SELECT *, " +
             "(6371 * acos(cos(radians(:latitude)) * cos(radians(latitude)) * " +
             "cos(radians(longitude) - radians(:longitude)) + " +
@@ -26,4 +26,6 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
             @Param("longitude") Double longitude,
             @Param("radius") Double radius
     );
+
+    Optional<ChargingStation> findChargingStationById(Long id);
 }

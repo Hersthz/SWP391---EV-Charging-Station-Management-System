@@ -1,6 +1,5 @@
 package com.pham.basis.evcharging.service;
 
-
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
 import com.pham.basis.evcharging.dto.response.ChargingStationResponse;
 import com.pham.basis.evcharging.model.ChargerPillar;
@@ -26,7 +25,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
     public List<ChargingStationResponse> findNearbyStations(StationFilterRequest request) {
         Double reqLat = request.getLatitude();
         Double reqLon = request.getLongitude();
-        Double radius = request.getRadius() != null ? request.getRadius() : 5.0;
+        Double radius = request.getRadius() != null ? request.getRadius() : 100.0; // Cập nhật default radius
 
         if (reqLat == null || reqLon == null) return List.of();
 
@@ -68,18 +67,31 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         // sorting
         Comparator<ChargingStation> comparator = Comparator.comparing(ChargingStation::getDistance, Comparator.nullsLast(Double::compareTo));
         String sort = request.getSort() != null ? request.getSort().trim().toLowerCase() : "distance";
-        if ("price".equals(sort)) {
-            // sort by cheapest price in station (ascending)
-            comparator = Comparator.comparing(
-                    s -> getCheapestPriceAcrossPillars(s),
-                    Comparator.nullsLast(Double::compareTo)
-            );
-        } else if ("power".equals(sort)) {
-            // sort by max power across pillars (descending)
-            comparator = Comparator.comparing(
-                    (ChargingStation s) -> getMaxPowerAcrossPillars(s),
-                    Comparator.nullsLast(Double::compareTo)
-            ).reversed();
+        switch (sort) {
+            case "price":
+                // sort by cheapest price in station (ascending)
+                comparator = Comparator.comparing(
+                        s -> getCheapestPriceAcrossPillars(s),
+                        Comparator.nullsLast(Double::compareTo)
+                );
+                break;
+            case "power":
+                // sort by max power across pillars (descending)
+                comparator = Comparator.comparing(
+                        (ChargingStation s) -> getMaxPowerAcrossPillars(s),
+                        Comparator.nullsLast(Double::compareTo)
+                ).reversed();
+                break;
+            case "availability":
+                // sort by number of available pillars (descending)
+                comparator = Comparator.comparing(
+                        (ChargingStation s) -> getAvailablePillarsCount(s),
+                        Comparator.nullsLast(Integer::compareTo)
+                ).reversed();
+                break;
+            default: // "distance"
+                comparator = Comparator.comparing(ChargingStation::getDistance, Comparator.nullsLast(Double::compareTo));
+                break;
         }
 
         List<ChargingStationResponse> results = stream
@@ -87,20 +99,15 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
 
-        // pagination
+        // pagination với size mặc định là 50 theo frontend
         int page = request.getPage() != null ? request.getPage() : 0;
-        int size = request.getSize() != null ? request.getSize() : 10;
+        int size = request.getSize() != null ? request.getSize() : 50;
         int start = page * size;
         if (start >= results.size()) return List.of();
         int end = Math.min(start + size, results.size());
         return results.subList(start, end);
     }
 
-    /** Helper: station has at least one pillar that matches pillar-level criteria:
-     *  - connector types (if wantedConnectors non-empty)
-     *  - power within min/max (if provided)
-     *  - price per kwh within min/max (if provided)
-     */
     private boolean stationHasPillarMatchingFilters(ChargingStation station,
                                                     Set<String> wantedConnectors,
                                                     Double minPower, Double maxPower,
@@ -153,10 +160,17 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 .orElse(null);
     }
 
+    /** Helper: get count of available pillars */
+    private Integer getAvailablePillarsCount(ChargingStation s) {
+        return (int) Optional.ofNullable(s.getPillars()).orElse(Collections.emptyList()).stream()
+                .filter(p -> p.getStatus() != null && p.getStatus().equalsIgnoreCase("Available"))
+                .count();
+    }
+
     //Kiểm tra có ít nhất 1 pillar available
     private boolean hasAvailablePillar(ChargingStation station) {
         List<ChargerPillar> pillars = Optional.ofNullable(station.getPillars()).orElse(Collections.emptyList());
-        return pillars.stream().anyMatch(p->p.getStatus()!= null && p.getStatus().equalsIgnoreCase("Available"));
+        return pillars.stream().anyMatch(p -> p.getStatus() != null && p.getStatus().equalsIgnoreCase("Available"));
     }
 
     // Tính khoảng cách bằng Haversine (trả null nếu bất kỳ input nào null)
@@ -167,16 +181,12 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         final int R = 6371; // km
         double latDistance = Math.toRadians(lat2 - lat1);
         double lonDistance = Math.toRadians(lon2 - lon1);
-        double sinLat = Math.sin(latDistance / 2);
-        double sinLon = Math.sin(lonDistance / 2);
-        double a = sinLat * sinLat
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * sinLon * sinLon;
-        double tmp = Math.min(1.0, Math.max(-1.0, Math.sqrt(a)));
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0.0, 1 - a)));
-
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
-
 
     public ChargingStationResponse convertToResponse(ChargingStation station) {
         // Guard null pillars
@@ -195,24 +205,61 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // cheapest price across pillars (nullable)
-        Double cheapest = pillars.stream()
-                .map(ChargerPillar::getPricePerKwh)
+        // Tính min/max power và price từ tất cả pillars
+        Double minPower = pillars.stream()
+                .map(ChargerPillar::getPower)
                 .filter(Objects::nonNull)
                 .min(Double::compareTo)
                 .orElse(null);
 
-        // max power across pillars (nullable)
         Double maxPower = pillars.stream()
                 .map(ChargerPillar::getPower)
                 .filter(Objects::nonNull)
                 .max(Double::compareTo)
                 .orElse(null);
 
-        // Format fields to match frontend expectations (strings)
-        String powerStr = (maxPower != null) ? String.format("%.0f kW", maxPower) : null;
+        Double minPrice = pillars.stream()
+                .map(ChargerPillar::getPricePerKwh)
+                .filter(Objects::nonNull)
+                .min(Double::compareTo)
+                .orElse(null);
+
+        Double maxPrice = pillars.stream()
+                .map(ChargerPillar::getPricePerKwh)
+                .filter(Objects::nonNull)
+                .max(Double::compareTo)
+                .orElse(null);
+
+        // Format power string để hiển thị khoảng giá trị
+        String powerStr = null;
+        if (minPower != null && maxPower != null) {
+            if (minPower.equals(maxPower)) {
+                powerStr = String.format("%.0f kW", minPower);
+            } else {
+                powerStr = String.format("%.0f - %.0f kW", minPower, maxPower);
+            }
+        } else if (minPower != null) {
+            powerStr = String.format("%.0f kW", minPower);
+        } else if (maxPower != null) {
+            powerStr = String.format("%.0f kW", maxPower);
+        }
+
+        // Format price string để hiển thị khoảng giá trị
+        String priceStr = null;
+        if (minPrice != null && maxPrice != null) {
+            if (minPrice.equals(maxPrice)) {
+                priceStr = String.format("$%.2f/kWh", minPrice);
+            } else {
+                priceStr = String.format("$%.2f - $%.2f/kWh", minPrice, maxPrice);
+            }
+        } else if (minPrice != null) {
+            priceStr = String.format("$%.2f/kWh", minPrice);
+        } else if (maxPrice != null) {
+            priceStr = String.format("$%.2f/kWh", maxPrice);
+        }
+
         String availableStr = totalPillars > 0 ? String.format("%d/%d available", availablePillars, totalPillars) : null;
-        String priceStr = (cheapest != null) ? String.format("%.2f /kWh", cheapest) : null;
+        String stationStatus = availablePillars > 0 ? "Available" : "Occupied";
 
         return new ChargingStationResponse(
                 station.getId(),
@@ -221,14 +268,11 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 station.getLatitude(),
                 station.getLongitude(),
                 station.getDistance(),
-                station.getStatus(),
-                powerStr,
+                stationStatus,
+                powerStr,  // Ví dụ: "150 - 250 kW" hoặc "150 kW"
                 availableStr,
-                connectorTypes.isEmpty() ? null : connectorTypes,
-                priceStr
+                connectorTypes,
+                priceStr   // Ví dụ: "$0.45 - $0.52/kWh" hoặc "$0.45/kWh"
         );
     }
-
-
-
 }

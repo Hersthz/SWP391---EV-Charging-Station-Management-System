@@ -14,8 +14,6 @@ import {
 } from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
 
-
-
 // Leaflet
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -41,9 +39,9 @@ interface Filters {
 type Review = {
   id: string;
   userName: string;
-  rating: number;     // 1..5
+  rating: number;
   comment: string;
-  createdAt: string;  // ISO
+  createdAt: string;
 };
 
 /* =========================
@@ -54,8 +52,7 @@ const defaultFilters: Filters = {
   minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10,
   sort: "distance", page: 0, size: 50,
 };
-
-/*const MOCK_STATIONS: Station[] = [
+const MOCK_STATIONS: Station[] = [
   {
     id: 1,
     name: "Downtown Fast Charge Hub",
@@ -95,8 +92,7 @@ const defaultFilters: Filters = {
     connectors: ["CCS", "CHAdeMO"],
     price: "$0.58/kWh",
   },
-];*/
-
+];
 const userIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png",
   iconSize: [32, 32],
@@ -135,12 +131,14 @@ const StationMap = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   // filter popovers
+  const [showRadius, setShowRadius] = useState(false);
   const [showPrice, setShowPrice] = useState(false);
   const [showPower, setShowPower] = useState(false);
   const [showConnector, setShowConnector] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
   // draft values for popovers
+  const [draftRadius, setDraftRadius] = useState(appliedFilters.radius);
   const [priceMax, setPriceMax] = useState(appliedFilters.maxPrice ?? 1);
   const [minPower, setMinPower] = useState(appliedFilters.minPower ?? 0);
   const [draftConnectors, setDraftConnectors] = useState<string[]>(appliedFilters.connectors ?? []);
@@ -148,7 +146,6 @@ const StationMap = () => {
 
   // detail popup state
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
 
@@ -206,17 +203,22 @@ const StationMap = () => {
   const applyAllFilters = () => {
     setAppliedFilters((prev) => ({
       ...prev,
+      radius: draftRadius,
       maxPrice: Number(priceMax),
       minPower,
       connectors: draftConnectors,
       availableOnly,
       page: 0,
     }));
-    setShowPrice(false); setShowPower(false); setShowConnector(false); setShowMore(false);
+    setShowRadius(false); setShowPrice(false); setShowPower(false); setShowConnector(false); setShowMore(false);
   };
 
   const clearAll = () => {
-    setPriceMax(1); setMinPower(0); setDraftConnectors([]); setAvailableOnly(false);
+    setDraftRadius(defaultFilters.radius);
+    setPriceMax(defaultFilters.maxPrice ?? 1);
+    setMinPower(defaultFilters.minPower ?? 0);
+    setDraftConnectors([]);
+    setAvailableOnly(false);
     setAppliedFilters(defaultFilters);
   };
 
@@ -229,11 +231,6 @@ const StationMap = () => {
     setDetailOpen(true);
     setReviewsLoading(true);
     try {
-      // Nếu backend đã có endpoint, thay mock bằng:
-      // const { data } = await api.get<Review[]>(`/charging-stations/${station.id}/reviews`);
-      // setReviews(data);
-
-      // Mock fallback
       const mock: Review[] = [
         { id: "r1", userName: "Minh Tran", rating: 5, comment: "Sạc nhanh, chỗ đậu dễ!", createdAt: "2025-09-21T10:45:00Z" },
         { id: "r2", userName: "Lan Pham", rating: 4, comment: "Nhân viên hỗ trợ tốt, đôi lúc hơi đông.", createdAt: "2025-09-18T08:10:00Z" },
@@ -282,11 +279,49 @@ const StationMap = () => {
 
       {/* FILTERS BAR */}
       <div className="bg-white border-b h-14 flex items-center gap-3 px-6 sticky top-[60px] z-50">
+        {/* RADIUS */}
+        <div className="relative">
+          <Button
+            variant="outline" size="sm" className="rounded-full border-slate-200"
+            onClick={() => { setShowRadius(v => !v); setShowPrice(false); setShowPower(false); setShowConnector(false); setShowMore(false); }}
+          >
+            {appliedFilters.radius} km radius
+            {appliedFilters.radius !== defaultFilters.radius && (
+              <Badge className="ml-2 rounded-full w-5 h-5 p-0 grid place-items-center">1</Badge>
+            )}
+            <ChevronDown className="w-4 h-4 ml-1" />
+          </Button>
+          {showRadius && (
+            <div className="absolute top-full mt-2 bg-white border rounded-xl shadow-lg p-4 w-80 z-[1000]">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-medium">Search Radius</p>
+                <button onClick={() => setShowRadius(false)}><X className="w-4 h-4" /></button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">Distance from your location</p>
+              <input
+                type="range"
+                min={1}
+                max={200}
+                step={1}
+                value={draftRadius}
+                onChange={(e) => setDraftRadius(parseInt(e.target.value))}
+                className="w-full"
+              />
+              <div className="mt-1 text-sm flex justify-between">
+                <span>1 km</span>
+                <span className="font-medium">{draftRadius} km</span>
+                <span>200 km</span>
+              </div>
+              <div className="mt-4 text-right"><Button size="sm" onClick={applyAllFilters}>Apply</Button></div>
+            </div>
+          )}
+        </div>
+
         {/* PRICE */}
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowPrice(v => !v); setShowPower(false); setShowConnector(false); setShowMore(false); }}
+            onClick={() => { setShowPrice(v => !v); setShowRadius(false); setShowPower(false); setShowConnector(false); setShowMore(false); }}
           >
             Up to ${Number(appliedFilters.maxPrice ?? 1).toFixed(2)}/kWh
             {Number(appliedFilters.maxPrice) !== defaultFilters.maxPrice && (
@@ -313,7 +348,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowPower(v => !v); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
+            onClick={() => { setShowPower(v => !v); setShowRadius(false); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
           >
             Power type
             {Number(appliedFilters.minPower) > 0 && (
@@ -344,7 +379,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowConnector(v => !v); setShowPrice(false); setShowPower(false); setShowMore(false); }}
+            onClick={() => { setShowConnector(v => !v); setShowRadius(false); setShowPrice(false); setShowPower(false); setShowMore(false); }}
           >
             Connectors
             {draftConnectors.length > 0 && (
@@ -378,7 +413,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowMore(v => !v); setShowPrice(false); setShowPower(false); setShowConnector(false); }}
+            onClick={() => { setShowMore(v => !v); setShowRadius(false); setShowPrice(false); setShowPower(false); setShowConnector(false); }}
           >
             More filters
             {availableOnly && (<Badge className="ml-2 rounded-full w-5 h-5 p-0 grid place-items-center">1</Badge>)}
@@ -399,7 +434,8 @@ const StationMap = () => {
           )}
         </div>
 
-        {(appliedFilters.maxPrice !== defaultFilters.maxPrice ||
+        {(appliedFilters.radius !== defaultFilters.radius ||
+          appliedFilters.maxPrice !== defaultFilters.maxPrice ||
           (appliedFilters.minPower ?? 0) > 0 ||
           (appliedFilters.connectors?.length ?? 0) > 0 ||
           appliedFilters.availableOnly) && (
@@ -413,9 +449,7 @@ const StationMap = () => {
       <div className="relative flex-1 flex overflow-hidden select-none">
         {/* LEFT LIST */}
         <div
-
           className={`bg-white border-r transition-[width] duration-200 ease-out ${isCollapsed ? "w-0" : "w-[45vw]"}`}
-
           style={{ height: viewportMinusBars }}
         >
           <div className={`${isCollapsed ? "hidden" : "block"} h-full flex flex-col`}>
@@ -501,9 +535,6 @@ const StationMap = () => {
                         >
                           <Navigation className="w-4 h-4 mr-1" />
                           Navigate
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedStation(station)}>
-                          Details
                         </Button>
                       </div>
                     </div>
@@ -685,50 +716,6 @@ const StationMap = () => {
       </Dialog>
     </div>
   );
-
 };
-<Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
-  <DialogContent className="max-w-lg">
-    {selectedStation && (
-      <>
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">{selectedStation.name}</DialogTitle>
-          <p className="text-sm text-muted-foreground">{selectedStation.address}</p>
-        </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span>⚡ Power:</span>
-            <span>{selectedStation.power}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span>💰 Price:</span>
-            <span>{selectedStation.price}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span>Availability:</span>
-            <span>{selectedStation.available}</span>
-          </div>
-
-          <div className="flex items-center gap-1 text-yellow-500 mt-2">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${i < 4 ? "fill-yellow-500" : "fill-gray-300"}`}
-              />
-            ))}
-            <span className="ml-2 text-xs text-gray-500">(4.0 / 5)</span>
-          </div>
-
-          <textarea
-            placeholder="Viết đánh giá của bạn..."
-            className="w-full border rounded-md p-2 text-sm mt-2"
-          ></textarea>
-
-          <Button className="w-full mt-2">Gửi đánh giá</Button>
-        </div>
-      </>
-    )}
-  </DialogContent>
-</Dialog>
 export default StationMap;

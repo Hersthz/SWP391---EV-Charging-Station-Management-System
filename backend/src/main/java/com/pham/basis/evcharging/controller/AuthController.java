@@ -58,7 +58,7 @@
             emailService.sendVerificationEmail(user.getEmail(),"Verify your email", "Click here: "+ link);
 
             UserResponse response = new UserResponse(
-                    user.getUser_id(),
+                    user.getId(),
                     user.getFull_name(),
                     user.getUsername(),
                     user.getEmail(),
@@ -119,7 +119,7 @@
             User user = userService.findByUsername(username);
             if (user == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             UserResponse resp = new UserResponse(
-                    user.getUser_id(),
+                    user.getId(),
                     user.getFull_name(),
                     user.getUsername(),
                     user.getEmail(),
