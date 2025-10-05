@@ -2,7 +2,9 @@ package com.pham.basis.evcharging.controller;
 
 
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
+import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
+import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
 import com.pham.basis.evcharging.service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -24,14 +26,26 @@ public class UserController {
         // Lấy username từ Security Context (người dùng đang đăng nhập)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-
         ChangePasswordResponse response = userService.changePassword(username, request);
-
         if (response.isSuccess()) {
             return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    @PutMapping("/update-profile")
+    public ResponseEntity<UpdateUserResponse> updateProfile(@RequestBody UpdateUserRequest request) {
+        // Lấy username từ Security Context (người dùng đang đăng nhập)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        UpdateUserResponse response = userService.updateUserProfile(username, request);
+        if(response.isSuccess()){
+            return ResponseEntity.ok(response);
+        }else{
+            return ResponseEntity.badRequest().body(response);
+        }
+
     }
 
 

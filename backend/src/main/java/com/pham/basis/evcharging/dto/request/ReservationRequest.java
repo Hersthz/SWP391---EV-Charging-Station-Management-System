@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 public class ReservationRequest {
-    private Long userId;
+    private Integer userId;
     private Long stationId;
     private Long pillarId;
     private Long connectorId;

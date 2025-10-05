@@ -8,6 +8,14 @@ import lombok.Data;
 public class UpdateUserResponse {
     private boolean success;
     private String message;
-    private UserResponse data;
+
+}
+@Data
+class UserDetailsData{
+    private String username;
+    private String password;
+    private String email;
+    private String phone;
+    private String address;
 
 }
