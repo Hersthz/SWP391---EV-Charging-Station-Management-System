@@ -22,14 +22,38 @@ import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 
 /* =========================
-   Types
+   Types - UPDATED
 ========================= */
-interface Station {
-  id: number; name: string; address: string;
-  latitude: number; longitude: number;
-  distance?: number; status?: string; power?: string;
-  available?: string; connectors?: string[]; price?: string;
+interface Connector {
+  type: string;
 }
+
+interface Pillar {
+  code: string;
+  status: string;
+  power: number;
+  pricePerKwh: number;
+  connectors: Connector[];
+}
+
+interface Station {
+  id: number;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  status: string;
+  pillars: Pillar[];
+  // Computed fields for display
+  distance?: number;
+  availablePorts?: number;
+  totalPorts?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  maxPower?: number;
+  connectorTypes?: string[];
+}
+
 type SortOption = "distance" | "price" | "power" | "availability";
 interface Filters {
   radius: number; connectors: string[]; availableOnly: boolean;
@@ -45,54 +69,233 @@ type Review = {
 };
 
 /* =========================
-   Constants & helpers
+   Constants & helpers - UPDATED
 ========================= */
 const defaultFilters: Filters = {
   radius: 100, connectors: [], availableOnly: false,
   minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10,
   sort: "distance", page: 0, size: 50,
 };
+
 const MOCK_STATIONS: Station[] = [
   {
     id: 1,
-    name: "Downtown Fast Charge Hub",
-    address: "123 Main Street, District 1",
-    latitude: 10.7769,
-    longitude: 106.7009,
-    distance: 0.5,
-    status: "Available",
-    power: "150 kW • Fast",
-    available: "4/8 available",
-    connectors: ["CCS", "CHAdeMO", "Type2"],
-    price: "$0.45/kWh",
+    name: "Station #1",
+    address: "Mock Address 1",
+    latitude: 10.8618942110713,
+    longitude: 106.79798794919327,
+    status: "Occupied",
+    pillars: [
+      {
+        code: "P1-1",
+        status: "Occupied",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [
+          { type: "CCS" },
+          { type: "CHAdeMO" }
+        ]
+      }
+    ],
+    distance: 0.8,
+    availablePorts: 0,
+    totalPorts: 1,
+    minPrice: 0.5,
+    maxPrice: 0.5,
+    maxPower: 150,
+    connectorTypes: ["CCS", "CHAdeMO"]
   },
   {
     id: 2,
-    name: "Shopping Mall Charging Station",
-    address: "456 Commerce Avenue, District 3",
-    latitude: 10.7859,
-    longitude: 106.7009,
-    distance: 1.2,
+    name: "Station #2", 
+    address: "Mock Address 2",
+    latitude: 10.849267289775822,
+    longitude: 106.77615902281468,
     status: "Available",
-    power: "250 kW • Ultra Fast",
-    available: "6/10 available",
-    connectors: ["CCS", "Type2"],
-    price: "$0.52/kWh",
+    pillars: [
+      {
+        code: "P2-1",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "CCS" }]
+      },
+      {
+        code: "P2-2",
+        status: "Available", 
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "AC" }]
+      }
+    ],
+    distance: 1.2,
+    availablePorts: 2,
+    totalPorts: 2,
+    minPrice: 0.5,
+    maxPrice: 0.5,
+    maxPower: 150,
+    connectorTypes: ["CCS", "AC"]
   },
   {
     id: 3,
-    name: "Airport Express Charge Point",
-    address: "789 Airport Road, Tan Binh",
-    latitude: 10.8069,
-    longitude: 106.7009,
-    distance: 2.5,
-    status: "Occupied",
-    power: "350 kW • Super Fast",
-    available: "0/6 available",
-    connectors: ["CCS", "CHAdeMO"],
-    price: "$0.58/kWh",
+    name: "Station #3",
+    address: "Mock Address 3",
+    latitude: 10.87769840457074,
+    longitude: 106.78908488926061,
+    status: "Available",
+    pillars: [
+      {
+        code: "P3-1",
+        status: "Available",
+        power: 100.0,
+        pricePerKwh: 0.45,
+        connectors: [{ type: "AC" }]
+      }
+    ],
+    distance: 1.8,
+    availablePorts: 1,
+    totalPorts: 1,
+    minPrice: 0.45,
+    maxPrice: 0.45,
+    maxPower: 100,
+    connectorTypes: ["AC"]
   },
+  {
+    id: 4,
+    name: "Station #4",
+    address: "Mock Address 4",
+    latitude: 10.839816793279379,
+    longitude: 106.7877466819761,
+    status: "Available",
+    pillars: [
+      {
+        code: "P4-1",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "CCS" }, { type: "AC" }]
+      },
+      {
+        code: "P4-2",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "CHAdeMO" }]
+      }
+    ],
+    distance: 2.3,
+    availablePorts: 2,
+    totalPorts: 2,
+    minPrice: 0.5,
+    maxPrice: 0.5,
+    maxPower: 150,
+    connectorTypes: ["CCS", "AC", "CHAdeMO"]
+  },
+  {
+    id: 5,
+    name: "Station #5",
+    address: "Mock Address 5",
+    latitude: 10.860861443602067,
+    longitude: 106.78464586241712,
+    status: "Available",
+    pillars: [
+      {
+        code: "P5-1",
+        status: "Available",
+        power: 50.0,
+        pricePerKwh: 0.35,
+        connectors: [{ type: "AC" }]
+      }
+    ],
+    distance: 0.5,
+    availablePorts: 1,
+    totalPorts: 1,
+    minPrice: 0.35,
+    maxPrice: 0.35,
+    maxPower: 50,
+    connectorTypes: ["AC"]
+  },
+  {
+    id: 6,
+    name: "Station #6",
+    address: "Mock Address 6",
+    latitude: 10.854379681064374,
+    longitude: 106.78272259504136,
+    status: "Available",
+    pillars: [
+      {
+        code: "P6-1",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "CHAdeMO" }]
+      },
+      {
+        code: "P6-2",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "CCS" }]
+      }
+    ],
+    distance: 1.1,
+    availablePorts: 2,
+    totalPorts: 2,
+    minPrice: 0.5,
+    maxPrice: 0.5,
+    maxPower: 150,
+    connectorTypes: ["CHAdeMO", "CCS"]
+  },
+  {
+    id: 7,
+    name: "Station #7",
+    address: "Mock Address 7",
+    latitude: 10.859567051585286,
+    longitude: 106.77050612996604,
+    status: "Available",
+    pillars: [
+      {
+        code: "P7-1",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "CCS" }, { type: "CHAdeMO" }]
+      }
+    ],
+    distance: 2.7,
+    availablePorts: 1,
+    totalPorts: 1,
+    minPrice: 0.5,
+    maxPrice: 0.5,
+    maxPower: 150,
+    connectorTypes: ["CCS", "CHAdeMO"]
+  },
+  {
+    id: 8,
+    name: "Station #8",
+    address: "Mock Address 8",
+    latitude: 10.844467549310396,
+    longitude: 106.8021035518178,
+    status: "Available",
+    pillars: [
+      {
+        code: "P8-1",
+        status: "Available",
+        power: 150.0,
+        pricePerKwh: 0.5,
+        connectors: [{ type: "AC" }]
+      }
+    ],
+    distance: 3.2,
+    availablePorts: 1,
+    totalPorts: 1,
+    minPrice: 0.5,
+    maxPrice: 0.5,
+    maxPower: 150,
+    connectorTypes: ["AC"]
+  }
 ];
+
 const userIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png",
   iconSize: [32, 32],
@@ -108,6 +311,27 @@ const Stars = ({ value }: { value: number }) => (
     ))}
   </div>
 );
+
+// Helper function to compute station display fields
+const computeStationFields = (station: Station): Station => {
+  const availablePorts = station.pillars.filter(p => p.status === "Available").length;
+  const totalPorts = station.pillars.length;
+  const prices = station.pillars.map(p => p.pricePerKwh);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const maxPower = Math.max(...station.pillars.map(p => p.power));
+  const connectorTypes = [...new Set(station.pillars.flatMap(p => p.connectors.map(c => c.type)))];
+
+  return {
+    ...station,
+    availablePorts,
+    totalPorts,
+    minPrice,
+    maxPrice,
+    maxPower,
+    connectorTypes
+  };
+};
 
 /* =========================
    Component
@@ -162,7 +386,8 @@ const StationMap = () => {
         // Fallback: center HCMC + mock
         const fallback: [number, number] = [10.7769, 106.7009];
         setUserPosition(fallback);
-        setStations([]);
+        const computedStations = MOCK_STATIONS.map(computeStationFields);
+        setStations(computedStations);
         if (mapRef.current) mapRef.current.setView(fallback, 13);
       }
     );
@@ -188,9 +413,13 @@ const StationMap = () => {
         sort: filters.sort, page: filters.page, size: filters.size,
       };
       const { data } = await api.post<Station[]>("/charging-stations/nearby", payload);
-      setStations(data);
+      // Compute display fields for each station
+      const computedStations = data.map(computeStationFields);
+      setStations(computedStations);
     } catch {
-      setStations([]);
+      // Compute display fields for mock stations
+      const computedStations = MOCK_STATIONS.map(computeStationFields);
+      setStations(computedStations);
     } finally {
       setLoading(false);
     }
@@ -348,7 +577,10 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
+
             onClick={() => { setShowPower(v => !v); setShowRadius(false); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
+
+            onClick={() => { setShowPower(v => !v); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
           >
             Power type
             {Number(appliedFilters.minPower) > 0 && (
@@ -365,7 +597,7 @@ const StationMap = () => {
               <div className="space-y-1">
                 {[0, 50, 150, 250, 350].map((p) => (
                   <button key={p} onClick={() => setMinPower(p)}
-                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${minPower === p ? "bg-teal-500 text-white" : ""}`}>
+                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-teal-100 ${minPower === p ? "bg-teal-500 text-white hover:bg-teal-600" : ""}`}>
                     {p === 0 ? "Any" : `${p}kW+`}
                   </button>
                 ))}
@@ -379,7 +611,9 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
+
             onClick={() => { setShowConnector(v => !v); setShowRadius(false); setShowPrice(false); setShowPower(false); setShowMore(false); }}
+
           >
             Connectors
             {draftConnectors.length > 0 && (
@@ -464,7 +698,7 @@ const StationMap = () => {
               <span>Real-time data</span>
             </div>
 
-            {/* List */}
+            {/* List - UPDATED for new station format */}
             <div className="flex-1 overflow-y-auto space-y-4 px-4 pb-4">
               {stations.map((station) => (
                 <Card
@@ -481,7 +715,7 @@ const StationMap = () => {
                       <div className="flex items-start justify-between mb-1">
                         <div className="min-w-0">
                           <p className="text-[11px] text-muted-foreground mb-0.5">
-                            {(station.distance as any)?.toFixed?.(1) ?? station.distance ?? "—"} km away
+                            {station.distance?.toFixed(1) ?? "—"} km away
                           </p>
                           <h3 className="font-semibold text-base truncate">{station.name}</h3>
                           <p className="text-sm text-muted-foreground truncate">{station.address}</p>
@@ -490,17 +724,19 @@ const StationMap = () => {
                           variant={station.status === "Available" ? "default" : "secondary"}
                           className={station.status === "Available" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-800"}
                         >
-                          {station.status ?? "—"}
+                          {station.status}
                         </Badge>
                       </div>
 
                       <div className="space-y-2 my-3">
                         <div className="flex items-center gap-2 text-sm">
-                          <span className="font-medium text-blue-600">{station.power ?? ""}</span>
-                          <span className="text-muted-foreground">• {station.available ?? ""}</span>
+                          <span className="font-medium text-blue-600">
+                            {station.maxPower} kW • {station.maxPower && station.maxPower >= 150 ? "Fast" : "Standard"}
+                          </span>
+                          <span className="text-muted-foreground">• {station.availablePorts}/{station.totalPorts} available</span>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {(station.connectors ?? []).map((c) => (
+                          {station.connectorTypes?.map((c) => (
                             <Badge key={c} variant="outline" className="text-[11px] rounded-full">{c}</Badge>
                           ))}
                         </div>
@@ -508,7 +744,10 @@ const StationMap = () => {
 
                       <div className="flex items-center justify-between pt-2 border-t">
                         <span className="text-sm text-muted-foreground">Price</span>
-                        <span className="font-semibold">{station.price ?? ""}</span>
+                        <span className="font-semibold">
+                          ${station.minPrice?.toFixed(2)}
+                          {station.maxPrice && station.maxPrice !== station.minPrice ? ` - $${station.maxPrice.toFixed(2)}` : ''}/kWh
+                        </span>
                       </div>
 
                       <div className="mt-3 flex gap-2">
@@ -586,9 +825,9 @@ const StationMap = () => {
                   <div>
                     <strong>{s.name}</strong><br />
                     {s.address}<br />
-                    <span>{s.available}</span><br />
-                    <span>{s.power}</span><br />
-                    <span>{s.price}</span>
+                    <span>{s.availablePorts}/{s.totalPorts} available</span><br />
+                    <span>Up to {s.maxPower} kW</span><br />
+                    <span>${s.minPrice?.toFixed(2)}/kWh{s.maxPrice && s.maxPrice !== s.minPrice ? ` - $${s.maxPrice.toFixed(2)}` : ''}</span>
                   </div>
                 </Popup>
               </Marker>
@@ -597,7 +836,7 @@ const StationMap = () => {
         </div>
       </div>
 
-      {/* DETAIL DIALOG */}
+      {/* DETAIL DIALOG - UPDATED for new station format */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -617,36 +856,76 @@ const StationMap = () => {
                   <p className="text-xs text-slate-500">Status</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge className={selectedStation.status === "Available" ? "bg-green-100 text-green-700 border-green-200" : "bg-yellow-100 text-yellow-800 border-yellow-200"}>
-                      {selectedStation.status ?? "—"}
+                      {selectedStation.status}
                     </Badge>
-                    <span className="text-xs text-slate-500">{selectedStation.available ?? ""}</span>
+                    <span className="text-xs text-slate-500">{selectedStation.availablePorts}/{selectedStation.totalPorts} available</span>
                   </div>
                 </div>
 
                 <div className="rounded-lg border p-3 bg-sky-50/50">
-                  <p className="text-xs text-slate-500">Price</p>
-                  <p className="font-semibold mt-1">{selectedStation.price ?? "-"}</p>
+                  <p className="text-xs text-slate-500">Price Range</p>
+                  <p className="font-semibold mt-1">
+                    ${selectedStation.minPrice?.toFixed(2)}
+                    {selectedStation.maxPrice && selectedStation.maxPrice !== selectedStation.minPrice ? ` - $${selectedStation.maxPrice.toFixed(2)}` : ''}/kWh
+                  </p>
                 </div>
 
                 <div className="rounded-lg border p-3 bg-sky-50/50">
-                  <p className="text-xs text-slate-500">Power</p>
-                  <p className="font-semibold mt-1">{selectedStation.power ?? "-"}</p>
+                  <p className="text-xs text-slate-500">Max Power</p>
+                  <p className="font-semibold mt-1">{selectedStation.maxPower} kW</p>
                 </div>
 
                 <div className="rounded-lg border p-3 bg-sky-50/50">
                   <p className="text-xs text-slate-500">Distance</p>
                   <p className="font-semibold mt-1">
-                    {(selectedStation.distance as any)?.toFixed?.(1) ?? selectedStation.distance ?? "—"} km
+                    {selectedStation.distance?.toFixed(1) ?? "—"} km
                   </p>
                 </div>
               </div>
 
               {/* Connectors */}
               <div>
-                <p className="text-xs text-slate-500 mb-2">Connectors</p>
+                <p className="text-xs text-slate-500 mb-2">Available Connectors</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {(selectedStation.connectors ?? []).map((c) => (
+                  {selectedStation.connectorTypes?.map((c) => (
                     <Badge key={c} variant="outline" className="rounded-full">{c}</Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pillars Details */}
+              <div>
+                <p className="text-xs text-slate-500 mb-2">Charging Ports</p>
+                <div className="space-y-2">
+                  {selectedStation.pillars.map((pillar) => (
+                    <Card key={pillar.code} className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{pillar.code}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {pillar.power} kW • ${pillar.pricePerKwh.toFixed(2)}/kWh
+                          </div>
+                          <div className="flex gap-1 mt-1">
+                            {pillar.connectors.map((connector, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {connector.type}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Badge
+                          className={
+                            pillar.status === "Available" 
+                              ? "bg-green-100 text-green-700 border-green-200"
+                              : pillar.status === "Occupied"
+                              ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                              : "bg-gray-100 text-gray-700 border-gray-200"
+                          }
+                        >
+                          {pillar.status}
+                        </Badge>
+                      </div>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -716,6 +995,7 @@ const StationMap = () => {
       </Dialog>
     </div>
   );
-};
 
 export default StationMap;
+
+
