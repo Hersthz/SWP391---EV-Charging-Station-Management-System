@@ -14,6 +14,8 @@ import {
 } from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
 
+
+
 // Leaflet
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -551,7 +553,11 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
+<<<<<<< HEAD
             onClick={() => { setShowPrice(v => !v); setShowRadius(false); setShowPower(false); setShowConnector(false); setShowMore(false); }}
+=======
+            onClick={() => { setShowPrice(v => !v); setShowPower(false); setShowConnector(false); setShowMore(false); }}
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
           >
             Up to ${Number(appliedFilters.maxPrice ?? 1).toFixed(2)}/kWh
             {Number(appliedFilters.maxPrice) !== defaultFilters.maxPrice && (
@@ -578,7 +584,11 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
+<<<<<<< HEAD
             onClick={() => { setShowPower(v => !v); setShowRadius(false); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
+=======
+            onClick={() => { setShowPower(v => !v); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
           >
             Power type
             {Number(appliedFilters.minPower) > 0 && (
@@ -595,7 +605,11 @@ const StationMap = () => {
               <div className="space-y-1">
                 {[0, 50, 150, 250, 350].map((p) => (
                   <button key={p} onClick={() => setMinPower(p)}
+<<<<<<< HEAD
                     className={`w-full text-left px-3 py-2 rounded-lg hover:bg-teal-100 ${minPower === p ? "bg-teal-500 text-white hover:bg-teal-600" : ""}`}>
+=======
+                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${minPower === p ? "bg-teal-500 text-white" : ""}`}>
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
                     {p === 0 ? "Any" : `${p}kW+`}
                   </button>
                 ))}
@@ -609,7 +623,11 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
+<<<<<<< HEAD
             onClick={() => { setShowConnector(v => !v); setShowRadius(false); setShowPrice(false); setShowPower(false); setShowMore(false); }}
+=======
+            onClick={() => { setShowConnector(v => !v); setShowPrice(false); setShowPower(false); setShowMore(false); }}
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
           >
             Connectors
             {draftConnectors.length > 0 && (
@@ -624,7 +642,11 @@ const StationMap = () => {
                 <button onClick={() => setShowConnector(false)}><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-2">
+<<<<<<< HEAD
                 {["CCS", "CHAdeMO", "AC"].map((c) => {
+=======
+                {["CCS", "CHAdeMO", "Type2", "AC"].map((c) => {
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
                   const checked = draftConnectors.includes(c);
                   return (
                     <label key={c} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-100">
@@ -643,7 +665,11 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
+<<<<<<< HEAD
             onClick={() => { setShowMore(v => !v); setShowRadius(false); setShowPrice(false); setShowPower(false); setShowConnector(false); }}
+=======
+            onClick={() => { setShowMore(v => !v); setShowPrice(false); setShowPower(false); setShowConnector(false); }}
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
           >
             More filters
             {availableOnly && (<Badge className="ml-2 rounded-full w-5 h-5 p-0 grid place-items-center">1</Badge>)}
@@ -679,7 +705,9 @@ const StationMap = () => {
       <div className="relative flex-1 flex overflow-hidden select-none">
         {/* LEFT LIST */}
         <div
+
           className={`bg-white border-r transition-[width] duration-200 ease-out ${isCollapsed ? "w-0" : "w-[45vw]"}`}
+
           style={{ height: viewportMinusBars }}
         >
           <div className={`${isCollapsed ? "hidden" : "block"} h-full flex flex-col`}>
@@ -770,6 +798,9 @@ const StationMap = () => {
                         >
                           <Navigation className="w-4 h-4 mr-1" />
                           Navigate
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedStation(station)}>
+                          Details
                         </Button>
                       </div>
                     </div>
@@ -991,6 +1022,54 @@ const StationMap = () => {
       </Dialog>
     </div>
   );
-};
 
+<<<<<<< HEAD
 export default StationMap;
+=======
+};
+<Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
+  <DialogContent className="max-w-lg">
+    {selectedStation && (
+      <>
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">{selectedStation.name}</DialogTitle>
+          <p className="text-sm text-muted-foreground">{selectedStation.address}</p>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span>⚡ Power:</span>
+            <span>{selectedStation.power}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>💰 Price:</span>
+            <span>{selectedStation.price}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>Availability:</span>
+            <span>{selectedStation.available}</span>
+          </div>
+
+          <div className="flex items-center gap-1 text-yellow-500 mt-2">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`w-4 h-4 ${i < 4 ? "fill-yellow-500" : "fill-gray-300"}`}
+              />
+            ))}
+            <span className="ml-2 text-xs text-gray-500">(4.0 / 5)</span>
+          </div>
+
+          <textarea
+            placeholder="Viết đánh giá của bạn..."
+            className="w-full border rounded-md p-2 text-sm mt-2"
+          ></textarea>
+
+          <Button className="w-full mt-2">Gửi đánh giá</Button>
+        </div>
+      </>
+    )}
+  </DialogContent>
+</Dialog>
+export default StationMap;
+>>>>>>> 7f64244eccab2397576095a504087ad2b4dbac2b
