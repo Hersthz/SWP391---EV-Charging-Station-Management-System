@@ -20,16 +20,16 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">
-              Tính năng
+              Features
             </a>
             <a href="#map" className="text-muted-foreground hover:text-primary transition-colors">
-              Bản đồ
+              Map
             </a>
             <a href="#about" className="text-muted-foreground hover:text-primary transition-colors">
-              Giới thiệu
+              About
             </a>
             <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">
-              Liên hệ
+              Contact
             </a>
           </nav>
 
@@ -38,16 +38,16 @@ const Header = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.location.href = '/login'}
+              onClick={() => (window.location.href = '/login')}
             >
-              Đăng nhập
+              Log in
             </Button>
             <Button
               variant="default"
               size="sm"
-              onClick={() => window.location.href = '/login'}
+              onClick={() => (window.location.href = '/login')}
             >
-              Bắt đầu
+              Get started
             </Button>
           </div>
 
@@ -56,11 +56,7 @@ const Header = () => {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 rounded-md hover:bg-muted transition-colors"
           >
-            {isMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
@@ -69,31 +65,23 @@ const Header = () => {
           <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
             <nav className="flex flex-col gap-4 p-4">
               <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">
-                Tính năng
+                Features
               </a>
               <a href="#map" className="text-muted-foreground hover:text-primary transition-colors">
-                Bản đồ
+                Map
               </a>
               <a href="#about" className="text-muted-foreground hover:text-primary transition-colors">
-                Giới thiệu
+                About
               </a>
               <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">
-                Liên hệ
+                Contact
               </a>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.location.href = '/login'}
-                >
-                  Đăng nhập
+                <Button variant="outline" size="sm" onClick={() => (window.location.href = '/login')}>
+                  Log in
                 </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => window.location.href = '/login'}
-                >
-                  Bắt đầu
+                <Button variant="default" size="sm" onClick={() => (window.location.href = '/login')}>
+                  Get started
                 </Button>
               </div>
             </nav>

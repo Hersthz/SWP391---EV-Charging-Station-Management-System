@@ -6,7 +6,6 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Badge } from "../components/ui/badge";
 import { toast } from "sonner";
 import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import api from "../api/axios";
@@ -28,18 +27,16 @@ const GoogleButton = ({ onClick }: { onClick?: () => void }) => (
                flex items-center justify-center gap-3
                hover:border-gray-300 hover:shadow-md active:scale-[0.99]
                transition-all duration-200"
-    aria-label="Đăng nhập bằng Google"
+    aria-label="Sign in with Google"
   >
     <GoogleIcon />
     <span className="text-sm font-medium text-gray-700">
-      Đăng nhập bằng Google
+      Sign in with Google
     </span>
   </button>
 );
 
-
 interface LoginResponse {
-  token: string;
   username: string;
   role: string;
   full_name: string;
@@ -56,7 +53,6 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPasswordRegister, setShowConfirmPasswordRegister] = useState(false);
-  const [showConfirmPasswordLogin, setShowConfirmPasswordLogin] = useState(false);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -71,45 +67,57 @@ const Login = () => {
     const username = loginData.username.trim();
     const password = loginData.password;
     if (!username || !password) {
-      toast.error("Vui lòng nhập tài khoản và mật khẩu");
+      toast.error("Please enter username and password");
       return;
     }
 
     setIsLoading(true);
-    // Check demo account trước
-    // if (loginData.username === "driver1" && loginData.password === "123") {
-    //   toast.success("Đăng nhập demo thành công (Driver)!");
-    //   localStorage.setItem("token", "demo-token-driver");
-    //   localStorage.setItem("currentUser", "driver1");
-    //   navigate("/dashboard");
-    //   return;
-    // }
-
-    // if (loginData.username === "admin1" && loginData.password === "123") {
-    //   toast.success("Đăng nhập demo thành công (Admin)!");
-    //   localStorage.setItem("token", "demo-token-admin");
-    //   localStorage.setItem("currentUser", "admin1");
-    //   navigate("/admin");
-    //   return;
-    // }
+    // Demo accounts
+    if (username === "driver1" && password === "123") {
+      try {
+        // gọi logout để chắc chắn xóa cookie JWT HttpOnly nếu có (endpoint logout server cần có)
+        await api.post("/auth/logout").catch(() => {/* ignore */ });
+      } finally {
+        toast.success("Demo login successful (Driver)!");
+        // lưu flag demo và thông tin cần thiết (KHÔNG lưu token)
+        localStorage.setItem("isDemo", "true");
+        localStorage.setItem("currentUser", "driver1");
+        localStorage.setItem("role", "User");
+        navigate("/dashboard");
+        setIsLoading(false);
+        return;
+      }
+    }
+    if (username === "admin1" && password === "123") {
+      try {
+        await api.post("/auth/logout").catch(() => {/* ignore */ });
+      } finally {
+        toast.success("Demo login successful (Admin)!");
+        localStorage.setItem("isDemo", "true");
+        localStorage.setItem("currentUser", "admin1");
+        localStorage.setItem("role", "Admin");
+        navigate("/admin");
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
       const { data } = await api.post<LoginResponse>("/auth/login", {
         username,
         password,
       });
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("currentUser", data.username);
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("full_name", data.full_name);
-      toast.success("Đăng nhập thành công!");
-      // Clear password from state for security 
+
+      if (data.username) localStorage.setItem("currentUser", data.username);
+      if (data.role) localStorage.setItem("role", data.role);
+      if ((data as any).full_name) localStorage.setItem("full_name", (data as any).full_name);
+      toast.success("Login successful!");
       setLoginData({ username: data.username, password: "" });
 
       if (data.role === "Admin") navigate("/admin");
       else if (data.role === "Staff") navigate("/staff");
       else navigate("/dashboard");
     } catch (err: any) {
-      const message = err?.response?.data?.message ?? "Username or password is incorrect!";
+      const message = err?.response?.data?.message ?? "Invalid username or password!";
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -127,19 +135,19 @@ const Login = () => {
     const confirmPassword = registerData.confirmPassword;
 
     if (!full_name || !email || !username || !password || !confirmPassword) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
+      toast.error("Please fill in all fields");
       return;
     }
     if (!validateEmail(email)) {
-      toast.error("Email không hợp lệ");
+      toast.error("Invalid email address");
       return;
     }
     if (password !== confirmPassword) {
-      toast.error("Mật khẩu xác nhận không khớp!");
+      toast.error("Passwords do not match!");
       return;
     }
     if (password.length < 6) {
-      toast.error("Mật khẩu phải có ít nhất 6 ký tự!");
+      toast.error("Password must be at least 6 characters!");
       return;
     }
     setIsLoading(true);
@@ -154,7 +162,7 @@ const Login = () => {
       const message =
         typeof res.data === "string"
           ? res.data
-          : "Đăng ký thành công! Vui lòng kiểm tra email để xác minh.";
+          : "Registration successful! Please check your email for verification.";
 
       toast.success(message);
 
@@ -163,7 +171,7 @@ const Login = () => {
       setTab("login");
       setLoginData({ username, password: "" });
     } catch (err: any) {
-      const message = err?.response?.data?.message ?? "Đăng ký thất bại";
+      const message = err?.response?.data?.message ?? "Registration failed";
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -172,19 +180,17 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero relative overflow-hidden flex items-center justify-center p-4">
-      {/* overlay nhạt để giống mẫu */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
 
       <div className="relative z-10 w-full max-w-md">
         <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95">
           <CardHeader className="relative text-center space-y-4 pb-2">
-            {/* nút về trang chủ – ở trong Card, góc trên trái */}
             <Link
               to="/"
               className="absolute left-4 top-4 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Về trang chủ
+              Back to Home
             </Link>
 
             <div className="flex justify-center">
@@ -198,15 +204,15 @@ const Login = () => {
 
             <div>
               <CardTitle className="text-2xl font-bold text-primary">ChargeStation</CardTitle>
-              <CardDescription>Hệ thống quản lý trạm sạc thông minh</CardDescription>            -
+              <CardDescription>Smart EV charging station management system</CardDescription>
             </div>
           </CardHeader>
 
           <CardContent className="pt-4">
             <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Đăng nhập</TabsTrigger>
-                <TabsTrigger value="register">Đăng ký</TabsTrigger>
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
 
               {/* ===== LOGIN ===== */}
@@ -215,12 +221,12 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="username" className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      Tài khoản
+                      Username
                     </Label>
                     <Input
                       id="username"
                       type="text"
-                      placeholder="Nhập tài khoản của bạn"
+                      placeholder="Enter your username"
                       value={loginData.username}
                       onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
                       className="h-12"
@@ -231,13 +237,13 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="password" className="flex items-center gap-2">
                       <Lock className="w-4 h-4" />
-                      Mật khẩu
+                      Password
                     </Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Nhập mật khẩu"
+                        placeholder="Enter your password"
                         value={loginData.password}
                         onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                         className="h-12 pr-12"
@@ -249,7 +255,7 @@ const Login = () => {
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
                         onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showConfirmPasswordLogin ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -262,16 +268,15 @@ const Login = () => {
                     aria-busy={isLoading}
                     className="w-full h-12 text-base font-semibold"
                   >
-                    {isLoading ? "Đang xử lý..." : "Đăng nhập"}
+                    {isLoading ? "Processing..." : "Login"}
                   </Button>
                 </form>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-muted" />
-                  <span className="text-xs text-muted-foreground">hoặc</span>
+                  <span className="text-xs text-muted-foreground">or</span>
                   <div className="flex-1 h-px bg-muted" />
                 </div>
 
-                {/* Nút Google – UI only */}
                 <GoogleButton
                   onClick={() => {
                     window.location.href = "http://localhost:8080/oauth2/authorization/google";
@@ -285,12 +290,12 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="fullName" className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      Họ và tên
+                      Full Name
                     </Label>
                     <Input
                       id="fullName"
                       type="text"
-                      placeholder="Nhập họ và tên"
+                      placeholder="Enter your full name"
                       value={registerData.fullName}
                       onChange={(e) => setRegisterData({ ...registerData, fullName: e.target.value })}
                       className="h-12"
@@ -305,7 +310,7 @@ const Login = () => {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="Nhập địa chỉ email"
+                      placeholder="Enter your email"
                       value={registerData.email}
                       onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
                       className="h-12"
@@ -321,7 +326,7 @@ const Login = () => {
                     <Input
                       id="regUsername"
                       type="text"
-                      placeholder="Enter Username"
+                      placeholder="Choose a username"
                       value={registerData.username}
                       onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
                       className="h-12"
@@ -332,13 +337,13 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="regPassword" className="flex items-center gap-2">
                       <Lock className="w-4 h-4" />
-                      Mật khẩu
+                      Password
                     </Label>
                     <div className="relative">
                       <Input
                         id="regPassword"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)"
+                        placeholder="Create a password (at least 6 characters)"
                         value={registerData.password}
                         onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                         className="h-12 pr-12"
@@ -350,7 +355,7 @@ const Login = () => {
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
                         onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -360,13 +365,13 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="flex items-center gap-2">
                       <Lock className="w-4 h-4" />
-                      Xác nhận mật khẩu
+                      Confirm Password
                     </Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
                         type={showConfirmPasswordRegister ? "text" : "password"}
-                        placeholder="Nhập lại mật khẩu"
+                        placeholder="Re-enter your password"
                         value={registerData.confirmPassword}
                         onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                         className="h-12 pr-12"
@@ -378,7 +383,7 @@ const Login = () => {
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
                         onClick={() => setShowConfirmPasswordRegister(!showConfirmPasswordRegister)}
-                        aria-label={showConfirmPasswordRegister ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        aria-label={showConfirmPasswordRegister ? "Hide password" : "Show password"}
                       >
                         {showConfirmPasswordRegister ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -391,7 +396,7 @@ const Login = () => {
                     disabled={isLoading}
                     aria-busy={isLoading}
                   >
-                    {isLoading ? "Đang xử lý..." : "Tạo tài khoản"}
+                    {isLoading ? "Processing..." : "Create account"}
                   </Button>
                 </form>
               </TabsContent>

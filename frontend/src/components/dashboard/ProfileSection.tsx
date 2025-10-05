@@ -1,4 +1,4 @@
-import { User, Shield } from "lucide-react";
+import { User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
@@ -15,7 +15,7 @@ const ProfileSection = () => {
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-3">
           <Avatar>
-            <AvatarFallback className="bg-primary text-primary-foreground">JD</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground"></AvatarFallback>
           </Avatar>
           <div>
             <div className="font-medium">{localStorage.getItem("full_name")}</div>

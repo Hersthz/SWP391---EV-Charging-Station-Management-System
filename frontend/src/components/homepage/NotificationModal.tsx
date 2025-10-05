@@ -36,45 +36,45 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
     {
       id: '1',
       type: 'success',
-      title: 'Sạc hoàn thành',
-      message: 'Phiên sạc tại Downtown Station #3 đã hoàn thành thành công. Năng lượng đã thêm: 45.8 kWh',
-      time: '2 phút trước',
+      title: 'Charging complete',
+      message: 'Session at Downtown Station #3 finished successfully. Energy added: 45.8 kWh',
+      time: '2 minutes ago',
       read: false,
       icon: CheckCircle
     },
     {
       id: '2',
       type: 'info',
-      title: 'Thanh toán thành công',
-      message: 'Thanh toán $28.50 cho phiên sạc đã được xử lý thành công',
-      time: '5 phút trước',
+      title: 'Payment successful',
+      message: 'Payment of $28.50 for the session was processed successfully',
+      time: '5 minutes ago',
       read: false,
       icon: CreditCard
     },
     {
       id: '3',
       type: 'warning',
-      title: 'Đặt chỗ sắp hết hạn',
-      message: 'Đặt chỗ sạc tại Central Mall sẽ hết hạn sau 10 phút nữa',
-      time: '15 phút trước',
+      title: 'Reservation expiring soon',
+      message: 'Your reservation at Central Mall will expire in 10 minutes',
+      time: '15 minutes ago',
       read: false,
       icon: Clock
     },
     {
       id: '4',
       type: 'info',
-      title: 'Xe điện đã kết nối',
-      message: 'Tesla Model 3 đã được kết nối và bắt đầu sạc',
-      time: '1 giờ trước',
+      title: 'EV connected',
+      message: 'Tesla Model 3 connected and started charging',
+      time: '1 hour ago',
       read: true,
       icon: Car
     },
     {
       id: '5',
       type: 'success',
-      title: 'Trạm mới khả dụng',
-      message: 'Trạm sạc mới tại Tech Park đã mở cửa với giá ưu đãi',
-      time: '2 giờ trước',
+      title: 'New station available',
+      message: 'A new station at Tech Park is now open with promotional pricing',
+      time: '2 hours ago',
       read: true,
       icon: Zap
     }
@@ -113,7 +113,7 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary" />
-              <DialogTitle>Thông báo</DialogTitle>
+              <DialogTitle>Notifications</DialogTitle>
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="bg-primary/10 text-primary">
                   {unreadCount}
@@ -126,7 +126,7 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
               onClick={markAllAsRead}
               className="text-primary"
             >
-              Đánh dấu tất cả
+              Mark all as read
             </Button>
           </div>
         </DialogHeader>
@@ -174,7 +174,7 @@ const NotificationModal = ({ isOpen, onClose }: NotificationModalProps) => {
 
         <div className="pt-4 border-t">
           <Button variant="outline" className="w-full" onClick={onClose}>
-            Đóng
+            Close
           </Button>
         </div>
       </DialogContent>

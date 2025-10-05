@@ -1,6 +1,7 @@
 
 server:
   port: 8080
+  address: 0.0.0.0
 spring:
   application:
       name: EVCharging
@@ -41,11 +42,11 @@ spring:
         registration:
           google:
             client-id: 923020885723-s2jqbps9j9rb7vfftbd2adpatvtcvbrq.apps.googleusercontent.com
-            client-secret:
+            client-secret: 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
             scope:
               - email
               - profile
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "http://localhost:8080/login/oauth2/code/google"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth

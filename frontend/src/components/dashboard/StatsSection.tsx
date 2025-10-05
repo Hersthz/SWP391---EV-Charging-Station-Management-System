@@ -9,15 +9,15 @@ const StatsSection = () => {
   const highlights = [
     { 
       icon: BarChart3, 
-      label: "Xem báo cáo", 
-      description: "Thống kê chi tiết",
+      label: "View Reports", 
+      description: "Detailed statistics",
       color: "text-blue-600",
       bgColor: "bg-blue-50",
       borderColor: "border-blue-200"
     },
     { 
       icon: Award, 
-      label: "Thành tích", 
+      label: "Achievements", 
       description: "Level: Gold Member",
       color: "text-yellow-600",
       bgColor: "bg-yellow-50",
@@ -25,8 +25,8 @@ const StatsSection = () => {
     },
     { 
       icon: Shield, 
-      label: "Bảo mật", 
-      description: "Tài khoản được bảo vệ",
+      label: "Security", 
+      description: "Account protected",
       color: "text-green-600",
       bgColor: "bg-green-50",
       borderColor: "border-green-200"
@@ -51,17 +51,6 @@ const StatsSection = () => {
         </Card>
       ))}
       
-      <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-        <CardContent className="p-4 text-center">
-          <TrendingUp className="w-8 h-8 text-primary mx-auto mb-2" />
-          <Button 
-            className="w-full"
-            onClick={() => navigate('/reports')}
-          >
-            Xem báo cáo chi tiết
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 };
