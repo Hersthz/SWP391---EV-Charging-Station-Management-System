@@ -1,6 +1,8 @@
 package com.pham.basis.evcharging.service;
 
+import com.pham.basis.evcharging.controller.AddStationRequest;
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
+import com.pham.basis.evcharging.dto.response.AddStationResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationResponse;
 import com.pham.basis.evcharging.model.ChargingStation;
 
@@ -10,4 +12,5 @@ public interface ChargingStationService {
     public List<ChargingStationResponse> findNearbyStations(StationFilterRequest request);
     public ChargingStationResponse convertToResponse(ChargingStation station);
     public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
+    AddStationResponse addStation(String userName, AddStationRequest request);
 }

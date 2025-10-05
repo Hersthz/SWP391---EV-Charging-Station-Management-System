@@ -1,6 +1,8 @@
 package com.pham.basis.evcharging.service;
 
+import com.pham.basis.evcharging.controller.AddStationRequest;
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
+import com.pham.basis.evcharging.dto.response.AddStationResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationResponse;
 import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.ChargingStation;
@@ -186,6 +188,11 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    @Override
+    public AddStationResponse addStation(String userName, AddStationRequest request) {
+        return null;
     }
 
     public ChargingStationResponse convertToResponse(ChargingStation station) {
