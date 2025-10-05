@@ -16,6 +16,7 @@ import StaffDashboard from "./pages/StaffDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 import Profile from "./pages/Profile";
+import Booking from "./pages/BookingPage";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/map" element={<StationMap />} />
+          <Route path="/booking" element={<Booking />} />
+          <Route path="/booking/:id" element={<Booking />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/verify" element={<VerifyEmail />} />
           <Route path="/admin" element={<AdminDashboard />} />

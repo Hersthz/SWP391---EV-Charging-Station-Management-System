@@ -9,6 +9,10 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "../components/ui/dialog";
+import { Separator } from "../components/ui/separator";
 
 // Leaflet
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -17,7 +21,38 @@ import * as L from "leaflet";
 import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 
-// ==== MOCK STATIONS (dùng khi CORS lỗi / backend chưa chạy) ====
+/* =========================
+   Types
+========================= */
+interface Station {
+  id: number; name: string; address: string;
+  latitude: number; longitude: number;
+  distance?: number; status?: string; power?: string;
+  available?: string; connectors?: string[]; price?: string;
+}
+type SortOption = "distance" | "price" | "power" | "availability";
+interface Filters {
+  radius: number; connectors: string[]; availableOnly: boolean;
+  minPower?: number; maxPower?: number; minPrice?: number; maxPrice?: number;
+  sort: SortOption; page: number; size: number;
+}
+type Review = {
+  id: string;
+  userName: string;
+  rating: number;     // 1..5
+  comment: string;
+  createdAt: string;  // ISO
+};
+
+/* =========================
+   Constants & helpers
+========================= */
+const defaultFilters: Filters = {
+  radius: 100, connectors: [], availableOnly: false,
+  minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10,
+  sort: "distance", page: 0, size: 50,
+};
+
 /*const MOCK_STATIONS: Station[] = [
   {
     id: 1,
@@ -58,32 +93,27 @@ import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility
     connectors: ["CCS", "CHAdeMO"],
     price: "$0.58/kWh",
   },
-];
-*/
+];*/
+
 const userIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
 });
 
-interface Station {
-  id: number; name: string; address: string;
-  latitude: number; longitude: number;
-  distance?: number; status?: string; power?: string;
-  available?: string; connectors?: string[]; price?: string;
-}
-type SortOption = "distance" | "price" | "power" | "availability";
-interface Filters {
-  radius: number; connectors: string[]; availableOnly: boolean;
-  minPower?: number; maxPower?: number; minPrice?: number; maxPrice?: number;
-  sort: SortOption; page: number; size: number;
-}
-const defaultFilters: Filters = {
-  radius: 5, connectors: [], availableOnly: false,
-  minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10,
-  sort: "distance", page: 0, size: 50,
-};
+const Stars = ({ value }: { value: number }) => (
+  <div className="flex items-center gap-0.5">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <svg key={i} viewBox="0 0 20 20" className={`w-4 h-4 ${i < value ? "fill-yellow-400" : "fill-slate-200"}`}>
+        <path d="M10 15.27L15.18 18 13.64 11.97 18 8.24 11.81 7.63 10 2 8.19 7.63 2 8.24 6.36 11.97 4.82 18z" />
+      </svg>
+    ))}
+  </div>
+);
 
+/* =========================
+   Component
+========================= */
 const StationMap = () => {
   const navigate = useNavigate();
 
@@ -112,6 +142,12 @@ const StationMap = () => {
   const [draftConnectors, setDraftConnectors] = useState<string[]>(appliedFilters.connectors ?? []);
   const [availableOnly, setAvailableOnly] = useState(appliedFilters.availableOnly ?? false);
 
+  // detail popup state
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+
   // geolocation & first fetch
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -121,14 +157,12 @@ const StationMap = () => {
         fetchStations(appliedFilters, lat, lon);
         if (mapRef.current) mapRef.current.setView([lat, lon], 13);
       },
-      (err) => {
-        console.error("Geolocation error:", err);
-        // Fallback dùng mock + center HCMC
+      () => {
+        // Fallback: center HCMC + mock
         const fallback: [number, number] = [10.7769, 106.7009];
         setUserPosition(fallback);
         setStations([]);
         if (mapRef.current) mapRef.current.setView(fallback, 13);
-        alert("Không lấy được vị trí hiện tại, hãy bật GPS.");
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,10 +188,8 @@ const StationMap = () => {
       };
       const { data } = await api.post<Station[]>("/charging-stations/nearby", payload);
       setStations(data);
-    } catch (e) {
-      console.error("Fetch stations error:", e);
+    } catch {
       setStations([]);
-      alert("Không thể tải danh sách trạm sạc, vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -186,6 +218,30 @@ const StationMap = () => {
 
   const navigateToStation = (station: Station) => {
     if (mapRef.current) mapRef.current.setView([station.latitude, station.longitude], 17, { animate: true });
+  };
+
+  const openStationDialog = async (station: Station) => {
+    setSelectedStation(station);
+    setDetailOpen(true);
+    setReviewsLoading(true);
+    try {
+      // Nếu backend đã có endpoint, thay mock bằng:
+      // const { data } = await api.get<Review[]>(`/charging-stations/${station.id}/reviews`);
+      // setReviews(data);
+
+      // Mock fallback
+      const mock: Review[] = [
+        { id: "r1", userName: "Minh Tran", rating: 5, comment: "Sạc nhanh, chỗ đậu dễ!", createdAt: "2025-09-21T10:45:00Z" },
+        { id: "r2", userName: "Lan Pham", rating: 4, comment: "Nhân viên hỗ trợ tốt, đôi lúc hơi đông.", createdAt: "2025-09-18T08:10:00Z" },
+        { id: "r3", userName: "Quang Le", rating: 3, comment: "Ổn, nhưng giá giờ cao điểm hơi chát.", createdAt: "2025-09-10T14:05:00Z" },
+      ];
+      setReviews(mock);
+    } catch (e) {
+      console.error("Fetch reviews error:", e);
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
   };
 
   // heights: header(60) + filters(56) = 116
@@ -349,16 +405,13 @@ const StationMap = () => {
         )}
       </div>
 
-      {/* MAIN SPLIT (fixed width sidebar, no resize) */}
+      {/* MAIN SPLIT */}
       <div className="relative flex-1 flex overflow-hidden select-none">
-        {/* LEFT LIST  */}
+        {/* LEFT LIST */}
         <div
-          className={`bg-white border-r transition-[width] duration-200 ease-out ${
-            isCollapsed ? "w-0" : "w-[45vw]"
-          }`}
+          className={`bg-white border-r transition-[width] duration-200 ease-out ${isCollapsed ? "w-0" : "w-[45vw]"}`}
           style={{ height: viewportMinusBars }}
         >
-          {/* Header inside list */}
           <div className={`${isCollapsed ? "hidden" : "block"} h-full flex flex-col`}>
             <div className="px-4 pt-4 pb-2 flex items-center justify-between">
               <h2 className="text-sm text-muted-foreground">Over {stations.length} charging stations</h2>
@@ -376,6 +429,7 @@ const StationMap = () => {
               {stations.map((station) => (
                 <Card
                   key={station.id}
+                  onClick={() => openStationDialog(station)}
                   className="cursor-pointer rounded-2xl border-slate-200 transition-all hover:shadow-[0_8px_24px_rgba(0,0,0,.08)]"
                 >
                   <div className="flex gap-4 p-4">
@@ -418,11 +472,27 @@ const StationMap = () => {
                       </div>
 
                       <div className="mt-3 flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/booking/${station.id}`, { state: { station } });
+                          }}
+                        >
                           <Bookmark className="w-4 h-4 mr-1" />
                           Book Station
                         </Button>
-                        <Button variant="default" size="sm" className="flex-1" onClick={() => navigateToStation(station)}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigateToStation(station);
+                          }}
+                        >
                           <Navigation className="w-4 h-4 mr-1" />
                           Navigate
                         </Button>
@@ -437,7 +507,7 @@ const StationMap = () => {
 
         {/* RIGHT – MAP */}
         <div className="flex-1 relative bg-muted/30 z-0" style={{ height: viewportMinusBars }}>
-          {/* Nút split ở GÓC TRÊN-TRÁI */}
+          {/* Toggle button */}
           <button
             onClick={() => setIsCollapsed((v) => !v)}
             className="absolute top-4 left-4 z-[500] rounded-xl shadow-md bg-white/95 hover:bg-white px-2 py-2"
@@ -446,7 +516,7 @@ const StationMap = () => {
             {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>
 
-          {/* Map – không có zoom control */}
+          {/* Map */}
           <MapContainer
             center={[10.8618942110713, 106.79798794919327]}
             zoom={13}
@@ -480,6 +550,124 @@ const StationMap = () => {
           </MapContainer>
         </div>
       </div>
+
+      {/* DETAIL DIALOG */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {selectedStation?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedStation?.address}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedStation && (
+            <div className="space-y-4">
+              {/* Info grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-lg border p-3 bg-sky-50/50">
+                  <p className="text-xs text-slate-500">Status</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className={selectedStation.status === "Available" ? "bg-green-100 text-green-700 border-green-200" : "bg-yellow-100 text-yellow-800 border-yellow-200"}>
+                      {selectedStation.status ?? "—"}
+                    </Badge>
+                    <span className="text-xs text-slate-500">{selectedStation.available ?? ""}</span>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-3 bg-sky-50/50">
+                  <p className="text-xs text-slate-500">Price</p>
+                  <p className="font-semibold mt-1">{selectedStation.price ?? "-"}</p>
+                </div>
+
+                <div className="rounded-lg border p-3 bg-sky-50/50">
+                  <p className="text-xs text-slate-500">Power</p>
+                  <p className="font-semibold mt-1">{selectedStation.power ?? "-"}</p>
+                </div>
+
+                <div className="rounded-lg border p-3 bg-sky-50/50">
+                  <p className="text-xs text-slate-500">Distance</p>
+                  <p className="font-semibold mt-1">
+                    {(selectedStation.distance as any)?.toFixed?.(1) ?? selectedStation.distance ?? "—"} km
+                  </p>
+                </div>
+              </div>
+
+              {/* Connectors */}
+              <div>
+                <p className="text-xs text-slate-500 mb-2">Connectors</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedStation.connectors ?? []).map((c) => (
+                    <Badge key={c} variant="outline" className="rounded-full">{c}</Badge>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Reviews */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold">User Reviews</h3>
+                  {!reviewsLoading && (
+                    <div className="text-sm text-slate-500">
+                      {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                    </div>
+                  )}
+                </div>
+
+                {reviewsLoading ? (
+                  <div className="text-sm text-slate-500">Loading reviews…</div>
+                ) : reviews.length === 0 ? (
+                  <div className="text-sm text-slate-500">No reviews yet.</div>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-auto pr-1">
+                    {reviews.map((r) => (
+                      <div key={r.id} className="rounded-lg border p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">{r.userName}</div>
+                          <Stars value={r.rating} />
+                        </div>
+                        <p className="text-sm mt-1">{r.comment}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {new Date(r.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setDetailOpen(false);
+                    if (selectedStation) navigate(`/booking/${selectedStation.id}`, { state: { station: selectedStation } });
+                  }}
+                >
+                  <Bookmark className="w-4 h-4 mr-1" />
+                  Book this Station
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setDetailOpen(false);
+                    if (selectedStation) navigateToStation(selectedStation);
+                  }}
+                >
+                  <Navigation className="w-4 h-4 mr-1" />
+                  Navigate
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
