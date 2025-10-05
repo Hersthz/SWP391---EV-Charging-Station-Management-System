@@ -19,6 +19,7 @@ public interface UserRepository extends JpaRepository<User,Integer> {
 // JpaRepository đã có sẵn các method cơ bản:
 // findAll(), findById(), save(), deleteById()...
     User findByEmail(String email);
-    Optional<User> findById(Long id);
+    User findByPhone(String phone);
+  
 }
 
