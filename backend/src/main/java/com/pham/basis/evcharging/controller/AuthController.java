@@ -5,13 +5,17 @@
     import com.pham.basis.evcharging.dto.response.ErrorResponse;
     import com.pham.basis.evcharging.dto.response.LoginResponse;
     import com.pham.basis.evcharging.dto.response.UserResponse;
+    import jakarta.servlet.http.HttpServletResponse;
     import com.pham.basis.evcharging.model.User;
     import com.pham.basis.evcharging.service.EmailService;
     import com.pham.basis.evcharging.service.UserService;
     import com.pham.basis.evcharging.service.VerificationTokenService;
     import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.beans.factory.annotation.Value;
     import org.springframework.core.env.Environment;
+    import org.springframework.http.HttpHeaders;
     import org.springframework.http.HttpStatus;
+    import org.springframework.http.ResponseCookie;
     import org.springframework.http.ResponseEntity;
     import org.springframework.web.bind.annotation.*;
     import com.pham.basis.evcharging.security.JwtUtil;
@@ -41,6 +45,10 @@
             return env.getProperty("app.frontend-url", "http://localhost:5173");
         }
 
+        @Value("${jwt.expiration:86400000}")
+        private long jwtExpiration;
+
+
         @PostMapping("/register")
         public ResponseEntity<UserResponse> createUser(@RequestBody UserCreationRequest request) {
             User user = userService.createUser(request);
@@ -61,7 +69,7 @@
         }
 
         @PostMapping("/login")
-        public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse servletResponse) {
             try {
                 User user =  userService.login(request.getUsername(), request.getPassword());
                 if (Boolean.FALSE.equals(user.getIs_verified())) {
@@ -70,7 +78,16 @@
                 }
                 String roleName = user.getRole() != null ? user.getRole().getName() : "UNKNOWN";
                 String token = jwtUtil.generateToken(request.getUsername(), user.getRole().getName());
-                LoginResponse response = new LoginResponse(token,request.getUsername(),roleName,user.getFull_name());
+
+                ResponseCookie cookie = ResponseCookie.from("JWT", token)
+                        .httpOnly(true)
+                        .secure(false)
+                        .path("/")
+                        .maxAge(jwtExpiration / 1000)
+                        .sameSite("Lax")
+                        .build();
+                servletResponse.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                LoginResponse response = new LoginResponse(request.getUsername(),roleName,user.getFull_name());
                 return ResponseEntity.ok(response);
             }catch (RuntimeException e) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(e.getMessage()));
@@ -110,5 +127,16 @@
                     user.getRole() != null ? user.getRole().getName() : null
             );
             return ResponseEntity.ok(resp);
+        }
+
+        @PostMapping("/logout")
+        public ResponseEntity<?> logout(HttpServletResponse response) {
+            ResponseCookie cookie = ResponseCookie.from("JWT", "")
+                    .httpOnly(true)
+                    .path("/")
+                    .maxAge(0)
+                    .build();
+            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+            return ResponseEntity.ok(Map.of("message", "Logged out"));
         }
     }

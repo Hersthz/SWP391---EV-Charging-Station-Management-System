@@ -9,7 +9,10 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "../components/ui/dialog";
+import { Star } from "lucide-react";
 // Leaflet
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -92,6 +95,8 @@ const StationMap = () => {
   const [stations, setStations] = useState<Station[]>([]);
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
   // applied filters
   const [appliedFilters, setAppliedFilters] = useState<Filters>(defaultFilters);
@@ -226,7 +231,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowPrice(v=>!v); setShowPower(false); setShowConnector(false); setShowMore(false); }}
+            onClick={() => { setShowPrice(v => !v); setShowPower(false); setShowConnector(false); setShowMore(false); }}
           >
             Up to ${Number(appliedFilters.maxPrice ?? 1).toFixed(2)}/kWh
             {Number(appliedFilters.maxPrice) !== defaultFilters.maxPrice && (
@@ -242,7 +247,7 @@ const StationMap = () => {
               </div>
               <p className="text-xs text-muted-foreground mb-2">Max price per kWh</p>
               <input type="range" min={0} max={1} step={0.05} value={priceMax}
-                onChange={(e)=>setPriceMax(parseFloat(e.target.value))} className="w-full" />
+                onChange={(e) => setPriceMax(parseFloat(e.target.value))} className="w-full" />
               <div className="mt-1 text-sm">${Number(priceMax).toFixed(2)}</div>
               <div className="mt-4 text-right"><Button size="sm" onClick={applyAllFilters}>Apply</Button></div>
             </div>
@@ -253,7 +258,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowPower(v=>!v); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
+            onClick={() => { setShowPower(v => !v); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
           >
             Power type
             {Number(appliedFilters.minPower) > 0 && (
@@ -268,10 +273,10 @@ const StationMap = () => {
                 <button onClick={() => setShowPower(false)}><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-1">
-                {[0,50,150,250,350].map((p)=>(
-                  <button key={p} onClick={()=>setMinPower(p)}
-                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${minPower===p?"bg-teal-500 text-white":""}`}>
-                    {p===0?"Any":`${p}kW+`}
+                {[0, 50, 150, 250, 350].map((p) => (
+                  <button key={p} onClick={() => setMinPower(p)}
+                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${minPower === p ? "bg-teal-500 text-white" : ""}`}>
+                    {p === 0 ? "Any" : `${p}kW+`}
                   </button>
                 ))}
               </div>
@@ -284,7 +289,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowConnector(v=>!v); setShowPrice(false); setShowPower(false); setShowMore(false); }}
+            onClick={() => { setShowConnector(v => !v); setShowPrice(false); setShowPower(false); setShowMore(false); }}
           >
             Connectors
             {draftConnectors.length > 0 && (
@@ -299,11 +304,11 @@ const StationMap = () => {
                 <button onClick={() => setShowConnector(false)}><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-2">
-                {["CCS","CHAdeMO","Type2","AC"].map((c)=>{
+                {["CCS", "CHAdeMO", "Type2", "AC"].map((c) => {
                   const checked = draftConnectors.includes(c);
                   return (
                     <label key={c} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-100">
-                      <input type="checkbox" checked={checked} onChange={()=>toggleConnector(c)} />
+                      <input type="checkbox" checked={checked} onChange={() => toggleConnector(c)} />
                       <span className="text-sm">{c}</span>
                     </label>
                   );
@@ -318,7 +323,7 @@ const StationMap = () => {
         <div className="relative">
           <Button
             variant="outline" size="sm" className="rounded-full border-slate-200"
-            onClick={() => { setShowMore(v=>!v); setShowPrice(false); setShowPower(false); setShowConnector(false); }}
+            onClick={() => { setShowMore(v => !v); setShowPrice(false); setShowPower(false); setShowConnector(false); }}
           >
             More filters
             {availableOnly && (<Badge className="ml-2 rounded-full w-5 h-5 p-0 grid place-items-center">1</Badge>)}
@@ -331,7 +336,7 @@ const StationMap = () => {
                 <button onClick={() => setShowMore(false)}><X className="w-4 h-4" /></button>
               </div>
               <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-100">
-                <input type="checkbox" checked={availableOnly} onChange={(e)=>setAvailableOnly(e.target.checked)} />
+                <input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} />
                 <span className="text-sm">Show available only</span>
               </label>
               <div className="mt-3 text-right"><Button size="sm" onClick={applyAllFilters}>Apply</Button></div>
@@ -343,19 +348,18 @@ const StationMap = () => {
           (appliedFilters.minPower ?? 0) > 0 ||
           (appliedFilters.connectors?.length ?? 0) > 0 ||
           appliedFilters.availableOnly) && (
-          <Button variant="ghost" size="sm" className="text-muted-foreground rounded-full px-3" onClick={clearAll}>
-            Clear all
-          </Button>
-        )}
+            <Button variant="ghost" size="sm" className="text-muted-foreground rounded-full px-3" onClick={clearAll}>
+              Clear all
+            </Button>
+          )}
       </div>
 
       {/* MAIN SPLIT (fixed width sidebar, no resize) */}
       <div className="relative flex-1 flex overflow-hidden select-none">
         {/* LEFT LIST  */}
         <div
-          className={`bg-white border-r transition-[width] duration-200 ease-out ${
-            isCollapsed ? "w-0" : "w-[45vw]"
-          }`}
+          className={`bg-white border-r transition-[width] duration-200 ease-out ${isCollapsed ? "w-0" : "w-[45vw]"
+            }`}
           style={{ height: viewportMinusBars }}
         >
           {/* Header inside list */}
@@ -426,6 +430,9 @@ const StationMap = () => {
                           <Navigation className="w-4 h-4 mr-1" />
                           Navigate
                         </Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedStation(station)}>
+                          Details
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -465,7 +472,13 @@ const StationMap = () => {
               </Marker>
             )}
             {stations.map((s) => (
-              <Marker key={s.id} position={[s.latitude, s.longitude]}>
+              <Marker
+                key={s.id}
+                position={[s.latitude, s.longitude]}
+                eventHandlers={{
+                  click: () => setSelectedStation(s),
+                }}
+              >
                 <Popup>
                   <div>
                     <strong>{s.name}</strong><br />
@@ -482,6 +495,50 @@ const StationMap = () => {
       </div>
     </div>
   );
-};
 
+};
+<Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
+  <DialogContent className="max-w-lg">
+    {selectedStation && (
+      <>
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">{selectedStation.name}</DialogTitle>
+          <p className="text-sm text-muted-foreground">{selectedStation.address}</p>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span>⚡ Power:</span>
+            <span>{selectedStation.power}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>💰 Price:</span>
+            <span>{selectedStation.price}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>Availability:</span>
+            <span>{selectedStation.available}</span>
+          </div>
+
+          <div className="flex items-center gap-1 text-yellow-500 mt-2">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`w-4 h-4 ${i < 4 ? "fill-yellow-500" : "fill-gray-300"}`}
+              />
+            ))}
+            <span className="ml-2 text-xs text-gray-500">(4.0 / 5)</span>
+          </div>
+
+          <textarea
+            placeholder="Viết đánh giá của bạn..."
+            className="w-full border rounded-md p-2 text-sm mt-2"
+          ></textarea>
+
+          <Button className="w-full mt-2">Gửi đánh giá</Button>
+        </div>
+      </>
+    )}
+  </DialogContent>
+</Dialog>
 export default StationMap;

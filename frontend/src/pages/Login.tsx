@@ -37,7 +37,6 @@ const GoogleButton = ({ onClick }: { onClick?: () => void }) => (
 );
 
 interface LoginResponse {
-  token: string;
   username: string;
   role: string;
   full_name: string;
@@ -74,30 +73,43 @@ const Login = () => {
 
     setIsLoading(true);
     // Demo accounts
-    if (loginData.username === "driver1" && loginData.password === "123") {
-      toast.success("Demo login successful (Driver)!");
-      localStorage.setItem("token", "demo-token-driver");
-      localStorage.setItem("currentUser", "driver1");
-      navigate("/dashboard");
-      return;
+    if (username === "driver1" && password === "123") {
+      try {
+        // gọi logout để chắc chắn xóa cookie JWT HttpOnly nếu có (endpoint logout server cần có)
+        await api.post("/auth/logout").catch(() => {/* ignore */ });
+      } finally {
+        toast.success("Demo login successful (Driver)!");
+        // lưu flag demo và thông tin cần thiết (KHÔNG lưu token)
+        localStorage.setItem("isDemo", "true");
+        localStorage.setItem("currentUser", "driver1");
+        localStorage.setItem("role", "User");
+        navigate("/dashboard");
+        setIsLoading(false);
+        return;
+      }
     }
-
-    if (loginData.username === "admin1" && loginData.password === "123") {
-      toast.success("Demo login successful (Admin)!");
-      localStorage.setItem("token", "demo-token-admin");
-      localStorage.setItem("currentUser", "admin1");
-      navigate("/admin");
-      return;
+    if (username === "admin1" && password === "123") {
+      try {
+        await api.post("/auth/logout").catch(() => {/* ignore */ });
+      } finally {
+        toast.success("Demo login successful (Admin)!");
+        localStorage.setItem("isDemo", "true");
+        localStorage.setItem("currentUser", "admin1");
+        localStorage.setItem("role", "Admin");
+        navigate("/admin");
+        setIsLoading(false);
+        return;
+      }
     }
     try {
       const { data } = await api.post<LoginResponse>("/auth/login", {
         username,
         password,
       });
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("currentUser", data.username);
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("full_name", data.full_name);
+
+      if (data.username) localStorage.setItem("currentUser", data.username);
+      if (data.role) localStorage.setItem("role", data.role);
+      if ((data as any).full_name) localStorage.setItem("full_name", (data as any).full_name);
       toast.success("Login successful!");
       setLoginData({ username: data.username, password: "" });
 
