@@ -17,7 +17,7 @@ public class StationFilterRequest {
     private Double maxPower;
     private Double minPrice;
     private Double maxPrice;
-    private String sort;
+    private String sort; //chi sort theo distance khong can price voi kmw
     private Integer page = 0;
     private Integer size = 10;
 }

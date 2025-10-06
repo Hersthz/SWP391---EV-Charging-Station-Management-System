@@ -22,8 +22,11 @@ import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 
 /* =========================
-   Types - UPDATED
+   Types - UPDATED to match BE DTOs
+   - Summary response used for list
+   - Detail response used for popup
 ========================= */
+
 interface Connector {
   type: string;
 }
@@ -68,6 +71,54 @@ type Review = {
   createdAt: string;
 };
 
+/* ===== Backend response types (shape from your DTOs) ===== */
+interface ChargingStationSummaryResponse {
+  id: number;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distance?: number;
+  status: string;
+  availablePillars?: number;
+  totalPillars?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minPower?: number;
+  maxPower?: number;
+  connectorTypes?: string[];
+}
+
+interface ChargingStationDetailResponse {
+  id: number;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distance?: number;
+  status: string;
+  availablePillars?: number;
+  totalPillars?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minPower?: number;
+  maxPower?: number;
+  pillars: {
+    code: string;
+    status: string;
+    power: number;
+    pricePerKwh: number;
+    connectors: { id?: number; type: string }[];
+  }[];
+  reviews?: {
+    id: string;
+    userName: string;
+    rating: number;
+    comment: string;
+    createdAt: string;
+  }[];
+}
+
 /* =========================
    Constants & helpers - UPDATED
 ========================= */
@@ -78,6 +129,7 @@ const defaultFilters: Filters = {
 };
 
 const MOCK_STATIONS: Station[] = [
+  // ... (keep your existing MOCK_STATIONS content here; omitted in snippet for brevity)
   {
     id: 1,
     name: "Station #1",
@@ -105,197 +157,10 @@ const MOCK_STATIONS: Station[] = [
     maxPower: 150,
     connectorTypes: ["CCS", "CHAdeMO"]
   },
-  {
-    id: 2,
-    name: "Station #2", 
-    address: "Mock Address 2",
-    latitude: 10.849267289775822,
-    longitude: 106.77615902281468,
-    status: "Available",
-    pillars: [
-      {
-        code: "P2-1",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "CCS" }]
-      },
-      {
-        code: "P2-2",
-        status: "Available", 
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "AC" }]
-      }
-    ],
-    distance: 1.2,
-    availablePorts: 2,
-    totalPorts: 2,
-    minPrice: 0.5,
-    maxPrice: 0.5,
-    maxPower: 150,
-    connectorTypes: ["CCS", "AC"]
-  },
-  {
-    id: 3,
-    name: "Station #3",
-    address: "Mock Address 3",
-    latitude: 10.87769840457074,
-    longitude: 106.78908488926061,
-    status: "Available",
-    pillars: [
-      {
-        code: "P3-1",
-        status: "Available",
-        power: 100.0,
-        pricePerKwh: 0.45,
-        connectors: [{ type: "AC" }]
-      }
-    ],
-    distance: 1.8,
-    availablePorts: 1,
-    totalPorts: 1,
-    minPrice: 0.45,
-    maxPrice: 0.45,
-    maxPower: 100,
-    connectorTypes: ["AC"]
-  },
-  {
-    id: 4,
-    name: "Station #4",
-    address: "Mock Address 4",
-    latitude: 10.839816793279379,
-    longitude: 106.7877466819761,
-    status: "Available",
-    pillars: [
-      {
-        code: "P4-1",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "CCS" }, { type: "AC" }]
-      },
-      {
-        code: "P4-2",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "CHAdeMO" }]
-      }
-    ],
-    distance: 2.3,
-    availablePorts: 2,
-    totalPorts: 2,
-    minPrice: 0.5,
-    maxPrice: 0.5,
-    maxPower: 150,
-    connectorTypes: ["CCS", "AC", "CHAdeMO"]
-  },
-  {
-    id: 5,
-    name: "Station #5",
-    address: "Mock Address 5",
-    latitude: 10.860861443602067,
-    longitude: 106.78464586241712,
-    status: "Available",
-    pillars: [
-      {
-        code: "P5-1",
-        status: "Available",
-        power: 50.0,
-        pricePerKwh: 0.35,
-        connectors: [{ type: "AC" }]
-      }
-    ],
-    distance: 0.5,
-    availablePorts: 1,
-    totalPorts: 1,
-    minPrice: 0.35,
-    maxPrice: 0.35,
-    maxPower: 50,
-    connectorTypes: ["AC"]
-  },
-  {
-    id: 6,
-    name: "Station #6",
-    address: "Mock Address 6",
-    latitude: 10.854379681064374,
-    longitude: 106.78272259504136,
-    status: "Available",
-    pillars: [
-      {
-        code: "P6-1",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "CHAdeMO" }]
-      },
-      {
-        code: "P6-2",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "CCS" }]
-      }
-    ],
-    distance: 1.1,
-    availablePorts: 2,
-    totalPorts: 2,
-    minPrice: 0.5,
-    maxPrice: 0.5,
-    maxPower: 150,
-    connectorTypes: ["CHAdeMO", "CCS"]
-  },
-  {
-    id: 7,
-    name: "Station #7",
-    address: "Mock Address 7",
-    latitude: 10.859567051585286,
-    longitude: 106.77050612996604,
-    status: "Available",
-    pillars: [
-      {
-        code: "P7-1",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "CCS" }, { type: "CHAdeMO" }]
-      }
-    ],
-    distance: 2.7,
-    availablePorts: 1,
-    totalPorts: 1,
-    minPrice: 0.5,
-    maxPrice: 0.5,
-    maxPower: 150,
-    connectorTypes: ["CCS", "CHAdeMO"]
-  },
-  {
-    id: 8,
-    name: "Station #8",
-    address: "Mock Address 8",
-    latitude: 10.844467549310396,
-    longitude: 106.8021035518178,
-    status: "Available",
-    pillars: [
-      {
-        code: "P8-1",
-        status: "Available",
-        power: 150.0,
-        pricePerKwh: 0.5,
-        connectors: [{ type: "AC" }]
-      }
-    ],
-    distance: 3.2,
-    availablePorts: 1,
-    totalPorts: 1,
-    minPrice: 0.5,
-    maxPrice: 0.5,
-    maxPower: 150,
-    connectorTypes: ["AC"]
-  }
+  // chet r khi lai ho t lo xoa roi 
 ];
 
+/* leaflet user icon */
 const userIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png",
   iconSize: [32, 32],
@@ -312,24 +177,53 @@ const Stars = ({ value }: { value: number }) => (
   </div>
 );
 
-// Helper function to compute station display fields
-const computeStationFields = (station: Station): Station => {
-  const availablePorts = station.pillars.filter(p => p.status === "Available").length;
-  const totalPorts = station.pillars.length;
-  const prices = station.pillars.map(p => p.pricePerKwh);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
-  const maxPower = Math.max(...station.pillars.map(p => p.power));
-  const connectorTypes = [...new Set(station.pillars.flatMap(p => p.connectors.map(c => c.type)))];
+// map helpers: convert BE summary -> Station
+const mapSummaryToStation = (s: ChargingStationSummaryResponse): Station => {
+  return {
+    id: s.id,
+    name: s.name,
+    address: s.address,
+    latitude: s.latitude,
+    longitude: s.longitude,
+    status: s.status,
+    pillars: [], // summary doesn't include pillar list; empty for list view
+    distance: s.distance,
+    availablePorts: s.availablePillars ?? 0,
+    totalPorts: s.totalPillars ?? 0,
+    minPrice: s.minPrice ?? undefined,
+    maxPrice: s.maxPrice ?? undefined,
+    maxPower: s.maxPower ?? undefined,
+    connectorTypes: s.connectorTypes ?? [],
+  };
+};
+
+// map detail response -> Station (fill pillars & reviews separately)
+const mapDetailToStation = (d: ChargingStationDetailResponse): Station => {
+  const pillars: Pillar[] = (d.pillars ?? []).map(p => ({
+    code: p.code,
+    status: p.status,
+    power: p.power,
+    pricePerKwh: p.pricePerKwh,
+    connectors: (p.connectors ?? []).map(c => ({ type: c.type })),
+  }));
+
+  const connectorTypes = [...new Set(pillars.flatMap(p => p.connectors.map(c => c.type)))];
 
   return {
-    ...station,
-    availablePorts,
-    totalPorts,
-    minPrice,
-    maxPrice,
-    maxPower,
-    connectorTypes
+    id: d.id,
+    name: d.name,
+    address: d.address,
+    latitude: d.latitude,
+    longitude: d.longitude,
+    status: d.status,
+    pillars,
+    distance: d.distance,
+    availablePorts: d.availablePillars ?? pillars.filter(p => p.status === "Available").length,
+    totalPorts: d.totalPillars ?? pillars.length,
+    minPrice: d.minPrice ?? (pillars.length ? Math.min(...pillars.map(p => p.pricePerKwh)) : undefined),
+    maxPrice: d.maxPrice ?? (pillars.length ? Math.max(...pillars.map(p => p.pricePerKwh)) : undefined),
+    maxPower: d.maxPower ?? (pillars.length ? Math.max(...pillars.map(p => p.power)) : undefined),
+    connectorTypes,
   };
 };
 
@@ -386,7 +280,7 @@ const StationMap = () => {
         // Fallback: center HCMC + mock
         const fallback: [number, number] = [10.7769, 106.7009];
         setUserPosition(fallback);
-        const computedStations = MOCK_STATIONS.map(computeStationFields);
+        const computedStations = MOCK_STATIONS.map(s => s); // mocks already computed
         setStations(computedStations);
         if (mapRef.current) mapRef.current.setView(fallback, 13);
       }
@@ -412,13 +306,15 @@ const StationMap = () => {
         minPrice: filters.minPrice, maxPrice: filters.maxPrice,
         sort: filters.sort, page: filters.page, size: filters.size,
       };
-      const { data } = await api.post<Station[]>("/charging-stations/nearby", payload);
-      // Compute display fields for each station
-      const computedStations = data.map(computeStationFields);
-      setStations(computedStations);
-    } catch {
-      // Compute display fields for mock stations
-      const computedStations = MOCK_STATIONS.map(computeStationFields);
+      // Expecting backend returns ChargingStationSummaryResponse[]
+      const { data } = await api.post<ChargingStationSummaryResponse[]>("/charging-stations/nearby", payload);
+
+      const mapped: Station[] = data.map(mapSummaryToStation);
+      setStations(mapped);
+    } catch (e) {
+      console.error("Fetch stations error:", e);
+      // fallback to mock
+      const computedStations = MOCK_STATIONS.map(s => s);
       setStations(computedStations);
     } finally {
       setLoading(false);
@@ -452,23 +348,45 @@ const StationMap = () => {
   };
 
   const navigateToStation = (station: Station) => {
-    if (mapRef.current) mapRef.current.setView([station.latitude, station.longitude], 17, { animate: true });
+    if (mapRef.current) mapRef.current.setView([station.latitude, station.longitude], 17, { animate: true } as any);
   };
 
+  // open detail dialog: call detail endpoint and map to Station
   const openStationDialog = async (station: Station) => {
-    setSelectedStation(station);
+    console.log("openStationDialog start", station.id);
+    setSelectedStation(null);
     setDetailOpen(true);
     setReviewsLoading(true);
     try {
-      const mock: Review[] = [
-        { id: "r1", userName: "Minh Tran", rating: 5, comment: "Sạc nhanh, chỗ đậu dễ!", createdAt: "2025-09-21T10:45:00Z" },
-        { id: "r2", userName: "Lan Pham", rating: 4, comment: "Nhân viên hỗ trợ tốt, đôi lúc hơi đông.", createdAt: "2025-09-18T08:10:00Z" },
-        { id: "r3", userName: "Quang Le", rating: 3, comment: "Ổn, nhưng giá giờ cao điểm hơi chát.", createdAt: "2025-09-10T14:05:00Z" },
-      ];
-      setReviews(mock);
+      // call detail endpoint - adjust path if your BE uses different route
+      const { data } = await api.post<ChargingStationDetailResponse>
+        ("/charging-stations/detail", { stationId: station.id });
+      const mapped = mapDetailToStation(data);
+      setSelectedStation(mapped);
+      // map reviews if present
+      const revs = (data.reviews ?? []).map(r => ({
+        id: r.id,
+        userName: r.userName,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+      }));
+      setReviews(revs);
     } catch (e) {
-      console.error("Fetch reviews error:", e);
-      setReviews([]);
+      console.error("Fetch reviews/detail error:", e);
+      // fallback: if we have at least station from list, show a minimal detail by calling backend-less mapping
+      // Try to reuse summary station (no pillars). If MOCK has it, use MOCK detail
+      const mockDetail = MOCK_STATIONS.find(m => m.id === station.id);
+      if (mockDetail) {
+        setSelectedStation(mockDetail);
+        setReviews([
+          { id: "r1", userName: "Minh Tran", rating: 5, comment: "Sạc nhanh, chỗ đậu dễ!", createdAt: "2025-09-21T10:45:00Z" },
+        ]);
+      } else {
+        // if no mock, keep selectedStation as original station passed in (summary)
+        setSelectedStation(station);
+        setReviews([]);
+      }
     } finally {
       setReviewsLoading(false);
     }
@@ -579,8 +497,6 @@ const StationMap = () => {
             variant="outline" size="sm" className="rounded-full border-slate-200"
 
             onClick={() => { setShowPower(v => !v); setShowRadius(false); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
-
-            onClick={() => { setShowPower(v => !v); setShowPrice(false); setShowConnector(false); setShowMore(false); }}
           >
             Power type
             {Number(appliedFilters.minPower) > 0 && (
@@ -698,7 +614,7 @@ const StationMap = () => {
               <span>Real-time data</span>
             </div>
 
-            {/* List - UPDATED for new station format */}
+            {/* List */}
             <div className="flex-1 overflow-y-auto space-y-4 px-4 pb-4">
               {stations.map((station) => (
                 <Card
@@ -818,7 +734,7 @@ const StationMap = () => {
                 key={s.id}
                 position={[s.latitude, s.longitude]}
                 eventHandlers={{
-                  click: () => setSelectedStation(s),
+                  click: () => { console.log("Marker clicked", s.id); openStationDialog(s); }
                 }}
               >
                 <Popup>
@@ -848,7 +764,7 @@ const StationMap = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedStation && (
+          {selectedStation ? (
             <div className="space-y-4">
               {/* Info grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -896,7 +812,7 @@ const StationMap = () => {
               {/* Pillars Details */}
               <div>
                 <p className="text-xs text-slate-500 mb-2">Charging Ports</p>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
                   {selectedStation.pillars.map((pillar) => (
                     <Card key={pillar.code} className="p-3">
                       <div className="flex items-center justify-between">
@@ -905,7 +821,7 @@ const StationMap = () => {
                           <div className="text-sm text-muted-foreground">
                             {pillar.power} kW • ${pillar.pricePerKwh.toFixed(2)}/kWh
                           </div>
-                          <div className="flex gap-1 mt-1">
+                          <div className="flex gap-1 mt-1 flex-wrap">
                             {pillar.connectors.map((connector, idx) => (
                               <Badge key={idx} variant="secondary" className="text-xs">
                                 {connector.type}
@@ -915,11 +831,11 @@ const StationMap = () => {
                         </div>
                         <Badge
                           className={
-                            pillar.status === "Available" 
+                            pillar.status === "Available"
                               ? "bg-green-100 text-green-700 border-green-200"
                               : pillar.status === "Occupied"
-                              ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                              : "bg-gray-100 text-gray-700 border-gray-200"
+                                ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                : "bg-gray-100 text-gray-700 border-gray-200"
                           }
                         >
                           {pillar.status}
@@ -990,12 +906,12 @@ const StationMap = () => {
                 </Button>
               </div>
             </div>
+          ) : (
+            <div>Loading...</div>
           )}
         </DialogContent>
       </Dialog>
     </div>
   );
-
+}
 export default StationMap;
-
-
