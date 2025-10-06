@@ -1,5 +1,3 @@
-import React from "react";
-
 import { ReactNode, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -34,7 +32,8 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
 
   const navItems = [
     { path: "/staff", icon: BarChart3, label: "Dashboard" },
-    { path: "/staff/stations", icon: MapPin, label: "Stations" },
+    { path: "/staff/monitor", icon: MapPin, label: "Monitor Station" },
+    { path: "/staff/details", icon: Zap, label: "Station Details" },
     { path: "/staff/payments", icon: CreditCard, label: "Payments" },
     { path: "/staff/incidents", icon: AlertTriangle, label: "Incidents" }
   ];
