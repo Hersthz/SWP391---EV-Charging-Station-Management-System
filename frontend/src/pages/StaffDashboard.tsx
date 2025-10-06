@@ -20,7 +20,7 @@ import {
   Thermometer,
   Signal
 } from "lucide-react";
-import StaffLayout from "../components/staff/StaffLayout";
+import StaffLayout from "./../components/staff/StaffLayout";
 import { useNavigate } from "react-router-dom";
 
 const StaffDashboard = () => {
