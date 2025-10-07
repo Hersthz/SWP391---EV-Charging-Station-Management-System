@@ -12,5 +12,4 @@ public class UserCreationRequest {
     private String email;
     private String password;
     private String phone;
-
 }

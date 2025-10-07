@@ -97,12 +97,12 @@ export default function BookingPage() {
   const availablePorts = useMemo(() => {
     const c = normalizedConnectors;
     return [
-      { id: "P1", name: "Port 1", status: "available",   connectorId: c[0]?.id ?? "ccs2",    nameOfConnector: c[0]?.name ?? "CCS2",    power: "350 kW" },
-      { id: "P2", name: "Port 2", status: "occupied",    connectorId: c[0]?.id ?? "ccs2",    nameOfConnector: c[0]?.name ?? "CCS2",    power: "150 kW" },
-      { id: "P3", name: "Port 3", status: "available",   connectorId: c[1]?.id ?? "type2",   nameOfConnector: c[1]?.name ?? "Type2",   power: "22 kW"  },
-      { id: "P4", name: "Port 4", status: "available",   connectorId: c[0]?.id ?? "ccs2",    nameOfConnector: c[0]?.name ?? "CCS2",    power: "350 kW" },
-      { id: "P5", name: "Port 5", status: "maintenance", connectorId: c[1]?.id ?? "type2",   nameOfConnector: c[1]?.name ?? "Type2",   power: "11 kW"  },
-      { id: "P6", name: "Port 6", status: "available",   connectorId: c[2]?.id ?? "chademo", nameOfConnector: c[2]?.name ?? "CHAdeMO", power: "100 kW" },
+      { id: "P1", name: "Port 1", status: "available", connectorId: c[0]?.id ?? "ccs2", nameOfConnector: c[0]?.name ?? "CCS2", power: "350 kW" },
+      { id: "P2", name: "Port 2", status: "occupied", connectorId: c[0]?.id ?? "ccs2", nameOfConnector: c[0]?.name ?? "CCS2", power: "150 kW" },
+      { id: "P3", name: "Port 3", status: "available", connectorId: c[1]?.id ?? "type2", nameOfConnector: c[1]?.name ?? "Type2", power: "22 kW" },
+      { id: "P4", name: "Port 4", status: "available", connectorId: c[0]?.id ?? "ccs2", nameOfConnector: c[0]?.name ?? "CCS2", power: "350 kW" },
+      { id: "P5", name: "Port 5", status: "maintenance", connectorId: c[1]?.id ?? "type2", nameOfConnector: c[1]?.name ?? "Type2", power: "11 kW" },
+      { id: "P6", name: "Port 6", status: "available", connectorId: c[2]?.id ?? "chademo", nameOfConnector: c[2]?.name ?? "CHAdeMO", power: "100 kW" },
     ];
   }, [normalizedConnectors]);
 
@@ -124,7 +124,11 @@ export default function BookingPage() {
     else if (currentStep === 'confirmed') navigate("/map");
     else navigate("/map");
   };
-
+  interface BookingResponse {
+    id: number | string;
+    bookingId?: number | string; // alternative key
+    depositTransactionId?: string;
+  }
   // ==== Gọi API tạo booking (LOGIC GIỮ, chỉ đổi trường thời gian & cọc) ====
   const confirmAndCreateBooking = async () => {
     if (!station) return;
@@ -137,11 +141,11 @@ export default function BookingPage() {
       const payload = {
         stationId: station.id,
         portId: selectedPort,
-        connectorId: selectedConnectorId,      // gửi ID connector
-        arrivalEtaMinutes: etaMinutes,         // NEW: thay cho timeSlot
-        depositAmount: deposit,                // NEW: 1.500đ/phút * ETA
+        connectorId: selectedConnectorId,
+        arrivalEtaMinutes: etaMinutes,
+        depositAmount: deposit,
       };
-      const { data } = await api.post("/bookings", payload);
+      const { data } = await api.post<BookingResponse>("/bookings", payload);
       setReservationId(data?.id ?? data?.bookingId ?? null);
       setTransactionId(data?.depositTransactionId ?? null);
       toast({ title: "Đặt cọc thành công", description: `Booking #${data?.id ?? "—"} tại ${station.name}` });
@@ -504,10 +508,10 @@ export default function BookingPage() {
   // ==== MAIN RENDER (không đổi logic) ====
   const renderStepContent = () => {
     switch (currentStep) {
-      case 'selection':  return renderSelectionStep();
-      case 'summary':    return renderSummaryStep();
-      case 'confirmed':  return renderConfirmedStep();
-      default:           return renderSelectionStep();
+      case 'selection': return renderSelectionStep();
+      case 'summary': return renderSummaryStep();
+      case 'confirmed': return renderConfirmedStep();
+      default: return renderSelectionStep();
     }
   };
 
@@ -530,7 +534,7 @@ export default function BookingPage() {
               </div>
               <span className="text-lg font-semibold text-primary">
                 {currentStep === 'confirmed' ? 'Booking Confirmed' :
-                 currentStep === 'summary'   ? 'Book Station'       : 'Book Station'}
+                  currentStep === 'summary' ? 'Book Station' : 'Book Station'}
               </span>
             </div>
           </div>

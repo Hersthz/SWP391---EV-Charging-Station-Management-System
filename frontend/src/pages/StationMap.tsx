@@ -360,7 +360,11 @@ const StationMap = () => {
     try {
       // call detail endpoint - adjust path if your BE uses different route
       const { data } = await api.post<ChargingStationDetailResponse>
-        ("/charging-stations/detail", { stationId: station.id });
+        ("/charging-stations/detail", {
+          stationId: station.id,
+          latitude: userPosition?.[0],
+          longitude: userPosition?.[1]
+        });
       const mapped = mapDetailToStation(data);
       setSelectedStation(mapped);
       // map reviews if present
