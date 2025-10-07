@@ -42,13 +42,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String getUserRole(String username) {
-        User user = userRepository.findUserByUsername(username);
-        if (user == null) throw new RuntimeException("User not found");
-        return user.getRole().getName();
-    }
-
-    @Override
     public User save(User user) {
         return userRepository.save(user);
     }

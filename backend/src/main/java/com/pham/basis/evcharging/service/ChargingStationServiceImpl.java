@@ -58,6 +58,15 @@
         public ChargingStationDetailResponse getStationDetail(GetStationRequest request) {
             ChargingStation station = stationRepo.findById(request.getStationId())
                     .orElseThrow(() -> new RuntimeException("Station not found"));
+            if (request.getLatitude() != null && request.getLongitude() != null &&
+                    station.getLatitude() != null && station.getLongitude() != null) {
+
+                Double distance = calculateDistance(
+                        request.getLatitude(), request.getLongitude(),
+                        station.getLatitude(), station.getLongitude()
+                );
+                station.setDistance(distance);
+            }
             return convertToDetailResponse(station);
         }
 

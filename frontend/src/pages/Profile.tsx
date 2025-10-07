@@ -1,12 +1,12 @@
 // src/pages/Profile.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Shield, 
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Shield,
   Key,
   Bell,
   Globe,
@@ -559,127 +559,127 @@ const Profile = () => {
             <Card className="shadow-electric border-0 bg-gradient-card">
               <CardHeader className="p-6">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-2xl">
-                    <Car className="w-6 h-6 text-sky-600" />
-                    <span className="text-sky-900">My EVs</span>
-                  </CardTitle>
-                  <CardDescription className="text-slate-500">
-                    Manage your electric vehicles and charging info
-                  </CardDescription>
-                </div>
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-2xl">
+                      <Car className="w-6 h-6 text-sky-600" />
+                      <span className="text-sky-900">My EVs</span>
+                    </CardTitle>
+                    <CardDescription className="text-slate-500">
+                      Manage your electric vehicles and charging info
+                    </CardDescription>
+                  </div>
 
-                <Dialog open={isAddVehicleOpen} onOpenChange={setIsAddVehicleOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="h-9 px-4 rounded-lg shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add vehicle
-                    </Button>
-                  </DialogTrigger>
+                  <Dialog open={isAddVehicleOpen} onOpenChange={setIsAddVehicleOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="h-9 px-4 rounded-lg shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add vehicle
+                      </Button>
+                    </DialogTrigger>
 
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center gap-2">
-                        Add new EV
-                      </DialogTitle>
-                      <DialogDescription>
-                        Enter your vehicle details
-                      </DialogDescription>
-                    </DialogHeader>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center gap-2">
+                          Add new EV
+                        </DialogTitle>
+                        <DialogDescription>
+                          Enter your vehicle details
+                        </DialogDescription>
+                      </DialogHeader>
 
-                    <div className="space-y-6 pt-2">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Make *</Label>
-                          <Input
-                            value={newVehicle.make || ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
-                            placeholder="Tesla, Nissan, VinFast..."
-                          />
+                      <div className="space-y-6 pt-2">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Make *</Label>
+                            <Input
+                              value={newVehicle.make || ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
+                              placeholder="Tesla, Nissan, VinFast..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Model *</Label>
+                            <Input
+                              value={newVehicle.model || ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
+                              placeholder="Model 3, Leaf, VF8..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Year *</Label>
+                            <Input
+                              value={newVehicle.year || ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })}
+                              placeholder="2023"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Variant</Label>
+                            <Input
+                              value={newVehicle.variant || ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, variant: e.target.value })}
+                              placeholder="Long Range, e+, Plus..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Battery (kWh)</Label>
+                            <Input
+                              type="number"
+                              value={newVehicle.battery ?? ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, battery: Number(e.target.value) })}
+                              placeholder="75"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Range (km)</Label>
+                            <Input
+                              type="number"
+                              value={newVehicle.range ?? ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, range: Number(e.target.value) })}
+                              placeholder="400"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Charger type</Label>
+                            <Input
+                              value={newVehicle.chargerType || ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, chargerType: e.target.value })}
+                              placeholder="Type 2 / CCS"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Max power (kW)</Label>
+                            <Input
+                              type="number"
+                              value={newVehicle.maxPower ?? ""}
+                              onChange={(e) => setNewVehicle({ ...newVehicle, maxPower: Number(e.target.value) })}
+                              placeholder="250"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label>Model *</Label>
-                          <Input
-                            value={newVehicle.model || ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
-                            placeholder="Model 3, Leaf, VF8..."
-                          />
+
+                        <div className="p-4 rounded-lg border-2 border-dashed border-sky-200 bg-sky-50/40">
+                          <p className="text-sm text-slate-500 mb-1">Preview</p>
+                          <p className="font-semibold text-slate-800">
+                            {(newVehicle.make || "Make")} {(newVehicle.model || "Model")} {(newVehicle.year || "Year")}
+                          </p>
+                          {newVehicle.variant && (
+                            <p className="text-sm text-slate-500">{newVehicle.variant}</p>
+                          )}
                         </div>
-                        <div className="space-y-2">
-                          <Label>Year *</Label>
-                          <Input
-                            value={newVehicle.year || ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })}
-                            placeholder="2023"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Variant</Label>
-                          <Input
-                            value={newVehicle.variant || ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, variant: e.target.value })}
-                            placeholder="Long Range, e+, Plus..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Battery (kWh)</Label>
-                          <Input
-                            type="number"
-                            value={newVehicle.battery ?? ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, battery: Number(e.target.value) })}
-                            placeholder="75"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Range (km)</Label>
-                          <Input
-                            type="number"
-                            value={newVehicle.range ?? ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, range: Number(e.target.value) })}
-                            placeholder="400"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Charger type</Label>
-                          <Input
-                            value={newVehicle.chargerType || ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, chargerType: e.target.value })}
-                            placeholder="Type 2 / CCS"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Max power (kW)</Label>
-                          <Input
-                            type="number"
-                            value={newVehicle.maxPower ?? ""}
-                            onChange={(e) => setNewVehicle({ ...newVehicle, maxPower: Number(e.target.value) })}
-                            placeholder="250"
-                          />
+
+                        <div className="flex justify-end gap-3 pt-2">
+                          <Button variant="outline" onClick={() => setIsAddVehicleOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={handleAddVehicle} className="h-9 px-4 rounded-lg bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="p-4 rounded-lg border-2 border-dashed border-sky-200 bg-sky-50/40">
-                        <p className="text-sm text-slate-500 mb-1">Preview</p>
-                        <p className="font-semibold text-slate-800">
-                          {(newVehicle.make || "Make")} {(newVehicle.model || "Model")} {(newVehicle.year || "Year")}
-                        </p>
-                        {newVehicle.variant && (
-                          <p className="text-sm text-slate-500">{newVehicle.variant}</p>
-                        )}
-                      </div>
-
-                      <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="outline" onClick={() => setIsAddVehicleOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleAddVehicle} className="h-9 px-4 rounded-lg bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardHeader>
 
@@ -687,9 +687,8 @@ const Profile = () => {
                 {vehicles.map((v) => (
                   <Card
                     key={v.id}
-                    className={`rounded-xl bg-white shadow-sm border ${
-                      v.isPrimary ? "border-sky-400" : "border-slate-200"
-                    }`}
+                    className={`rounded-xl bg-white shadow-sm border ${v.isPrimary ? "border-sky-400" : "border-slate-200"
+                      }`}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-4">
