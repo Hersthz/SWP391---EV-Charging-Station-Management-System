@@ -22,7 +22,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public ReservationResponse createReservation(ReservationRequest reservationRequest) {
         User user = userRepository.findById(reservationRequest.getUserId()).orElseThrow(() -> new RuntimeException("User not found"));
-        ChargingStation chargingStation = chargingStationRepository.findChargingStationById(reservationRequest.getStationId()).orElseThrow(() -> new RuntimeException("Station not found"));
+        ChargingStation chargingStation = chargingStationRepository.findById(reservationRequest.getStationId()).orElseThrow(() -> new RuntimeException("Station not found"));
         ChargerPillar chargerPillar = chargerPillarRepository.findChargerPillarById(reservationRequest.getPillarId()).orElseThrow(() -> new RuntimeException("Pillar not found"));
         Connector connector = connectorRepository.findById(reservationRequest.getConnectorId()).orElseThrow(() -> new RuntimeException("Connector not found"));
 
