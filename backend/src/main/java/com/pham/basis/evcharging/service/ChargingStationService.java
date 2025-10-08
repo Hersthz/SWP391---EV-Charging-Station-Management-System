@@ -7,12 +7,13 @@ import com.pham.basis.evcharging.dto.response.AddStationResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
 import com.pham.basis.evcharging.model.ChargingStation;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
 public interface ChargingStationService {
-    public List<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
-    public ChargingStationDetailResponse getStationDetail(GetStationRequest request);
-    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
+    Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
+    ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude);
+    Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
     AddStationResponse addStation(String userName, AddStationRequest request);
 }
