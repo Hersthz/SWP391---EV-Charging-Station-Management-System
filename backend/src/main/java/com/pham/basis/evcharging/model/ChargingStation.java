@@ -34,4 +34,10 @@ public class ChargingStation {
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<StationManager> managers;
+
+    // Helper: Thêm pillar và set cả 2 phía relationship
+    public void addPillar(ChargerPillar pillar) {
+        pillars.add(pillar);
+        pillar.setStation(this);
+    }
 }

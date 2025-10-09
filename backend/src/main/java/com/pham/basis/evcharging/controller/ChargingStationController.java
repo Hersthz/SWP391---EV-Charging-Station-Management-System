@@ -1,6 +1,7 @@
 package com.pham.basis.evcharging.controller;
 
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
+import com.pham.basis.evcharging.dto.request.StationRequest;
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
 import com.pham.basis.evcharging.service.ChargingStationService;
@@ -42,4 +43,14 @@ public class ChargingStationController {
         ChargingStationDetailResponse response = stationService.getStationDetail(stationId, latitude, longitude);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/addStation")
+    public ChargingStationDetailResponse addStation(
+            @RequestHeader("userName") String userName,
+            @Valid @RequestBody StationRequest request) {
+
+        log.info("Adding station by user: {}", userName);
+        return stationService.addStation(userName, request);
+    }
+
 }

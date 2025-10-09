@@ -1,13 +1,17 @@
 package com.pham.basis.evcharging.service;
 
-import com.pham.basis.evcharging.controller.AddStationRequest;
+
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
-import com.pham.basis.evcharging.dto.response.AddStationResponse;
+import com.pham.basis.evcharging.dto.request.StationRequest;
+
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
 import com.pham.basis.evcharging.mapper.StationMapper;
+import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.ChargingStation;
+import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +31,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
     private final ChargingStationRepository stationRepository;
     private final StationMapper stationMapper;
+
 
     @Override
     @Transactional(readOnly = true)
@@ -101,9 +106,62 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         return Math.round(R * c * 100.0) / 100.0;
     }
 
+
+
     @Override
-    public AddStationResponse addStation(String userName, AddStationRequest request) {
-        // TODO: Implement when add station feature is ready
-        return null;
+    public ChargingStationDetailResponse addStation(String userName, StationRequest request) {
+        // Validate request
+        validateAddStationRequest(request);
+
+        // Create station entity
+        ChargingStation station = new ChargingStation();
+        station.setName(request.getStationName());
+        station.setAddress(request.getAddress());
+        station.setLatitude(request.getLatitude());
+        station.setLongitude(request.getLongitude());
+        station.setStatus("ACTIVE");
+
+        // Add pillars and connectors (if provided)
+        if (request.getPillars() != null && !request.getPillars().isEmpty()) {
+            for (StationRequest.PillarRequest pillarReq : request.getPillars()) {
+                ChargerPillar pillar = new ChargerPillar();
+                pillar.setCode(pillarReq.getCode());
+                pillar.setPower(pillarReq.getPower());
+                pillar.setPricePerKwh(pillarReq.getPricePerKwh());
+                pillar.setStatus("AVAILABLE");
+
+                // Add connectors to pillar
+                if (pillarReq.getConnectors() != null && !pillarReq.getConnectors().isEmpty()) {
+                    for (StationRequest.ConnectorRequest connReq : pillarReq.getConnectors()) {
+                        Connector connector = new Connector();
+                        connector.setType(connReq.getConnectorType());
+                        pillar.addConnector(connector);
+                    }
+                }
+
+                station.addPillar(pillar);
+            }
+        }
+
+        // Save station (cascade will save pillars and connectors)
+        ChargingStation savedStation = stationRepository.save(station);
+
+        // Convert to DTO using mapper (without distance parameter)
+        return stationMapper.toDetailResponse(savedStation);
+    }
+
+    private void validateAddStationRequest(StationRequest request) {
+        if (request.getStationName() == null || request.getStationName().trim().isEmpty()) {
+            throw new ValidationException("Station name is required");
+        }
+        if (request.getAddress() == null || request.getAddress().trim().isEmpty()) {
+            throw new ValidationException("Address is required");
+        }
+        if (request.getLatitude() < -90 || request.getLatitude() > 90) {
+            throw new ValidationException("Invalid latitude value");
+        }
+        if (request.getLongitude() < -180 || request.getLongitude() > 180) {
+            throw new ValidationException("Invalid longitude value");
+        }
     }
 }
