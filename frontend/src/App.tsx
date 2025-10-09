@@ -16,6 +16,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 import Profile from "./pages/Profile";
 import Booking from "./pages/BookingPage";
+import ReportsPage from "./pages/ReportsPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/booking/:id" element={<Booking />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stations" element={<AdminStations />} />
           <Route path="/admin/users" element={<AdminUsers />} />
