@@ -8,18 +8,19 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class ChargingStationResponse {
+public class ChargingStationSummaryResponse {
     private Long id;
     private String name;
     private String address;
     private Double latitude;
     private Double longitude;
-    private Double distance; // km
+    private Double distance;
     private String status;
-
-    private String power;
-    private String available;
-    private List<String> connectors;
-    private String price;
-
+    private Integer availablePillars;
+    private Integer totalPillars;
+    private Double minPrice;
+    private Double maxPrice;
+    private Double minPower;
+    private Double maxPower;
+    private List<String> connectorTypes;
 }

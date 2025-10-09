@@ -19,6 +19,7 @@ public class ChargerPillar {
     private String code;    // Mã trụ
     private String status;  // Available, Occupied, Maintenance
     private Double power;   // kW
+    @Column(name = "price_per_kwh")
     private Double pricePerKwh; // Giá theo kWh
 
     @ManyToOne

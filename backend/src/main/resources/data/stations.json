@@ -1,81 +1,288 @@
 [
   {
-    "name": "Station #1",
-    "address": "Mock Address 1",
-    "latitude": 10.8618942110713,
-    "longitude": 106.79798794919327,
-    "status": "Occupied",
-    "pillars": [
-      {
-        "code": "P1-1",
-        "status": "Occupied",
-        "power": 150.0,
-        "pricePerKwh": 0.5,
-        "connectors": [
-          { "type": "CCS" },
-          { "type": "CHAdeMO" }
-        ]
-      }
-    ]
-  },
-
-  {
-    "name": "Station #2",
-    "address": "Mock Address 2",
-    "latitude": 10.849267289775822,
-    "longitude": 106.77615902281468,
+    "id": 1,
+    "name": "Downtown Supercharge Hub",
+    "address": "123 Main Street, District 1, HCMC",
+    "latitude": 10.7769,
+    "longitude": 106.7009,
     "status": "Available",
     "pillars": [
       {
-        "code": "P2-1",
+        "code": "DT-P1",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      },
+      {
+        "code": "DT-P2",
         "status": "Available",
         "power": 150.0,
-        "pricePerKwh": 0.5,
+        "pricePerKwh": 0.55,
         "connectors": [{ "type": "CCS" }]
       },
       {
-        "code": "P2-2",
-        "status": "Available",
-        "power": 150.0,
-        "pricePerKwh": 0.5,
-        "connectors": [{ "type": "AC" }]
-      }
-    ]
-  },
-
-  {
-    "name": "Station #3",
-    "address": "Mock Address 3",
-    "latitude": 10.87769840457074,
-    "longitude": 106.78908488926061,
-    "status": "Available",
-    "pillars": [
-      {
-        "code": "P3-1",
-        "status": "Available",
-        "power": 100.0,
-        "pricePerKwh": 0.45,
-        "connectors": [{ "type": "AC" }]
-      }
-    ]
-  },
-
-  {
-    "name": "Station #4",
-    "address": "Mock Address 4",
-    "latitude": 10.839816793279379,
-    "longitude": 106.7877466819761,
-    "status": "Available",
-    "pillars": [
-      {
-        "code": "P4-1",
-        "status": "Available",
-        "power": 150.0,
-        "pricePerKwh": 0.5,
-        "connectors": [{ "type": "CCS" }, { "type": "AC" }]
+        "code": "DT-P3",
+        "status": "Occupied",
+        "power": 350.0,
+        "pricePerKwh": 0.75,
+        "connectors": [{ "type": "CCS" }]
       },
       {
-        "code": "P4-2",
+        "code": "DT-P4",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "DT-P5",
+        "status": "Maintenance",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "CHAdeMO" }]
+      },
+      {
+        "code": "DT-P6",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }, { "type": "AC" }]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Vincom Center Charging Station",
+    "address": "72 Le Thanh Ton, District 1, HCMC",
+    "latitude": 10.7776,
+    "longitude": 106.7029,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "VC-P1",
+        "status": "Available",
+        "power": 350.0,
+        "pricePerKwh": 0.75,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "VC-P2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "VC-P3",
+        "status": "Occupied",
+        "power": 250.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      },
+      {
+        "code": "VC-P4",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "VC-P5",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "CHAdeMO" }]
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Saigon Airport Express Charge",
+    "address": "Tan Binh District, Near Terminal 2, HCMC",
+    "latitude": 10.8186,
+    "longitude": 106.66,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "AP-P1",
+        "status": "Available",
+        "power": 350.0,
+        "pricePerKwh": 0.8,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "AP-P2",
+        "status": "Available",
+        "power": 350.0,
+        "pricePerKwh": 0.8,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "AP-P3",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.7,
+        "connectors": [{ "type": "CHAdeMO" }]
+      },
+      {
+        "code": "AP-P4",
+        "status": "Occupied",
+        "power": 150.0,
+        "pricePerKwh": 0.6,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "AP-P5",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.6,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "AP-P6",
+        "status": "Maintenance",
+        "power": 350.0,
+        "pricePerKwh": 0.8,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Crescent Mall Charging Point",
+    "address": "Ton Dat Tien, District 7, HCMC",
+    "latitude": 10.7282,
+    "longitude": 106.7194,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "CM-P1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "CM-P2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "CM-P3",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.4,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "CM-P4",
+        "status": "Occupied",
+        "power": 250.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      },
+      {
+        "code": "CM-P5",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.4,
+        "connectors": [{ "type": "AC" }]
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Landmark 81 EV Station",
+    "address": "Binh Thanh District, HCMC",
+    "latitude": 10.7946,
+    "longitude": 106.7216,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "LM-P1",
+        "status": "Available",
+        "power": 350.0,
+        "pricePerKwh": 0.75,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "LM-P2",
+        "status": "Available",
+        "power": 350.0,
+        "pricePerKwh": 0.75,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "LM-P3",
+        "status": "Occupied",
+        "power": 250.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CHAdeMO" }]
+      },
+      {
+        "code": "LM-P4",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "LM-P5",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "LM-P6",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Thu Duc City Charging Hub",
+    "address": "Thu Duc City, HCMC",
+    "latitude": 10.8493,
+    "longitude": 106.7717,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "TD-P1",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.6,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "TD-P2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "TD-P3",
+        "status": "Occupied",
+        "power": 350.0,
+        "pricePerKwh": 0.7,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "TD-P4",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.4,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "TD-P5",
         "status": "Available",
         "power": 150.0,
         "pricePerKwh": 0.5,
@@ -83,16 +290,96 @@
       }
     ]
   },
-
   {
-    "name": "Station #5",
-    "address": "Mock Address 5",
-    "latitude": 10.860861443602067,
-    "longitude": 106.78464586241712,
+    "id": 7,
+    "name": "Go Vap District Station",
+    "address": "Go Vap District, HCMC",
+    "latitude": 10.8386,
+    "longitude": 106.6653,
     "status": "Available",
     "pillars": [
       {
-        "code": "P5-1",
+        "code": "GV-P1",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "GV-P2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "GV-P3",
+        "status": "Maintenance",
+        "power": 250.0,
+        "pricePerKwh": 0.6,
+        "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
+      },
+      {
+        "code": "GV-P4",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.35,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "GV-P5",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.35,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "GV-P6",
+        "status": "Occupied",
+        "power": 150.0,
+        "pricePerKwh": 0.5,
+        "connectors": [{ "type": "CHAdeMO" }]
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "Binh Tan Charging Center",
+    "address": "Binh Tan District, HCMC",
+    "latitude": 10.7654,
+    "longitude": 106.6043,
+    "status": "Available",
+    "pillars": [
+      {
+        "code": "BT-P1",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "BT-P2",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "BT-P3",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "BT-P4",
+        "status": "Occupied",
+        "power": 350.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "BT-P5",
         "status": "Available",
         "power": 50.0,
         "pricePerKwh": 0.35,
@@ -100,60 +387,99 @@
       }
     ]
   },
-
   {
-    "name": "Station #6",
-    "address": "Mock Address 6",
-    "latitude": 10.854379681064374,
-    "longitude": 106.78272259504136,
+    "id": 9,
+    "name": "Phu My Hung EV Station",
+    "address": "District 7, Phu My Hung, HCMC",
+    "latitude": 10.7295,
+    "longitude": 106.6954,
     "status": "Available",
     "pillars": [
       {
-        "code": "P6-1",
+        "code": "PM-P1",
         "status": "Available",
-        "power": 150.0,
-        "pricePerKwh": 0.5,
+        "power": 350.0,
+        "pricePerKwh": 0.7,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "PM-P2",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.6,
         "connectors": [{ "type": "CHAdeMO" }]
       },
       {
-        "code": "P6-2",
+        "code": "PM-P3",
         "status": "Available",
         "power": 150.0,
         "pricePerKwh": 0.5,
-        "connectors": [{ "type": "CCS" }]
-      }
-    ]
-  },
-
-  {
-    "name": "Station #7",
-    "address": "Mock Address 7",
-    "latitude": 10.859567051585286,
-    "longitude": 106.77050612996604,
-    "status": "Available",
-    "pillars": [
+        "connectors": [{ "type": "AC" }]
+      },
       {
-        "code": "P7-1",
-        "status": "Available",
+        "code": "PM-P4",
+        "status": "Occupied",
         "power": 150.0,
         "pricePerKwh": 0.5,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "PM-P5",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.4,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "PM-P6",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.6,
         "connectors": [{ "type": "CCS" }, { "type": "CHAdeMO" }]
       }
     ]
   },
-
   {
-    "name": "Station #8",
-    "address": "Mock Address 8",
-    "latitude": 10.844467549310396,
-    "longitude": 106.8021035518178,
+    "id": 10,
+    "name": "Tan Phu Supercharge",
+    "address": "Tan Phu District, HCMC",
+    "latitude": 10.7905,
+    "longitude": 106.6182,
     "status": "Available",
     "pillars": [
       {
-        "code": "P8-1",
+        "code": "TP-P1",
+        "status": "Available",
+        "power": 250.0,
+        "pricePerKwh": 0.55,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "TP-P2",
         "status": "Available",
         "power": 150.0,
-        "pricePerKwh": 0.5,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "AC" }]
+      },
+      {
+        "code": "TP-P3",
+        "status": "Occupied",
+        "power": 350.0,
+        "pricePerKwh": 0.65,
+        "connectors": [{ "type": "CCS" }]
+      },
+      {
+        "code": "TP-P4",
+        "status": "Available",
+        "power": 150.0,
+        "pricePerKwh": 0.45,
+        "connectors": [{ "type": "CHAdeMO" }]
+      },
+      {
+        "code": "TP-P5",
+        "status": "Available",
+        "power": 50.0,
+        "pricePerKwh": 0.35,
         "connectors": [{ "type": "AC" }]
       }
     ]
