@@ -22,6 +22,7 @@ import StaffStationMonitor from "./components/staff/StaffStationMonitor";
 import StaffStationDetails from "./components/staff/StaffStationsDetails";
 import Booking from "./pages/BookingPage";
 import ReportsPage from "./pages/ReportsPage";
+import AdminAddStation from "./components/admin/AdminAddStation";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/insights" element={<AdminInsights />} />
+          <Route path="/admin/add-station" element={<AdminAddStation />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

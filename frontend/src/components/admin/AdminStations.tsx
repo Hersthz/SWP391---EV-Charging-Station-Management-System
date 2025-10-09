@@ -17,7 +17,8 @@ import {
   Search,
   Navigation,
   Bookmark,
-  Filter
+  Filter,
+  Plus
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import AdminLayout from "./AdminLayout";
@@ -196,7 +197,15 @@ const AdminStations = () => {
         <RefreshCw className="w-4 h-4 mr-2" />
         Refresh Status
       </Button>
-      
+
+      <Button 
+      onClick={() => navigate("/admin/add-station")}
+      className="bg-green-600 text-white hover:bg-green-700"
+    >
+      <Plus className="w-4 h-4 mr-2" />
+      Add Station
+    </Button>
+
       <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
         <Power className="w-4 h-4 mr-2" />
         Remote Control
