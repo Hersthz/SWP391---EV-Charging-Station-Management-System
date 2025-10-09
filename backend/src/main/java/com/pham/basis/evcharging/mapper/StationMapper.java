@@ -36,6 +36,16 @@ public interface StationMapper {
     @Mapping(target = "maxPower", source = "station", qualifiedByName = "calculateMaxPower")
     ChargingStationDetailResponse toDetailResponse(ChargingStation station, Double distance);
 
+    @Mapping(target = "distance", source = "distance")
+    @Mapping(target = "status", source = "station", qualifiedByName = "calculateStatus")
+    @Mapping(target = "availablePillars", source = "station", qualifiedByName = "calculateAvailablePillars")
+    @Mapping(target = "totalPillars", source = "station", qualifiedByName = "calculateTotalPillars")
+    @Mapping(target = "minPrice", source = "station", qualifiedByName = "calculateMinPrice")
+    @Mapping(target = "maxPrice", source = "station", qualifiedByName = "calculateMaxPrice")
+    @Mapping(target = "minPower", source = "station", qualifiedByName = "calculateMinPower")
+    @Mapping(target = "maxPower", source = "station", qualifiedByName = "calculateMaxPower")
+    ChargingStationDetailResponse toDetailResponse(ChargingStation station);
+
     // Named methods for complex mappings
     @Named("calculateStatus")
     default String calculateStatus(ChargingStation station) {

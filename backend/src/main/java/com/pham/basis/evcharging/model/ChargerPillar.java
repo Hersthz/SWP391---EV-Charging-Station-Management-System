@@ -30,4 +30,10 @@ public class ChargerPillar {
 
     @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Connector> connectors;
+
+    // Helper: Thêm connector và set cả 2 phía relationship
+    public void addConnector(Connector connector) {
+        connectors.add(connector);
+        connector.setPillar(this);
+    }
 }
