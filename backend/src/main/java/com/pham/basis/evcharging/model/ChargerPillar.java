@@ -1,5 +1,6 @@
 package com.pham.basis.evcharging.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,6 +25,7 @@ public class ChargerPillar {
 
     @ManyToOne
     @JoinColumn(name = "station_id")
+    @JsonIgnore
     private ChargingStation station;
 
     @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)

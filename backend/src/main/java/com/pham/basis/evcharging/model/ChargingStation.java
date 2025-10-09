@@ -1,5 +1,6 @@
 package com.pham.basis.evcharging.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,11 +23,15 @@ public class ChargingStation {
     private String address;
     private Double latitude;
     private Double longitude;
-    private String status; // Available, Occupied, Offline...
+    private String status;
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChargerPillar> pillars;
 
     @Transient
     private Double distance; // để tính toán khi query, không lưu DB
+
+    @OneToMany(mappedBy = "station", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<StationManager> managers;
 }
