@@ -101,6 +101,21 @@ const Login = () => {
         return;
       }
     }
+    if (username === "staff1" && password === "123") {
+      try {
+        // gọi logout để chắc chắn xóa cookie JWT HttpOnly nếu có (endpoint logout server cần có)
+        await api.post("/auth/logout").catch(() => {/* ignore */ });
+      } finally {
+        toast.success("Demo login successful (Driver)!");
+        // lưu flag demo và thông tin cần thiết (KHÔNG lưu token)
+        localStorage.setItem("isDemo", "true");
+        localStorage.setItem("currentUser", "staff1");
+        localStorage.setItem("role", "Staff");
+        navigate("/staff");
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
       const { data } = await api.post<LoginResponse>("/auth/login", {
         username,
