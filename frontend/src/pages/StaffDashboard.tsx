@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+// (Progress đang chưa dùng, có thể xoá nếu muốn)
 import { Progress } from "../components/ui/progress";
 import { 
   Activity,
@@ -22,32 +23,129 @@ import {
 } from "lucide-react";
 import StaffLayout from "./../components/staff/StaffLayout";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
-  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // NEW: state dùng cho dữ liệu station nạp từ backend
+  const [assignedStation, setAssignedStation] = useState<null | {
+    id: number | string;
+    name: string;
+    location: string;
+    status: "online" | "offline";
+    lastPing: string;
+    uptime: number;
+    temperature: number;
+    powerUsage: number;
+    totalConnectors: number;
+    activeConnectors: number;
+    availableConnectors: number;
+    maintenanceConnectors: number;
+  }>(null);
+
+  interface UserResponse {
+    username: string;
+    role: string;
+    full_name: string;
+    // Nếu /auth/me có trả id/managerId thì khai báo thêm tại đây
+    // id?: number;
+    // managerId?: number;
+  }
+
+  // NEW: state loading & error khi gọi API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // NEW: helper hiển thị "x phút trước"
+  function timeAgo(iso?: string) {
+    if (!iso) return "—";
+    const ms = Date.now() - new Date(iso).getTime();
+    const s = Math.max(1, Math.floor(ms / 1000));
+    if (s < 60) return `${s} seconds ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} minutes ago`;
+    const h = Math.floor(m / 60);
+    return `${h} hours ago`;
+  }
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    const controller = new AbortController();
 
-  // Assigned Station Info
-  const assignedStation = {
-    id: "dt-001",
-    name: "Downtown Station #1",
-    location: "123 Main St, Downtown",
-    status: "online",
-    lastPing: "2 seconds ago",
-    uptime: 99.8,
-    temperature: 24,
-    powerUsage: 87,
-    totalConnectors: 6,
-    activeConnectors: 3,
-    availableConnectors: 2,
-    maintenanceConnectors: 1
-  };
+    // gom logic vào 1 flow để không giật loading
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
+        // 1) Kiểm tra đăng nhập
+        // FIX: axios dùng withCredentials thay vì credentials
+        const me = await api.get<UserResponse>("/auth/me", {
+          withCredentials: true,
+          signal: controller.signal, // axios v1+ hỗ trợ AbortController
+        });
+
+        const { username, role, full_name } = me.data;
+        localStorage.setItem("currentUser", username);
+        localStorage.setItem("role", role);
+        localStorage.setItem("full_name", full_name);
+
+        // 2) Lấy managerId để gọi /managers/{id}
+        // - Nếu /auth/me trả về managerId thì dùng trực tiếp.
+        // - Tạm thời đọc từ localStorage hoặc fallback 5.
+        const userId =
+          // (me.data as any).managerId ??
+          Number(localStorage.getItem("userId") || 5);
+
+        // 3) Gọi managers/{id}
+        // FIX: dùng axios đúng chuẩn: baseURL đã có thì chỉ cần path
+        const res = await api.get(`/managers/${userId}`, {
+          withCredentials: true,      // FIX: thay cho fetch.credentials
+          signal: controller.signal,  // FIX: abort control đúng cách
+          headers: { Accept: "application/json" },
+        });
+
+        // FIX: axios trả data ở res.data (không có res.ok/res.json())
+        const data = res.data;
+
+        // Tiêu chuẩn hoá: tuỳ payload BE
+        const s = data.station ?? data.managedStation ?? data.assignedStation ?? data;
+
+        // Map sang shape UI đang dùng
+        setAssignedStation({
+          id: s.stationId ?? s.id ?? "unknown",
+          name: s.name ?? "Unknown Station",
+          location: s.address ?? s.location ?? "N/A",
+          status: String(s.status ?? "offline").toLowerCase() === "online" ? "online" : "offline",
+          lastPing: timeAgo(s.lastPing),
+          uptime: Number(s.metrics?.uptime ?? s.uptime ?? 0),
+          temperature: Number(s.metrics?.temp ?? s.temperature ?? 0),
+          powerUsage: Number(s.metrics?.powerUsage ?? s.powerUsage ?? 0),
+          totalConnectors: Number(s.connectors?.total ?? s.totalConnectors ?? 0),
+          activeConnectors: Number(s.connectors?.active ?? s.activeConnectors ?? 0),
+          availableConnectors: Number(s.connectors?.available ?? s.availableConnectors ?? 0),
+          maintenanceConnectors: Number(s.connectors?.maintenance ?? s.maintenanceConnectors ?? 0),
+        });
+      } catch (e: any) {
+        // FIX: axios cancel có code/name khác với AbortError của fetch
+        if (e?.code === "ERR_CANCELED") return;
+        if (e?.name === "CanceledError") return;
+        if (e?.response?.status) setError(`HTTP ${e.response.status}`);
+        else setError(e?.message || "Request failed");
+        // Nếu fail auth → về login
+        if (e?.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [navigate]);
+
+  // Giữ lại mock cho các list khác (sessions/alerts) để UI đầy đủ
   const recentSessions = [
     {
       id: "CS-001",
@@ -124,6 +222,25 @@ const StaffDashboard = () => {
     );
   };
 
+  // NEW: guard hiển thị khi đang nạp dữ liệu hoặc lỗi
+  if (loading) {
+    return (
+      <StaffLayout title="Staff Dashboard">
+        <div className="p-6 text-sm text-muted-foreground">Loading station…</div>
+      </StaffLayout>
+    );
+  }
+  if (error || !assignedStation) {
+    return (
+      <StaffLayout title="Staff Dashboard">
+        <div className="p-6 text-sm text-destructive">
+          Failed to load station {error ? `(${error})` : ""}.
+        </div>
+      </StaffLayout>
+    );
+  }
+
+  // UI chính (dùng assignedStation từ state)
   return (
     <StaffLayout title="Staff Dashboard">
       {/* Assigned Station Banner */}
@@ -143,10 +260,17 @@ const StaffDashboard = () => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xl font-semibold text-primary">{assignedStation.name}</h3>
-                  <Badge className="bg-success/10 text-success border-success/20 animate-pulse">
-                    <Wifi className="w-3 h-3 mr-1" />
-                    Online
-                  </Badge>
+                  {assignedStation.status === "online" ? (
+                    <Badge className="bg-success/10 text-success border-success/20 animate-pulse">
+                      <Wifi className="w-3 h-3 mr-1" />
+                      Online
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+                      <WifiOff className="w-3 h-3 mr-1" />
+                      Offline
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
@@ -209,6 +333,7 @@ const StaffDashboard = () => {
             <Button 
               variant="outline"
               className="border-primary/20 text-primary hover:bg-primary/10"
+              onClick={() => navigate('/staff/incidents')} // tiện điều hướng sang báo cáo sự cố
             >
               <AlertTriangle className="w-4 h-4 mr-2" />
               Report Issue

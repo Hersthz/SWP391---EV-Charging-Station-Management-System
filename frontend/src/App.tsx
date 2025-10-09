@@ -15,6 +15,7 @@ import AdminInsights from "./components/admin/AdminInsights";
 import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 import Profile from "./pages/Profile";
+import StaffDashboard from "./pages/StaffDashboard";
 import StaffPayments from "./components/staff/StaffPayments";
 import StaffIncidents from "./components/staff/StaffIncidents";
 import StaffStationMonitor from "./components/staff/StaffStationMonitor";
