@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reservation")
+@Table(name = "reservations")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,27 +34,17 @@ public class Reservation {
     @JoinColumn(name = "connector_id", nullable = false)
     private Connector connector;
 
-    @Column(name = "start_time", nullable = false)
-    private LocalDateTime startTime;
-
-    @Column(name = "end_time")
-    private LocalDateTime endTime;
-
-    @Column(name = "status", length = 20)
-    private String status;
-
-    @Column(name = "hold_until")
-    private LocalDateTime holdUntil;
+    @Column(length = 20, nullable = false)
+    private String status; // PENDING, CONFIRMED, EXPIRED...
 
     @Column(name = "hold_fee", precision = 10, scale = 2)
     private BigDecimal holdFee;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name="estimatedKwh")
-    private Double estimatedKwh;
-
+    @Column(name = "expired_at", nullable = false)
+    private LocalDateTime expiredAt;
 
 //    // --- Liên kết 1-1 với ChargingSession ---
 //    @OneToOne(mappedBy = "reservation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

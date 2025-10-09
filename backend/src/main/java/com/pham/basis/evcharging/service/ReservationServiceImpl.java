@@ -20,44 +20,43 @@ public class ReservationServiceImpl implements ReservationService {
     private final ChargerPillarRepository chargerPillarRepository;
     private final ConnectorRepository connectorRepository;
     @Override
-    public ReservationResponse createReservation(ReservationRequest reservationRequest) {
-        User user = userRepository.findById(reservationRequest.getUserId()).orElseThrow(() -> new RuntimeException("User not found"));
-        ChargingStation chargingStation = chargingStationRepository.findById(reservationRequest.getStationId()).orElseThrow(() -> new RuntimeException("Station not found"));
-        ChargerPillar chargerPillar = chargerPillarRepository.findChargerPillarById(reservationRequest.getPillarId()).orElseThrow(() -> new RuntimeException("Pillar not found"));
-        Connector connector = connectorRepository.findById(reservationRequest.getConnectorId()).orElseThrow(() -> new RuntimeException("Connector not found"));
+    public ReservationResponse createReservation(ReservationRequest request) {
+
+        User user = userRepository.findById(request.getUserId()).orElseThrow(()->new RuntimeException("User not found"));
+
+        ChargingStation chargingStation = chargingStationRepository.findById(request.getStationId()).orElseThrow(() -> new RuntimeException("Station not found"));
+
+        ChargerPillar chargerPillar = chargerPillarRepository.findChargerPillarById(request.getPillarId()).orElseThrow(() -> new RuntimeException("Pillar not found"));
+
+        Connector connector = connectorRepository.findById(request.getConnectorId()).orElseThrow(() -> new RuntimeException("Connector not found"));
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = now.plusMinutes(reservationRequest.getDurationMinutes());
+        LocalDateTime endTime = now.plusMinutes(request.getArrivalEtaMinutes());
 
-        BigDecimal holdFee = BigDecimal.valueOf(reservationRequest.getDurationMinutes() * 0.05);
+        BigDecimal holdFee = BigDecimal.valueOf(request.getArrivalEtaMinutes()).multiply(BigDecimal.valueOf(0.05));
 
         Reservation reservation = Reservation.builder()
                 .user(user)
                 .station(chargingStation)
                 .pillar(chargerPillar)
                 .connector(connector)
-                .startTime(now)
-                .endTime(endTime)
                 .status("PENDING")
                 .holdFee(holdFee)
-                .createdAt(LocalDateTime.now())
+                .createdAt(now)
+                .expiredAt(endTime)
                 .build();
         Reservation saved = reservationRepository.save(reservation);
 
         return ReservationResponse.builder()
                 .reservationId(saved.getId())
-                .userId(user.getId())
-                .stationId(chargingStation.getId())
-                .stationName(chargingStation.getName())
-                .pillarId(chargerPillar.getId())
-                .pillarCode(chargerPillar.getCode())
-                .connectorId(connector.getId())
-                .connectorType(connector.getType())
-                .startTime(saved.getStartTime())
-                .endTime(saved.getEndTime())
+                .stationId(saved.getStation().getId())
+                .stationName(saved.getStation().getName())
+                .pillarId(saved.getPillar().getId())
+                .connectorId(saved.getConnector().getId())
                 .status(saved.getStatus())
                 .holdFee(saved.getHoldFee())
                 .createdAt(saved.getCreatedAt())
+                .expiredAt(saved.getExpiredAt())
                 .build();
     }
 }
