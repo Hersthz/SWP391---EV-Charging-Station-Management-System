@@ -22,23 +22,21 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
     private final JwtAuthenticationFilter jwtFilter;
-    private final UserService userService;
-    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService, OAuth2AuthenticationSuccessHandler oauth2SuccessHandler, JwtAuthenticationFilter jwtFilter,  UserService userService) {
+    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService, OAuth2AuthenticationSuccessHandler oauth2SuccessHandler, JwtAuthenticationFilter jwtFilter) {
         this.customOAuth2UserService = customOAuth2UserService;
         this.oauth2SuccessHandler = oauth2SuccessHandler;
         this.jwtFilter = jwtFilter;
-        this.userService = userService;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth ->auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/charging-stations/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/book/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

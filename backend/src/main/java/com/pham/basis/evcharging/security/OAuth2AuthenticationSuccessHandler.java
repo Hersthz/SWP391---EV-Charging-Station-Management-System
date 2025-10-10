@@ -35,14 +35,13 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                                         Authentication authentication) throws IOException {
         OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
         String email = oauthUser.getAttribute("email");
-
+        String name = oauthUser.getAttribute("name");
         User user = userService.findByEmail(email);
         if (user == null) {
             // đảm bảo user đã được tạo bởi CustomOAuth2UserService; nhưng fallback:
             userService.createOrUpdateFromOAuth(email, oauthUser.getAttribute("name"), true);
             user = userService.findByEmail(email);
         }
-
         String role = user.getRole() != null ? user.getRole().getName() : "ROLE_USER";
         String token = jwtUtil.generateToken(user.getUsername(), role);
         ResponseCookie cookie = ResponseCookie.from("JWT", token)
@@ -55,7 +54,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
         response.setHeader("Set-Cookie", cookie.toString());
 
-        // redirect về frontend dashboard (FE sẽ gọi /auth/me)
         response.sendRedirect(frontendUrl + "/dashboard");
     }
 }

@@ -4,6 +4,8 @@ import com.pham.basis.evcharging.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 //interface → không cần viết code xử lý, Spring Data JPA sẽ tự động generate implementation khi chạy.
 //Nếu cần custom query phức tạp hơn, có thể dùng @Query với JPQL hoặc SQL.
 // Kế thừa JpaRepository để thao tác với DB thông qua Entity User
@@ -17,5 +19,7 @@ public interface UserRepository extends JpaRepository<User,Integer> {
 // JpaRepository đã có sẵn các method cơ bản:
 // findAll(), findById(), save(), deleteById()...
     User findByEmail(String email);
+    User findByPhone(String phone);
+  
 }
 
