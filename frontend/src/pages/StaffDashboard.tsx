@@ -4,7 +4,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 // (Progress đang chưa dùng, có thể xoá nếu muốn)
 import { Progress } from "../components/ui/progress";
-import { 
+import {
   Activity,
   DollarSign,
   Wifi,
@@ -72,52 +72,47 @@ const StaffDashboard = () => {
   useEffect(() => {
     const controller = new AbortController();
 
-    // gom logic vào 1 flow để không giật loading
     (async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // 1) Kiểm tra đăng nhập
-        // FIX: axios dùng withCredentials thay vì credentials
-        const me = await api.get<UserResponse>("/auth/me", {
-          withCredentials: true,
-          signal: controller.signal, // axios v1+ hỗ trợ AbortController
-        });
+        // Lấy user info
+        const meRes = await api.get<any>("/auth/me", { signal: controller.signal });
+        const me = meRes.data;
+        console.log("🔹 /auth/me (StaffDashboard):", me);
 
-        const { username, role, full_name } = me.data;
-        localStorage.setItem("currentUser", username);
-        localStorage.setItem("role", role);
-        localStorage.setItem("full_name", full_name);
+        const userId = me.user_id ?? me.id ?? me.userId ?? Number(localStorage.getItem("userId"));
+        if (!userId) {
+          throw new Error("No userId from /auth/me");
+        }
+        localStorage.setItem("userId", String(userId));
+        if (me.username) localStorage.setItem("currentUser", String(me.username));
+        const roleVal = me.role ?? me.roleName ?? me.role_name;
+        if (roleVal) localStorage.setItem("role", String(roleVal));
+        if (me.full_name) localStorage.setItem("full_name", String(me.full_name));
 
-        // 2) Lấy managerId để gọi /managers/{id}
-        // - Nếu /auth/me trả về managerId thì dùng trực tiếp.
-        // - Tạm thời đọc từ localStorage hoặc fallback 5.
-        const userId =
-          // (me.data as any).managerId ??
-          Number(localStorage.getItem("userId") || 5);
+        // Gọi lấy station-managers (mảng)
+        const res = await api.get<any[]>(`/station-managers/${userId}`, { signal: controller.signal });
+        const list = res.data ?? [];
+        console.log("🔹 /station-managers result:", list);
 
-        // 3) Gọi managers/{id}
-        // FIX: dùng axios đúng chuẩn: baseURL đã có thì chỉ cần path
-        const res = await api.get(`/managers/${userId}`, {
-          withCredentials: true,      // FIX: thay cho fetch.credentials
-          signal: controller.signal,  // FIX: abort control đúng cách
-          headers: { Accept: "application/json" },
-        });
+        if (!Array.isArray(list) || list.length === 0) {
+          setAssignedStation(null);
+          setError(null); // hoặc thông báo: "No stations assigned"
+          return;
+        }
 
-        // FIX: axios trả data ở res.data (không có res.ok/res.json())
-        const data = res.data;
+        // Lấy station từ phần tử đầu (nếu user quản lý nhiều, bạn có thể map ra list)
+        const first = list[0];
+        const s = first.station ?? first.stationDto ?? first;
 
-        // Tiêu chuẩn hoá: tuỳ payload BE
-        const s = data.station ?? data.managedStation ?? data.assignedStation ?? data;
-
-        // Map sang shape UI đang dùng
         setAssignedStation({
           id: s.stationId ?? s.id ?? "unknown",
-          name: s.name ?? "Unknown Station",
+          name: s.name ?? s.stationName ?? "Unknown Station",
           location: s.address ?? s.location ?? "N/A",
           status: String(s.status ?? "offline").toLowerCase() === "online" ? "online" : "offline",
-          lastPing: timeAgo(s.lastPing),
+          lastPing: timeAgo(s.lastPing ?? s.last_ping ?? s.lastSeen),
           uptime: Number(s.metrics?.uptime ?? s.uptime ?? 0),
           temperature: Number(s.metrics?.temp ?? s.temperature ?? 0),
           powerUsage: Number(s.metrics?.powerUsage ?? s.powerUsage ?? 0),
@@ -126,16 +121,14 @@ const StaffDashboard = () => {
           availableConnectors: Number(s.connectors?.available ?? s.availableConnectors ?? 0),
           maintenanceConnectors: Number(s.connectors?.maintenance ?? s.maintenanceConnectors ?? 0),
         });
-      } catch (e: any) {
-        // FIX: axios cancel có code/name khác với AbortError của fetch
-        if (e?.code === "ERR_CANCELED") return;
-        if (e?.name === "CanceledError") return;
-        if (e?.response?.status) setError(`HTTP ${e.response.status}`);
-        else setError(e?.message || "Request failed");
-        // Nếu fail auth → về login
-        if (e?.response?.status === 401) {
+      } catch (err: any) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
+        console.error("StaffDashboard error:", err);
+        if (err?.response?.status === 401) {
           localStorage.clear();
           navigate("/login");
+        } else {
+          setError(err?.response?.status ? `HTTP ${err.response.status}` : err.message ?? "Request failed");
         }
       } finally {
         setLoading(false);
@@ -158,7 +151,7 @@ const StaffDashboard = () => {
     },
     {
       id: "CS-003",
-      station: "Mall Station #2", 
+      station: "Mall Station #2",
       connector: "B2",
       vehicle: "BMW iX",
       status: "Completed",
@@ -168,7 +161,7 @@ const StaffDashboard = () => {
     {
       id: "CS-007",
       station: "Airport Station #3",
-      connector: "C1", 
+      connector: "C1",
       vehicle: "Audi e-tron",
       status: "Payment Pending",
       cost: "$25.8",
@@ -184,7 +177,7 @@ const StaffDashboard = () => {
       priority: "High"
     },
     {
-      title: "Highway Station #4", 
+      title: "Highway Station #4",
       message: "Station offline for 2 hours",
       time: "2 hours ago",
       priority: "Critical"
@@ -197,10 +190,10 @@ const StaffDashboard = () => {
       "Completed": { className: "bg-primary/10 text-primary border-primary/20", text: "Completed" },
       "Payment Pending": { className: "bg-warning/10 text-warning border-warning/20", text: "Payment Pending" }
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig];
     if (!config) return <Badge variant="outline">{status}</Badge>;
-    
+
     return (
       <Badge className={config.className}>
         {config.text}
@@ -213,7 +206,7 @@ const StaffDashboard = () => {
       "High": { className: "bg-warning/10 text-warning border-warning/20" },
       "Critical": { className: "bg-destructive/10 text-destructive border-destructive/20" }
     };
-    
+
     const config = priorityConfig[priority as keyof typeof priorityConfig];
     return (
       <Badge className={config.className}>
@@ -288,7 +281,7 @@ const StaffDashboard = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Real-time Metrics */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:min-w-[400px]">
               <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4 border border-border/50">
@@ -321,16 +314,16 @@ const StaffDashboard = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6 flex gap-3">
-            <Button 
+            <Button
               onClick={() => navigate('/staff/stations')}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Eye className="w-4 h-4 mr-2" />
               View Station Details
             </Button>
-            <Button 
+            <Button
               variant="outline"
               className="border-primary/20 text-primary hover:bg-primary/10"
               onClick={() => navigate('/staff/incidents')} // tiện điều hướng sang báo cáo sự cố

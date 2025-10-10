@@ -373,9 +373,8 @@ const StationMap = () => {
     setReviewsLoading(true);
     try {
       // call detail endpoint - adjust path if your BE uses different route
-      const { data } = await api.get<ChargingStationDetailResponse>("/charging-stations/detail", {
+      const { data } = await api.get<ChargingStationDetailResponse>(`/charging-stations/${station.id}`, {
         params: {
-          stationId: station.id,
           latitude: userPosition?.[0],
           longitude: userPosition?.[1],
         },

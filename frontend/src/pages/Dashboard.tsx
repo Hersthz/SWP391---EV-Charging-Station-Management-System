@@ -18,15 +18,19 @@ const Dashboard = () => {
     role: string;
     full_name: string;
   }
-  /*useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await api.get<UserResponse>("/auth/me", { withCredentials: true });
+        const data = response.data as any;
 
-        const { username, role, full_name } = response.data;
-        localStorage.setItem("currentUser", username);
-        localStorage.setItem("role", role);
-        localStorage.setItem("full_name", full_name);
+        const username = data.username ?? data.email ?? data.user_id;
+        const role = data.role ?? data.roleName ?? data.role_name ?? data.roleName?.toString();
+        const full_name = data.full_name ?? data.fullName ?? data.fullname ?? data.full_name;
+
+        if (username) localStorage.setItem("currentUser", String(username));
+        if (role) localStorage.setItem("role", String(role));
+        if (full_name) localStorage.setItem("full_name", String(full_name));
       } catch {
         localStorage.clear();
         navigate("/login");
@@ -35,7 +39,7 @@ const Dashboard = () => {
       }
     };
     checkAuth();
-  }, [navigate]);*/
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
