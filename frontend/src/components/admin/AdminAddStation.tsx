@@ -120,10 +120,8 @@ const AdminAddStation = () => {
     setError(null);
 
     try {
-      const userName = localStorage.getItem("currentUser") || "admin";
-
-      const response = await api.post("/charging-stations", stationData, {
-        headers: { userName },
+    
+      const response = await api.post("/charging-stations/addStation", stationData, {
       });
 
       console.log("Station created:", response.data);

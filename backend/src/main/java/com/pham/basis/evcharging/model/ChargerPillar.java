@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -29,7 +31,7 @@ public class ChargerPillar {
     private ChargingStation station;
 
     @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Connector> connectors;
+    private List<Connector> connectors = new ArrayList<>();
 
     // Helper: Thêm connector và set cả 2 phía relationship
     public void addConnector(Connector connector) {

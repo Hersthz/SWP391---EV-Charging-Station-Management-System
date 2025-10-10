@@ -109,7 +109,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
 
     @Override
-    public ChargingStationDetailResponse addStation(String userName, StationRequest request) {
+    public ChargingStationDetailResponse addStation( StationRequest request) {
         // Validate request
         validateAddStationRequest(request);
 
@@ -119,7 +119,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         station.setAddress(request.getAddress());
         station.setLatitude(request.getLatitude());
         station.setLongitude(request.getLongitude());
-        station.setStatus("ACTIVE");
+        station.setStatus("Available");
 
         // Add pillars and connectors (if provided)
         if (request.getPillars() != null && !request.getPillars().isEmpty()) {
@@ -128,7 +128,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 pillar.setCode(pillarReq.getCode());
                 pillar.setPower(pillarReq.getPower());
                 pillar.setPricePerKwh(pillarReq.getPricePerKwh());
-                pillar.setStatus("AVAILABLE");
+                pillar.setStatus("Available");
 
                 // Add connectors to pillar
                 if (pillarReq.getConnectors() != null && !pillarReq.getConnectors().isEmpty()) {

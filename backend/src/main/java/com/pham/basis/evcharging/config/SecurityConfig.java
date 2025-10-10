@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/station-managers/**").permitAll()
                         .requestMatchers("/incident/**").permitAll()
+                        .requestMatchers("/charging-stations/addStation").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
