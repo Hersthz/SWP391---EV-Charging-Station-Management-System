@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -26,7 +27,7 @@ public class ChargingStation {
     private String status;
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ChargerPillar> pillars;
+    private List<ChargerPillar> pillars =  new ArrayList<>();
 
     @Transient
     private Double distance; // để tính toán khi query, không lưu DB

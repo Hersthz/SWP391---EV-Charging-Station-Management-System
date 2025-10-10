@@ -45,12 +45,10 @@ public class ChargingStationController {
     }
 
     @PostMapping("/addStation")
-    public ChargingStationDetailResponse addStation(
-            @RequestHeader("userName") String userName,
+    public ResponseEntity<ChargingStationDetailResponse> addStation(
             @Valid @RequestBody StationRequest request) {
-
-        log.info("Adding station by user: {}", userName);
-        return stationService.addStation(userName, request);
+        log.info("Adding station");
+        return ResponseEntity.ok(stationService.addStation(request));
     }
 
 }

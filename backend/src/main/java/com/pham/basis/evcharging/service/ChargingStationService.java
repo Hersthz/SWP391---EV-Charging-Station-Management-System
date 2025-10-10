@@ -12,5 +12,5 @@ public interface ChargingStationService {
     Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
     ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude);
     Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
-    ChargingStationDetailResponse addStation(String userName, StationRequest request);
+    ChargingStationDetailResponse addStation(StationRequest request);
 }
