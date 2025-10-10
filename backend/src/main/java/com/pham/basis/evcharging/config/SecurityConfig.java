@@ -33,11 +33,11 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth ->auth
+                        .requestMatchers("/book/**").permitAll()
                         .requestMatchers("/chat/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/charging-stations/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                        .requestMatchers("/book/**").permitAll()
                         .requestMatchers("/station-managers/**").permitAll()
                         .requestMatchers("/incident/**").permitAll()
                         .anyRequest().authenticated()

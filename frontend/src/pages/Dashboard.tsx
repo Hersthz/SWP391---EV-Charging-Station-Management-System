@@ -18,7 +18,7 @@ const Dashboard = () => {
     role: string;
     full_name: string;
   }
-  /*useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await api.get<UserResponse>("/auth/me", { withCredentials: true });
@@ -35,7 +35,7 @@ const Dashboard = () => {
       }
     };
     checkAuth();
-  }, [navigate]);*/
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
