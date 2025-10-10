@@ -1,13 +1,13 @@
-import { useState } from "react";
+// src/pages/staff/StaffIncidents.tsx
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Badge } from  "../../components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Badge } from "../../components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import { Textarea } from "../../components/ui/textarea";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import {
   AlertTriangle,
   Plus,
@@ -19,42 +19,114 @@ import {
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import StaffLayout from "./StaffLayout";
-import api from "../../api/axios"; // (đã có)
+import api from "../../api/axios";
+
+type StationDto = {
+  id: number;
+  name: string;
+  address?: string;
+  pillars?: Array<{ id: number; code?: string; name?: string }>;
+};
 
 const StaffIncidents = () => {
   const { toast } = useToast();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
-  // NEW: demo data (thay bằng API thật nếu có)
-  const stations = [
-    { id: 1, name: "Downtown Station #1" },
-    { id: 2, name: "Mall Station #2" },
-    { id: 3, name: "Airport Station #3" },
-  ];
-  // NEW: pillars theo station (demo)
-  const pillarsByStation: Record<number, { id: number; name: string }[]> = {
-    1: [{ id: 101, name: "Pillar A1" }, { id: 102, name: "Pillar A2" }],
-    2: [{ id: 201, name: "Pillar B1" }, { id: 202, name: "Pillar B2" }],
-    3: [{ id: 301, name: "Pillar C1" }],
-  };
+  // dynamic stations/pillars loaded from backend
+  const [stations, setStations] = useState<StationDto[]>([]);
+  const [pillarsByStation, setPillarsByStation] = useState<Record<number, { id: number; name: string }[]>>({});
 
-  // CHANGED: form tách stationId & pillarId, title, description, priority, reportedById
+  // form state
   const [form, setForm] = useState({
-    stationId: "",   // NEW
+    stationId: "",   // store as string for Select value
     pillarId: "",
     title: "",
     priority: "",
     description: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [loadingStations, setLoadingStations] = useState(true);
 
+  // demo incidents (UI-only)
   const incidents = [
     { id: "#INC-001", title: "Connector Not Releasing", station: "Downtown Station #1", connector: "Connector A2", priority: "High", status: "In Progress", reportedBy: "John Anderson", reportedTime: "2024-01-15 14:30", description: "…", estimatedFix: "30 min" },
     { id: "#INC-002", title: "Display Screen Flickering", station: "Mall Station #2", connector: null, priority: "Medium", status: "Open", reportedBy: "Sarah Chen", reportedTime: "2024-01-15 13:45", description: "…", estimatedFix: "2 hours" },
     { id: "#INC-003", title: "Routine Maintenance Due", station: "Airport Station #3", connector: "Connector C1", priority: "Low", status: "Open", reportedBy: "Mike Rodriguez", reportedTime: "2024-01-15 12:20", description: "…", estimatedFix: "1 hour" },
   ];
 
-  // CHANGED: submit gửi đủ 6 field mà backend yêu cầu
+  // fetch stations managed by current user and build pillars map
+  useEffect(() => {
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        setLoadingStations(true);
+        // get current user id from /auth/me
+        const meRes = await api.get<any>("/auth/me", { withCredentials: true, signal: controller.signal });
+        const me = meRes.data;
+        console.log("DEBUG /auth/me (StaffIncidents):", me);
+
+        const userId = me.user_id ?? me.id ?? me.userId;
+        if (!userId) {
+          // fallback: try localStorage
+          const fromStorage = Number(localStorage.getItem("userId"));
+          if (fromStorage) {
+            // use it
+          } else {
+            toast({ title: "Không xác định user", description: "Không thể lấy userId để tải trạm.", variant: "destructive" });
+            setLoadingStations(false);
+            return;
+          }
+        }
+
+        const uid = userId ?? Number(localStorage.getItem("userId"));
+
+        // call station-managers endpoint
+        const res = await api.get<any[]>(`/station-managers/${uid}`, { withCredentials: true, signal: controller.signal });
+        const list = res.data ?? [];
+        console.log("DEBUG /station-managers result:", list);
+
+        // extract stations and pillars
+        const stationsMap = new Map<number, StationDto>();
+        const pillarsMap: Record<number, { id: number; name: string }[]> = {};
+
+        for (const sm of list) {
+          const st = sm.station ?? sm; // backend might return station nested under 'station'
+          if (!st || !st.id) continue;
+          // normalise station dto
+          const stationDto: StationDto = {
+            id: st.id,
+            name: st.name ?? st.stationName ?? "Unnamed",
+            address: st.address ?? "",
+            pillars: Array.isArray(st.pillars) ? st.pillars.map((p: any) => ({ id: p.id, code: p.code, name: p.name })) : [],
+          };
+          stationsMap.set(stationDto.id, stationDto);
+          pillarsMap[stationDto.id] = stationDto.pillars?.map((p) => ({ id: p.id, name: p.code ?? p.name ?? String(p.id) })) ?? [];
+        }
+
+        const stationsList = Array.from(stationsMap.values());
+        setStations(stationsList);
+        setPillarsByStation(pillarsMap);
+
+        // default select first station if any
+        if (stationsList.length > 0) {
+          setForm((f) => ({ ...f, stationId: String(stationsList[0].id), pillarId: "" }));
+        }
+      } catch (err: any) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
+          return;
+        }
+        console.error("StaffIncidents load error:", err);
+        toast({ title: "Lỗi tải trạm", description: err?.message || "Không thể tải trạm được.", variant: "destructive" });
+      } finally {
+        setLoadingStations(false);
+      }
+    })();
+
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleReportIncident = async () => {
     const { stationId, pillarId, title, priority, description } = form;
 
@@ -63,17 +135,23 @@ const StaffIncidents = () => {
       return;
     }
 
-    // lấy reportedById từ localStorage (tuỳ bạn set khi login)
-    const reportedByIdStr = localStorage.getItem("userId") || localStorage.getItem("reportedById");
-    const reportedById = reportedByIdStr ? Number(reportedByIdStr) : undefined;
+    // reportedById: lấy từ /auth/me cache hoặc localStorage
+    let reportedById: number | undefined;
+    try {
+      const meRes = await api.get<any>("/auth/me", { withCredentials: true });
+      reportedById = meRes.data.user_id ?? meRes.data.id ?? undefined;
+    } catch {
+      const fromStorage = Number(localStorage.getItem("userId"));
+      if (fromStorage) reportedById = fromStorage;
+    }
 
     const payload = {
       title: title.trim(),
       description: description.trim(),
-      priority: priority.toUpperCase(), // nếu BE nhận String tự do thì vẫn OK
+      priority: String(priority).toUpperCase(),
       stationId: Number(stationId),
       pillarId: Number(pillarId),
-      reportedById, // có thể null/undefined nếu BE tự lấy từ JWT
+      reportedById: reportedById ?? null
     };
 
     try {
@@ -86,17 +164,13 @@ const StaffIncidents = () => {
       toast({ title: "Incident Reported", description: "Your incident report has been submitted successfully." });
       setForm({ stationId: "", pillarId: "", title: "", priority: "", description: "" });
       setIsReportDialogOpen(false);
-      // TODO: refetch incidents list nếu đã nối BE
+      // TODO: refetch incidents list if connected to backend
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || "Failed to submit incident.";
       toast({ title: "Submit failed", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleUpdateStatus = (incidentId: string, newStatus: string) => {
-    toast({ title: "Status Updated", description: `Incident ${incidentId} status updated to ${newStatus}` });
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -109,23 +183,13 @@ const StaffIncidents = () => {
     return <Badge className={config.className}>{priority}</Badge>;
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      "Open": { className: "bg-destructive/10 text-destructive border-destructive/20" },
-      "In Progress": { className: "bg-warning/10 text-warning border-warning/20" },
-      "Resolved": { className: "bg-success/10 text-success border-success/20" }
-    };
-    const config = statusConfig[status as keyof typeof statusConfig] || { className: "bg-muted/10 text-muted-foreground border-muted/20" };
-    return <Badge className={config.className}>{status}</Badge>;
-  };
-
   const incidentActions = (
     <>
       <Dialog
         open={isReportDialogOpen}
         onOpenChange={(open) => {
           setIsReportDialogOpen(open);
-          if (!open) setForm({ stationId: "", pillarId: "", title: "", priority: "", description: "" }); // NEW
+          if (!open) setForm({ stationId: "", pillarId: "", title: "", priority: "", description: "" });
         }}
       >
         <DialogTrigger asChild>
@@ -137,8 +201,8 @@ const StaffIncidents = () => {
 
         <DialogContent
           className="max-w-md"
-          onInteractOutside={(e) => submitting && e.preventDefault()} // NEW: chặn đóng khi submit
-          onEscapeKeyDown={(e) => submitting && e.preventDefault()}   // NEW
+          onInteractOutside={(e) => submitting && e.preventDefault()}
+          onEscapeKeyDown={(e) => submitting && e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>Report New Incident</DialogTitle>
@@ -151,36 +215,43 @@ const StaffIncidents = () => {
               <Select
                 value={form.stationId}
                 onValueChange={(v) => {
-                  // khi đổi station -> reset pillar
-                  setForm((f) => ({ ...f, stationId: v, pillarId: "" })); // CHANGED
+                  setForm((f) => ({ ...f, stationId: v, pillarId: "" }));
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select station" />
+                  <SelectValue placeholder={loadingStations ? "Loading stations…" : "Select station"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {stations.map(s => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                  ))}
+                  {stations.length === 0 ? (
+                    <SelectItem value="">No stations assigned</SelectItem>
+                  ) : (
+                    stations.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Pillar (phụ thuộc station) */}
+            {/* Pillar */}
             <div className="space-y-2">
               <Label htmlFor="pillar">Pillar</Label>
               <Select
                 disabled={!form.stationId}
                 value={form.pillarId}
-                onValueChange={(v) => setForm((f) => ({ ...f, pillarId: v }))} // NEW
+                onValueChange={(v) => setForm((f) => ({ ...f, pillarId: v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={form.stationId ? "Select pillar" : "Select station first"} />
+                  <SelectValue placeholder={!form.stationId ? "Select station first" : "Select pillar"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(pillarsByStation[Number(form.stationId)] || []).map(p => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                  ))}
+                  {(pillarsByStation[Number(form.stationId)] || []).length === 0 ? (
+                    <SelectItem value="">No pillars</SelectItem>
+                  ) : (
+                    (pillarsByStation[Number(form.stationId)] || []).map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -243,8 +314,6 @@ const StaffIncidents = () => {
 
   return (
     <StaffLayout title="Incident Reporting" actions={incidentActions}>
-      {/* ...phần bảng và summary giữ nguyên... */}
-      {/* (Bạn có thể giữ như hiện có, không ảnh hưởng logic submit) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="shadow-card border-0 bg-gradient-to-br from-destructive/5 to-destructive/10">
           <CardContent className="p-6">
@@ -309,8 +378,7 @@ const StaffIncidents = () => {
           <p className="text-sm text-muted-foreground">Issues and maintenance requests for your assigned stations</p>
         </CardHeader>
         <CardContent>
-          {/* bảng incidents demo như cũ */}
-          {/* ... */}
+          {/* giữ bảng demo như trước (nếu muốn có list thực tế thì refetch từ BE) */}
         </CardContent>
       </Card>
     </StaffLayout>

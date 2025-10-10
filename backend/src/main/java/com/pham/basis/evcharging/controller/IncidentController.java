@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/incident")
+@RequestMapping("/incidents")
 public class IncidentController {
     private final IncidentService  incidentService;
 
-    @PostMapping("/report-incident")
+    @PostMapping
     public ResponseEntity<String> reportIncident(@RequestBody IncidentRequest request) {
         incidentService.createIncident(request);
         return ResponseEntity.ok("Incident reported successfully");

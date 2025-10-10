@@ -64,72 +64,88 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
+
     const username = loginData.username.trim();
-    const password = loginData.password;
+    const password = loginData.password.trim();
     if (!username || !password) {
       toast.error("Please enter username and password");
       return;
     }
 
     setIsLoading(true);
-    // Demo accounts
+
+    // Demo accounts (giữ nguyên)
     if (username === "driver1" && password === "123") {
-      try {
-        // gọi logout để chắc chắn xóa cookie JWT HttpOnly nếu có (endpoint logout server cần có)
-        await api.post("/auth/logout").catch(() => {/* ignore */ });
-      } finally {
+      try { await api.post("/auth/logout").catch(() => { }); }
+      finally {
         toast.success("Demo login successful (Driver)!");
-        // lưu flag demo và thông tin cần thiết (KHÔNG lưu token)
         localStorage.setItem("isDemo", "true");
         localStorage.setItem("currentUser", "driver1");
-        localStorage.setItem("role", "User");
+        localStorage.setItem("role", "USER");
         navigate("/dashboard");
         setIsLoading(false);
         return;
       }
     }
     if (username === "admin1" && password === "123") {
-      try {
-        await api.post("/auth/logout").catch(() => {/* ignore */ });
-      } finally {
+      try { await api.post("/auth/logout").catch(() => { }); }
+      finally {
         toast.success("Demo login successful (Admin)!");
         localStorage.setItem("isDemo", "true");
         localStorage.setItem("currentUser", "admin1");
-        localStorage.setItem("role", "Admin");
+        localStorage.setItem("role", "ADMIN");
         navigate("/admin");
         setIsLoading(false);
         return;
       }
     }
     if (username === "staff1" && password === "123") {
-      try {
-        // gọi logout để chắc chắn xóa cookie JWT HttpOnly nếu có (endpoint logout server cần có)
-        await api.post("/auth/logout").catch(() => {/* ignore */ });
-      } finally {
-        toast.success("Demo login successful (Driver)!");
-        // lưu flag demo và thông tin cần thiết (KHÔNG lưu token)
+      try { await api.post("/auth/logout").catch(() => { }); }
+      finally {
+        toast.success("Demo login successful (Staff)!");
         localStorage.setItem("isDemo", "true");
         localStorage.setItem("currentUser", "staff1");
-        localStorage.setItem("role", "Staff");
+        localStorage.setItem("role", "STAFF");
         navigate("/staff");
         setIsLoading(false);
         return;
       }
     }
+
     try {
-      const { data } = await api.post<LoginResponse>("/auth/login", {
-        username,
-        password,
-      });
+      const { data } = await api.post<any>("/auth/login", { username, password });
 
-      if (data.username) localStorage.setItem("currentUser", data.username);
-      if (data.role) localStorage.setItem("role", data.role);
-      if ((data as any).full_name) localStorage.setItem("full_name", (data as any).full_name);
+      console.log("🔹 login response:", data);
+
+      // Normalize fields returned by backend
+      const usernameResp = data.username ?? data.email ?? username;
+      const fullNameResp = data.full_name ?? data.fullName ?? "";
+      const roleRespRaw = data.role ?? data.roleName ?? data.role_name ?? "";
+      const roleResp = String(roleRespRaw).toUpperCase();
+
+      // Save normalized info
+      if (usernameResp) localStorage.setItem("currentUser", String(usernameResp));
+      if (roleResp) localStorage.setItem("role", String(roleResp));
+      if (fullNameResp) localStorage.setItem("full_name", String(fullNameResp));
+
       toast.success("Login successful!");
-      setLoginData({ username: data.username, password: "" });
+      setLoginData({ username: usernameResp, password: "" });
 
-      if (data.role === "Admin") navigate("/admin");
-      else if (data.role === "Staff") navigate("/staff");
+      // If role not present in login response, try /auth/me as fallback
+      let finalRole = roleResp;
+      if (!finalRole) {
+        try {
+          const me = await api.get<any>("/auth/me");
+          const r = me.data.role ?? me.data.roleName ?? me.data.role_name ?? "";
+          finalRole = String(r).toUpperCase();
+          if (finalRole) localStorage.setItem("role", finalRole);
+        } catch (err) {
+          console.debug("fallback /auth/me failed", err);
+        }
+      }
+
+      if (finalRole === "ADMIN") navigate("/admin");
+      else if (finalRole === "STAFF") navigate("/staff");
       else navigate("/dashboard");
     } catch (err: any) {
       const message = err?.response?.data?.message ?? "Invalid username or password!";
@@ -138,6 +154,7 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

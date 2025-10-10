@@ -282,9 +282,14 @@ export default function BookingPage() {
 
   async function fetchCurrentUserId(): Promise<number> {
     try {
-      const { data } = await api.get<MeResponse>("/auth/me");
-      const id = typeof data?.id === "number" ? data.id : data?.user_id;
-      if (typeof id !== "number") throw new Error("No userId");
+      const { data } = await api.get<any>("/auth/me");
+      console.log("🔹 /auth/me (fetchCurrentUserId):", data);
+      const id = typeof data?.user_id === "number"
+        ? data.user_id
+        : (typeof data?.id === "number" ? data.id : undefined);
+      if (!id) throw new Error("No userId");
+      // cache userId
+      localStorage.setItem("userId", String(id));
       return id;
     } catch (e: any) {
       if (e?.response?.status === 401) {
@@ -301,14 +306,31 @@ export default function BookingPage() {
 
   const confirmAndCreateBooking = async () => {
     if (!station) return;
-    if (!selectedPillarId || !selectedConnectorIdNum) {
-      goSummary();
+
+    // ✅ Kiểm tra bắt buộc
+    if (!selectedPillarId) {
+      toast({
+        title: "Chưa chọn trụ sạc (Pillar)",
+        description: "Vui lòng chọn trụ sạc trước khi thanh toán.",
+        variant: "destructive",
+      });
+      setCurrentStep("selection");
       return;
     }
+    if (!selectedConnectorIdNum) {
+      toast({
+        title: "Chưa chọn đầu nối (Connector)",
+        description: "Vui lòng chọn đầu nối trước khi thanh toán.",
+        variant: "destructive",
+      });
+      setCurrentStep("selection");
+      return;
+    }
+
     if (!stationDetail || loadingDetail) {
       toast({
         title: "Thiếu dữ liệu trạm",
-        description: "Chưa tải xong chi tiết trạm (pillar/connector IDs). Vui lòng thử lại.",
+        description: "Dữ liệu trụ sạc chưa tải xong, vui lòng thử lại.",
         variant: "destructive",
       });
       return;
@@ -321,6 +343,7 @@ export default function BookingPage() {
     try {
       const userId = await fetchCurrentUserId();
 
+      // ✅ Payload chuẩn
       const payload = {
         userId,
         stationId: station.id,
@@ -329,39 +352,32 @@ export default function BookingPage() {
         arrivalEtaMinutes: etaMinutes,
       };
 
-      const { data } = await api.post<BookingResponse>("/book/booking", payload);
+      // ✅ Log debug ra console để test
+      console.debug("🧾 Booking payload gửi lên:", payload);
 
-      setServerHoldFee(Number(data.holdFee) || null);
-      setReservationId(data.reservationId);
-      setTransactionId(data.depositTransactionId ?? null);
-      toast({
-        title: "Đặt chỗ thành công",
-        description: `Reservation #${data.reservationId} tại ${data.stationName ?? station.name}`,
-      });
-      setCurrentStep("confirmed");
-    } catch (err: any) {
-      const status = err?.response?.status;
-      if (status === 402 && err?.response?.data?.error === "insufficient_balance") {
-        const d = err.response.data as Insufficient;
-        setServerHoldFee(Number(d.holdFee) || null);
-        setInsufficient(d);
-        setCurrentStep("summary");
+      if (!payload.pillarId || Number.isNaN(payload.pillarId)) {
         toast({
-          title: "Số dư ví không đủ",
-          description: `Cần nạp thêm ${formatVND(d.recommended_topup)} để giữ chỗ.`,
+          title: "Lỗi dữ liệu",
+          description: "Pillar ID không hợp lệ, vui lòng chọn lại.",
           variant: "destructive",
         });
-      } else {
-        const msg =
-          err?.code === "ERR_NETWORK"
-            ? "Không kết nối được server. Kiểm tra backend (vd: http://localhost:8080)."
-            : err?.response?.data?.message || "Không thể tạo booking. Thử lại sau.";
-        toast({ title: "Đặt chỗ thất bại", description: msg, variant: "destructive" });
+        setSubmitting(false);
+        return;
       }
+
+      // ✅ Gửi booking
+      const { data } = await api.post("/book/booking", payload);
+      console.log("✅ Booking response:", data);
+
+      navigate("/dashboard");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Đặt chỗ thất bại!";
+
     } finally {
       setSubmitting(false);
     }
   };
+
 
   // ===== UI helpers =====
   const renderPaymentSwitch = () => (
@@ -492,8 +508,14 @@ export default function BookingPage() {
                 key={String(p.pillarId)}
                 onClick={() => {
                   if (!isAvailable) return;
+                  console.debug("🧱 Chọn pillar:", p);
+
                   setSelectedPillarCode(p.code);
-                  setSelectedPillarId(p.pillarId); // LƯU ID THẬT
+                  setSelectedPillarId(
+                    typeof p.pillarId === "string" && /^\d+$/.test(p.pillarId)
+                      ? Number(p.pillarId)
+                      : p.pillarId
+                  );
 
                   // reset connector khi đổi pillar
                   setSelectedConnectorId("");
@@ -501,7 +523,7 @@ export default function BookingPage() {
                   setSelectedConnectorLabel("");
 
                   // auto-chọn nếu pillar chỉ có 1 connector
-                  if (p.defaultConnector && p.connectorLabels.length === 1) {
+                  if (p.defaultConnector && p.connectorLabels?.length === 1) {
                     setSelectedConnectorId(String(p.defaultConnector.id));
                     setSelectedConnectorIdNum(p.defaultConnector.id);
                     setSelectedConnectorLabel(p.defaultConnector.name);
@@ -512,8 +534,8 @@ export default function BookingPage() {
                   active
                     ? "border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md"
                     : !isAvailable
-                    ? "bg-muted/50 opacity-60 cursor-not-allowed"
-                    : "hover:border-primary/40",
+                      ? "bg-muted/50 opacity-60 cursor-not-allowed"
+                      : "hover:border-primary/40",
                 ].join(" ")}
               >
                 <CardContent className="p-3 text-center">
@@ -539,8 +561,8 @@ export default function BookingPage() {
                       isAvailable
                         ? "bg-success/10 text-success border-success/20"
                         : p.status === "occupied"
-                        ? "bg-destructive/10 text-destructive border-destructive/20"
-                        : "bg-warning/10 text-warning border-warning/20",
+                          ? "bg-destructive/10 text-destructive border-destructive/20"
+                          : "bg-warning/10 text-warning border-warning/20",
                     ].join(" ")}
                   >
                     {isAvailable ? "Available" : p.status === "occupied" ? "Occupied" : "Maintenance"}
