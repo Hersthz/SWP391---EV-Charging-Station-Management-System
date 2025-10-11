@@ -185,7 +185,7 @@ const Profile = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/users/me");
+        const { data } = await api.get("/auth/me");
         setFullName(data.full_name ?? "");
         setEmail(data.email ?? "");
         setPhone(data.phone ?? "");
