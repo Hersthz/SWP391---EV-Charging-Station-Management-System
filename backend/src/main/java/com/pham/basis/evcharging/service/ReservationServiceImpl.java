@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 
 @Service
@@ -31,9 +32,9 @@ public class ReservationServiceImpl implements ReservationService {
         Connector connector = connectorRepository.findById(request.getConnectorId()).orElseThrow(() -> new RuntimeException("Connector not found"));
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = now.plusMinutes(request.getArrivalEtaMinutes());
-
-        BigDecimal holdFee = BigDecimal.valueOf(request.getArrivalEtaMinutes()).multiply(BigDecimal.valueOf(0.05));
+        LocalDateTime endTime = request.getEndTime().plusMinutes(15);
+        long minutes = ChronoUnit.MINUTES.between(now, endTime);
+        BigDecimal holdFee = BigDecimal.valueOf(minutes).multiply(BigDecimal.valueOf(0.05));
 
         Reservation reservation = Reservation.builder()
                 .user(user)
@@ -42,6 +43,9 @@ public class ReservationServiceImpl implements ReservationService {
                 .connector(connector)
                 .status("PENDING")
                 .holdFee(holdFee)
+                .arrivalDate(request.getArrivalDate())
+                .startTime(request.getStartTime())
+                .endTime(request.getEndTime())
                 .createdAt(now)
                 .expiredAt(endTime)
                 .build();
@@ -55,6 +59,9 @@ public class ReservationServiceImpl implements ReservationService {
                 .connectorId(saved.getConnector().getId())
                 .status(saved.getStatus())
                 .holdFee(saved.getHoldFee())
+                .arrivalDate(saved.getArrivalDate())
+                .startTime(saved.getStartTime())
+                .endTime(saved.getEndTime())
                 .createdAt(saved.getCreatedAt())
                 .expiredAt(saved.getExpiredAt())
                 .build();

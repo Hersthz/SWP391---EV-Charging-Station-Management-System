@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
 import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
 import com.pham.basis.evcharging.service.UserServiceImpl;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,9 +16,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/user")
 @CrossOrigin
+@RequiredArgsConstructor
 public class UserController {
-    @Autowired
-    private UserServiceImpl userService;
+
+    private final UserServiceImpl userService;
 
     @PostMapping("/change-password")
     public ResponseEntity<ChangePasswordResponse> changePassword(
