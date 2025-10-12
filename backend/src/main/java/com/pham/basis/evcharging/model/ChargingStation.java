@@ -32,9 +32,9 @@ public class ChargingStation {
     @Transient
     private Double distance; // để tính toán khi query, không lưu DB
 
-    @OneToMany(mappedBy = "station", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<StationManager> managers;
+    @OneToOne
+    @JoinColumn(name = "manager_id")
+    private User manager;
 
     // Helper: Thêm pillar và set cả 2 phía relationship
     public void addPillar(ChargerPillar pillar) {

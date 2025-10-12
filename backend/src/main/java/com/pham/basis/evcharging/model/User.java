@@ -53,7 +53,7 @@ public class User{
     @Column(name = "date_of_birth")
     private LocalDate date_of_birth;
 
-    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "manager")
     @JsonIgnore
-    private List<StationManager> managedStations;
+    private ChargingStation managedStation;
 }

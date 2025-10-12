@@ -1,5 +1,6 @@
 package com.pham.basis.evcharging.security;
 
+
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -8,47 +9,63 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.UUID;
+
 
 @Component
 public class JwtUtil {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
-    @Value("${jwt.secret}")
-    private String SECRET_BASE64;
 
-    @Value("${jwt.expiration:86400000}")
-    private long EXPIRATION_TIME;
+    @Value("${jwt.secret}")
+    private String secretBase64;
+
 
     private SecretKey getSigningKey() {
-        if (SECRET_BASE64 == null || SECRET_BASE64.trim().isEmpty()) {
-            throw new IllegalStateException("JWT secret is not configured (jwt.secret).");
-        }
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_BASE64);
+        byte[] keyBytes = Decoders.BASE64.decode(secretBase64);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    private String stripBearer(String token) {
-        if (token == null) return null;
-        token = token.trim();
-        if (token.startsWith("Bearer ")) return token.substring(7);
-        return token;
-    }
 
-    public String generateToken(String username, String role) {
+    public String generateAccessToken(String username, String role, long expirySeconds) {
         Date now = new Date();
-        Date exp = new Date(now.getTime() + EXPIRATION_TIME);
+        Date exp = new Date(now.getTime() + expirySeconds * 1000);
         return Jwts.builder()
                 .setSubject(username)
                 .claim("role", role)
+                .claim("type", "access")
                 .setIssuer("EV-Charging-API")
                 .setId(UUID.randomUUID().toString())
                 .setIssuedAt(now)
                 .setExpiration(exp)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+
+    public String generateRefreshToken(String username, long expirySeconds) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expirySeconds * 1000);
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("type", "refresh")
+                .setIssuer("EV-Charging-API")
+                .setId(UUID.randomUUID().toString())
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+
+    private String stripBearer(String token) {
+        if (token == null) return null;
+        token = token.trim();
+        if (token.startsWith("Bearer ")) return token.substring(7);
+        return token;
     }
 
     public String extractUsername(String token) {
@@ -97,5 +114,22 @@ public class JwtUtil {
             logger.info("JWT error: {}", e.getMessage());
         }
         return false;
+    }
+
+    public boolean validateRefreshToken(String token) {
+        if (!validateToken(token)) return false;
+        token = stripBearer(token);
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            Object type = claims.get("type");
+            return "refresh".equals(type);
+        } catch (JwtException e) {
+            logger.info("Refresh token invalid: {}", e.getMessage());
+            return false;
+        }
     }
 }

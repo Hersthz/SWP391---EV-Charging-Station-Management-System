@@ -14,7 +14,6 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
 
     private final VerificationTokenRepository tokenRepo;
 
-    // token tồn tại trong 24 giờ (có thể chỉnh)
     private final long EXPIRATION_HOURS = 24;
 
     public VerificationTokenServiceImpl(VerificationTokenRepository tokenRepo) {
@@ -24,7 +23,6 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
     @Override
     public String createVerificationToken(User user) {
         tokenRepo.deleteByUser(user);
-
         String token = UUID.randomUUID().toString();
         LocalDateTime expiration = LocalDateTime.now().plusHours(EXPIRATION_HOURS);
         VerificationToken vt = new VerificationToken(token,user,expiration);

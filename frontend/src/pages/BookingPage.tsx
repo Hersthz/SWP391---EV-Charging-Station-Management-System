@@ -20,7 +20,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useToast } from "../hooks/use-toast";
 import mockStations from "../../stations.json";
 import api from "../api/axios";
-import { v4 as uuid } from "uuid";
+
 
 type BookingStep = "selection" | "summary" | "confirmed";
 
@@ -534,6 +534,7 @@ export default function BookingPage() {
                     setSelectedConnectorLabel(p.defaultConnector.name);
                   }
                 }}
+
                 className={[
                   "cursor-pointer transition-colors rounded-xl",
                   active
