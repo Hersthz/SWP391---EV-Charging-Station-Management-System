@@ -3,6 +3,7 @@ package com.pham.basis.evcharging.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -43,8 +44,17 @@ public class Reservation {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "start_time", nullable = false)
+    private LocalDateTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    private LocalDateTime endTime;
+
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
+
+    @Column(name = "arrival_date", nullable = false)
+    private LocalDate arrivalDate;
 
 //    // --- Liên kết 1-1 với ChargingSession ---
 //    @OneToOne(mappedBy = "reservation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

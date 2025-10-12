@@ -8,14 +8,22 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/chat")
 @RequiredArgsConstructor
 public class ChatController {
-    private final ChatService service;
+    private final ChatService chatService;
 
-    @PostMapping("/chat-message")
-    String chatMessage(@RequestBody ChatRequest request){
-        return service.generation(request.getQuestion());
+    @PostMapping("/suggest")
+    public Map<String, Object> suggestChargingTime(@RequestBody ChatRequest request) {
+        String result = chatService.suggestChargingTime(request.getQuestion());
+        return Map.of(
+                "success", true,
+                "message", "Gợi ý thời gian sạc thành công",
+                "data", result
+        );
     }
 }
+
