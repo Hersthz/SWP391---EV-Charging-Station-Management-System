@@ -85,7 +85,6 @@ const Profile = () => {
   const [fullName, setFullName] = useState(localStorage.getItem("full_name") || "UserRandom");
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
-  const [address, setAddress] = useState("123 Main Street, City");
 
   // ===== vehicle state =====
   const [vehicleMake, setVehicleMake] = useState(localStorage.getItem("vehicle_make") || "Tesla");
@@ -483,16 +482,7 @@ const Profile = () => {
                         className={!isEditing ? "bg-slate-50" : ""}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address" className="flex items-center gap-2">Address</Label>
-                      <Input
-                        id="address"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-slate-50" : ""}
-                      />
-                    </div>
+                    
                   </div>
 
                   <div className="flex justify-end gap-3">
