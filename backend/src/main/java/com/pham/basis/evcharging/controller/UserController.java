@@ -42,14 +42,6 @@ public class UserController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
         UpdateUserResponse response = userService.updateUserProfile(username, request);
-        if(response.isSuccess()){
             return ResponseEntity.ok(response);
-        }else{
-            return ResponseEntity.badRequest().body(response);
-        }
-
     }
-
-
-
 }
