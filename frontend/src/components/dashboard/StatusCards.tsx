@@ -184,7 +184,7 @@ const StatusCards = () => {
   const onStartCharging = async (r: ReservationItem) => {
     try {
       if (USE_MOCK) {
-        toast({
+        toast({ 
           title: "Charging session started ",
           description: `${r.stationName} • ${r.pillarCode}`,
         });

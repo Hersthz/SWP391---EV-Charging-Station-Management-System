@@ -125,7 +125,7 @@ const Profile = () => {
       // Gọi API đổi mật khẩu — chỉnh endpoint nếu backend của bạn khác
       // Ví dụ payload phổ biến:
       // { current_password: "...", new_password: "..." }
-      await api.post("/users/change-password", {
+      await api.post("/user/change-password", {
         current_password: passwords.current,
         new_password: passwords.new,
       });
@@ -221,7 +221,7 @@ const Profile = () => {
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear,
       };
-      const { data } = await api.put("/users/me", payload);
+      const { data } = await api.put("/auth/me", payload);
       localStorage.setItem("full_name", data.full_name);
       localStorage.setItem("email", data.email);
       localStorage.setItem("phone", data.phone);

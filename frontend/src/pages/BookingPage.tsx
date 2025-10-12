@@ -173,7 +173,7 @@ export default function BookingPage() {
           id: data.id,
           name: data.name ?? data.stationName,
           pillars: (pillars || []).map((p: any, idx: number) => ({
-            id: p.id ?? p.pillarId ?? p.code ?? `P${idx + 1}`,
+            id: p.id ?? p.pillarId ,
             code: p.code ?? p.name ?? `P${idx + 1}`,
             name: p.name ?? p.code ?? `P${idx + 1}`,
             connectors: (p.connectors ?? p.connectorDtos ?? p.sockets ?? []).map((c: any) => ({
@@ -369,7 +369,12 @@ export default function BookingPage() {
       const { data } = await api.post("/book/booking", payload);
       console.log("✅ Booking response:", data);
 
-      navigate("/dashboard");
+      // Nếu BE trả các field sau, set lại state để show màn xác nhận:
+      setReservationId(data.reservationId);
+      setServerHoldFee(Number(data.holdFee ?? 0));
+      setTransactionId(data.depositTransaction ?? data.depositTransactionId ?? null);
+      setCurrentStep("confirmed");
+      toast({ title: "Đặt chỗ thành công", description: `Mã: ${data.reservationId}` });
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Đặt chỗ thất bại!";
 

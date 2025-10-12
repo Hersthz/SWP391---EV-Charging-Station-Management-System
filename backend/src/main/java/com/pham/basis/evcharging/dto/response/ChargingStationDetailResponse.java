@@ -32,6 +32,7 @@ public class ChargingStationDetailResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PillarDto {
+        private Long id;
         private String code;
         private String status;
         private Double power;
