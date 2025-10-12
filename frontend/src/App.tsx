@@ -21,6 +21,9 @@ import StaffIncidents from "./components/staff/StaffIncidents";
 import StaffStationMonitor from "./components/staff/StaffStationMonitor";
 import StaffStationDetails from "./components/staff/StaffStationsDetails";
 import Booking from "./pages/BookingPage";
+import ReportsPage from "./pages/ReportsPage";
+import AdminAddStation from "./components/admin/AdminAddStation";
+import WalletPaymentPage from "./pages/WalletPaymentPage";
 
 const queryClient = new QueryClient();
 
@@ -43,13 +46,16 @@ const App = () => (
           <Route path="/booking" element={<Booking />} />
           <Route path="/booking/:id" element={<Booking />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/wallet" element={<WalletPaymentPage />} />
           <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stations" element={<AdminStations />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/insights" element={<AdminInsights />} />
+          <Route path="/admin/add-station" element={<AdminAddStation />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

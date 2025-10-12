@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+// (Progress đang chưa dùng, có thể xoá nếu muốn)
 import { Progress } from "../components/ui/progress";
-import { 
+import {
   Activity,
   DollarSign,
   Wifi,
@@ -22,32 +23,122 @@ import {
 } from "lucide-react";
 import StaffLayout from "./../components/staff/StaffLayout";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
-  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // NEW: state dùng cho dữ liệu station nạp từ backend
+  const [assignedStation, setAssignedStation] = useState<null | {
+    id: number | string;
+    name: string;
+    location: string;
+    status: "online" | "offline";
+    lastPing: string;
+    uptime: number;
+    temperature: number;
+    powerUsage: number;
+    totalConnectors: number;
+    activeConnectors: number;
+    availableConnectors: number;
+    maintenanceConnectors: number;
+  }>(null);
+
+  interface UserResponse {
+    username: string;
+    role: string;
+    full_name: string;
+    // Nếu /auth/me có trả id/managerId thì khai báo thêm tại đây
+    // id?: number;
+    // managerId?: number;
+  }
+
+  // NEW: state loading & error khi gọi API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // NEW: helper hiển thị "x phút trước"
+  function timeAgo(iso?: string) {
+    if (!iso) return "—";
+    const ms = Date.now() - new Date(iso).getTime();
+    const s = Math.max(1, Math.floor(ms / 1000));
+    if (s < 60) return `${s} seconds ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} minutes ago`;
+    const h = Math.floor(m / 60);
+    return `${h} hours ago`;
+  }
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    const controller = new AbortController();
 
-  // Assigned Station Info
-  const assignedStation = {
-    id: "dt-001",
-    name: "Downtown Station #1",
-    location: "123 Main St, Downtown",
-    status: "online",
-    lastPing: "2 seconds ago",
-    uptime: 99.8,
-    temperature: 24,
-    powerUsage: 87,
-    totalConnectors: 6,
-    activeConnectors: 3,
-    availableConnectors: 2,
-    maintenanceConnectors: 1
-  };
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
+        // Lấy user info
+        const meRes = await api.get<any>("/auth/me", { signal: controller.signal });
+        const me = meRes.data;
+        console.log("🔹 /auth/me (StaffDashboard):", me);
+
+        const userId = me.user_id ?? me.id ?? me.userId ?? Number(localStorage.getItem("userId"));
+        if (!userId) {
+          throw new Error("No userId from /auth/me");
+        }
+        localStorage.setItem("userId", String(userId));
+        if (me.username) localStorage.setItem("currentUser", String(me.username));
+        const roleVal = me.role ?? me.roleName ?? me.role_name;
+        if (roleVal) localStorage.setItem("role", String(roleVal));
+        if (me.full_name) localStorage.setItem("full_name", String(me.full_name));
+
+        // Gọi lấy station-managers (mảng)
+        const res = await api.get<any[]>(`/station-managers/${userId}`, { signal: controller.signal });
+        const list = res.data ?? [];
+        console.log("🔹 /station-managers result:", list);
+
+        if (!Array.isArray(list) || list.length === 0) {
+          setAssignedStation(null);
+          setError(null); // hoặc thông báo: "No stations assigned"
+          return;
+        }
+
+        // Lấy station từ phần tử đầu (nếu user quản lý nhiều, bạn có thể map ra list)
+        const first = list[0];
+        const s = first.station ?? first.stationDto ?? first;
+
+        setAssignedStation({
+          id: s.stationId ?? s.id ?? "unknown",
+          name: s.name ?? s.stationName ?? "Unknown Station",
+          location: s.address ?? s.location ?? "N/A",
+          status: String(s.status ?? "offline").toLowerCase() === "online" ? "online" : "offline",
+          lastPing: timeAgo(s.lastPing ?? s.last_ping ?? s.lastSeen),
+          uptime: Number(s.metrics?.uptime ?? s.uptime ?? 0),
+          temperature: Number(s.metrics?.temp ?? s.temperature ?? 0),
+          powerUsage: Number(s.metrics?.powerUsage ?? s.powerUsage ?? 0),
+          totalConnectors: Number(s.connectors?.total ?? s.totalConnectors ?? 0),
+          activeConnectors: Number(s.connectors?.active ?? s.activeConnectors ?? 0),
+          availableConnectors: Number(s.connectors?.available ?? s.availableConnectors ?? 0),
+          maintenanceConnectors: Number(s.connectors?.maintenance ?? s.maintenanceConnectors ?? 0),
+        });
+      } catch (err: any) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
+        console.error("StaffDashboard error:", err);
+        if (err?.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+        } else {
+          setError(err?.response?.status ? `HTTP ${err.response.status}` : err.message ?? "Request failed");
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [navigate]);
+
+  // Giữ lại mock cho các list khác (sessions/alerts) để UI đầy đủ
   const recentSessions = [
     {
       id: "CS-001",
@@ -60,7 +151,7 @@ const StaffDashboard = () => {
     },
     {
       id: "CS-003",
-      station: "Mall Station #2", 
+      station: "Mall Station #2",
       connector: "B2",
       vehicle: "BMW iX",
       status: "Completed",
@@ -70,7 +161,7 @@ const StaffDashboard = () => {
     {
       id: "CS-007",
       station: "Airport Station #3",
-      connector: "C1", 
+      connector: "C1",
       vehicle: "Audi e-tron",
       status: "Payment Pending",
       cost: "$25.8",
@@ -86,7 +177,7 @@ const StaffDashboard = () => {
       priority: "High"
     },
     {
-      title: "Highway Station #4", 
+      title: "Highway Station #4",
       message: "Station offline for 2 hours",
       time: "2 hours ago",
       priority: "Critical"
@@ -99,10 +190,10 @@ const StaffDashboard = () => {
       "Completed": { className: "bg-primary/10 text-primary border-primary/20", text: "Completed" },
       "Payment Pending": { className: "bg-warning/10 text-warning border-warning/20", text: "Payment Pending" }
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig];
     if (!config) return <Badge variant="outline">{status}</Badge>;
-    
+
     return (
       <Badge className={config.className}>
         {config.text}
@@ -115,7 +206,7 @@ const StaffDashboard = () => {
       "High": { className: "bg-warning/10 text-warning border-warning/20" },
       "Critical": { className: "bg-destructive/10 text-destructive border-destructive/20" }
     };
-    
+
     const config = priorityConfig[priority as keyof typeof priorityConfig];
     return (
       <Badge className={config.className}>
@@ -124,6 +215,25 @@ const StaffDashboard = () => {
     );
   };
 
+  // NEW: guard hiển thị khi đang nạp dữ liệu hoặc lỗi
+  if (loading) {
+    return (
+      <StaffLayout title="Staff Dashboard">
+        <div className="p-6 text-sm text-muted-foreground">Loading station…</div>
+      </StaffLayout>
+    );
+  }
+  if (error || !assignedStation) {
+    return (
+      <StaffLayout title="Staff Dashboard">
+        <div className="p-6 text-sm text-destructive">
+          Failed to load station {error ? `(${error})` : ""}.
+        </div>
+      </StaffLayout>
+    );
+  }
+
+  // UI chính (dùng assignedStation từ state)
   return (
     <StaffLayout title="Staff Dashboard">
       {/* Assigned Station Banner */}
@@ -143,10 +253,17 @@ const StaffDashboard = () => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xl font-semibold text-primary">{assignedStation.name}</h3>
-                  <Badge className="bg-success/10 text-success border-success/20 animate-pulse">
-                    <Wifi className="w-3 h-3 mr-1" />
-                    Online
-                  </Badge>
+                  {assignedStation.status === "online" ? (
+                    <Badge className="bg-success/10 text-success border-success/20 animate-pulse">
+                      <Wifi className="w-3 h-3 mr-1" />
+                      Online
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+                      <WifiOff className="w-3 h-3 mr-1" />
+                      Offline
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
@@ -164,7 +281,7 @@ const StaffDashboard = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Real-time Metrics */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:min-w-[400px]">
               <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4 border border-border/50">
@@ -197,18 +314,19 @@ const StaffDashboard = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6 flex gap-3">
-            <Button 
+            <Button
               onClick={() => navigate('/staff/stations')}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Eye className="w-4 h-4 mr-2" />
               View Station Details
             </Button>
-            <Button 
+            <Button
               variant="outline"
               className="border-primary/20 text-primary hover:bg-primary/10"
+              onClick={() => navigate('/staff/incidents')} // tiện điều hướng sang báo cáo sự cố
             >
               <AlertTriangle className="w-4 h-4 mr-2" />
               Report Issue

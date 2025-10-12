@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -51,4 +52,8 @@ public class User{
 
     @Column(name = "date_of_birth")
     private LocalDate date_of_birth;
+
+    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<StationManager> managedStations;
 }

@@ -1,18 +1,16 @@
 package com.pham.basis.evcharging.service;
 
-import com.pham.basis.evcharging.controller.AddStationRequest;
-import com.pham.basis.evcharging.dto.request.GetStationRequest;
+
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
-import com.pham.basis.evcharging.dto.response.AddStationResponse;
+import com.pham.basis.evcharging.dto.request.StationRequest;
+
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
-import com.pham.basis.evcharging.model.ChargingStation;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
 
 public interface ChargingStationService {
-    public List<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
-    public ChargingStationDetailResponse getStationDetail(GetStationRequest request);
-    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
-    AddStationResponse addStation(String userName, AddStationRequest request);
+    Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
+    ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude);
+    Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
+    ChargingStationDetailResponse addStation(StationRequest request);
 }

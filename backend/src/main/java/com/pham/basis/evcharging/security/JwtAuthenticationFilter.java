@@ -8,6 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtUtil = jwtUtil;
         this.userService = userService;
     }
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
             String username = jwtUtil.extractUsername(token);
             String role = jwtUtil.extractRole(token);
+            logger.info("JwtAuthenticationFilter: username={}, role={}", username, role);
             // tạo Authentication
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                     username,
@@ -41,6 +45,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     List.of(new SimpleGrantedAuthority(role))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
+        }else {
+            logger.info("JwtAuthenticationFilter: token invalid or expired");
         }
         filterChain.doFilter(request, response);
     }

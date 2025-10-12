@@ -28,10 +28,6 @@ export default {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
-        },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
@@ -62,25 +58,24 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
       },
       backgroundImage: {
-        'gradient-primary': 'var(--gradient-primary)',
         'gradient-hero': 'var(--gradient-hero)',
         'gradient-section': 'var(--gradient-section)',
         'gradient-card': 'var(--gradient-card)',
       },
       boxShadow: {
         'primary': 'var(--shadow-primary)',
-        'electric': 'var(--shadow-electric)',
         'glow': 'var(--shadow-glow)',
         'card': 'var(--shadow-card)',
-      },
-       transitionProperty: {
-        'smooth': 'var(--transition-smooth)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -140,5 +135,5 @@ export default {
       },
     },
   },
-plugins: [require("tailwindcss-animate")],
+  plugins: [],
 } satisfies Config;

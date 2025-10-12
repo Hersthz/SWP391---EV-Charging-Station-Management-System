@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
+import { useDebounce } from "use-debounce";
 
 // Leaflet
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -247,6 +248,8 @@ const StationMap = () => {
   // UI state
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch] = useDebounce(searchQuery, 400);
+
 
   // filter popovers
   const [showRadius, setShowRadius] = useState(false);
@@ -266,6 +269,7 @@ const StationMap = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
+
 
   // geolocation & first fetch
   useEffect(() => {
@@ -293,23 +297,33 @@ const StationMap = () => {
     if (!userPosition) return;
     fetchStations(appliedFilters, userPosition[0], userPosition[1]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedFilters]);
+  }, [appliedFilters, debouncedSearch]);
 
   const fetchStations = async (filters: Filters, lat?: number, lon?: number) => {
     if (lat == null || lon == null) return;
     setLoading(true);
     try {
-      const payload = {
-        latitude: lat, longitude: lon,
-        radius: filters.radius, connectors: filters.connectors,
-        availableOnly: filters.availableOnly, minPower: filters.minPower, maxPower: filters.maxPower,
-        minPrice: filters.minPrice, maxPrice: filters.maxPrice,
-        sort: filters.sort, page: filters.page, size: filters.size,
-      };
-      // Expecting backend returns ChargingStationSummaryResponse[]
-      const { data } = await api.post<ChargingStationSummaryResponse[]>("/charging-stations/nearby", payload);
-
-      const mapped: Station[] = data.map(mapSummaryToStation);
+      const { data } = await api.get<{ content: ChargingStationSummaryResponse[] }>(
+        "/charging-stations/nearby",
+        {
+          params: {
+            latitude: lat,
+            longitude: lon,
+            radius: filters.radius,
+            connectors: filters.connectors,
+            availableOnly: filters.availableOnly,
+            minPower: filters.minPower,
+            maxPower: filters.maxPower,
+            minPrice: filters.minPrice,
+            maxPrice: filters.maxPrice,
+            sort: filters.sort,
+            page: filters.page,
+            size: filters.size,
+            search: searchQuery,
+          },
+        }
+      );
+      const mapped: Station[] = data.content.map(mapSummaryToStation);
       setStations(mapped);
     } catch (e) {
       console.error("Fetch stations error:", e);
@@ -359,12 +373,12 @@ const StationMap = () => {
     setReviewsLoading(true);
     try {
       // call detail endpoint - adjust path if your BE uses different route
-      const { data } = await api.post<ChargingStationDetailResponse>
-        ("/charging-stations/detail", {
-          stationId: station.id,
+      const { data } = await api.get<ChargingStationDetailResponse>(`/charging-stations/${station.id}`, {
+        params: {
           latitude: userPosition?.[0],
-          longitude: userPosition?.[1]
-        });
+          longitude: userPosition?.[1],
+        },
+      });
       const mapped = mapDetailToStation(data);
       setSelectedStation(mapped);
       // map reviews if present

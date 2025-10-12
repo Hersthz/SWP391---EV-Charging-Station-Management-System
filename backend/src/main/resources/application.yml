@@ -21,8 +21,6 @@ spring:
         hibernate:
           format_sql: true
           spring.jpa.entityManagerFactoryInterface: jakarta.persistence.EntityManagerFactory
-
-
   mail:
     host: smtp.gmail.com
     port: 587

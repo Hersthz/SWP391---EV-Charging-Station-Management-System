@@ -1,5 +1,6 @@
 package com.pham.basis.evcharging.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pham.basis.evcharging.model.Connector;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +10,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ChargingStationDetailResponse {
     private Long id;
     private String name;
@@ -30,6 +32,7 @@ public class ChargingStationDetailResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PillarDto {
+        private Long id;
         private String code;
         private String status;
         private Double power;

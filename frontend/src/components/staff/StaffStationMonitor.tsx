@@ -221,20 +221,7 @@ const StaffStationMonitor = () => {
   return (
     <StaffLayout title="Station Monitoring">
       {/* MAP – tái sử dụng component StationMap */}
-      <Card className="mb-6 border-0 shadow-electric">
-        <CardHeader>
-          <CardTitle className="p-0 overflow-hidden">
-            <MapPin className="w-5 h-5 mr-3 text-primary" />
-            Stations Map
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {/* Chiều cao cố định để Leaflet hiển thị */}
-                <div className="h-[520px] w-full">
-                  <StationMap />
-                </div>
-        </CardContent>
-      </Card>
+      
       {/* Station Header */}
       <Card className="mb-6 border-0 shadow-electric bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <CardContent className="p-6">

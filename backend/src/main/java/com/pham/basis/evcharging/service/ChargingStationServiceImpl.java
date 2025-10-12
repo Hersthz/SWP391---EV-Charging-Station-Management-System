@@ -1,239 +1,167 @@
-    package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service;
 
-    import com.pham.basis.evcharging.controller.AddStationRequest;
-    import com.pham.basis.evcharging.dto.request.GetStationRequest;
-    import com.pham.basis.evcharging.dto.request.StationFilterRequest;
-    import com.pham.basis.evcharging.dto.response.AddStationResponse;
-    import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
-    import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
-    import com.pham.basis.evcharging.model.ChargerPillar;
-    import com.pham.basis.evcharging.model.ChargingStation;
-    import com.pham.basis.evcharging.model.Connector;
-    import com.pham.basis.evcharging.model.StationReview;
-    import com.pham.basis.evcharging.repository.ChargingStationRepository;
-    import com.pham.basis.evcharging.repository.StationReviewRepository;
-    import lombok.RequiredArgsConstructor;
-    import org.springframework.stereotype.Service;
-    import org.springframework.transaction.annotation.Transactional;
 
-    import java.util.*;
-    import java.util.function.Function;
+import com.pham.basis.evcharging.dto.request.StationFilterRequest;
+import com.pham.basis.evcharging.dto.request.StationRequest;
 
-    @Service
-    @RequiredArgsConstructor
-    public class ChargingStationServiceImpl implements ChargingStationService {
+import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
+import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
+import com.pham.basis.evcharging.mapper.StationMapper;
+import com.pham.basis.evcharging.model.ChargerPillar;
+import com.pham.basis.evcharging.model.ChargingStation;
+import com.pham.basis.evcharging.model.Connector;
+import com.pham.basis.evcharging.repository.ChargingStationRepository;
+import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
-        private final ChargingStationRepository stationRepo;
-        private final StationReviewRepository  stationReviewRepo;
+import java.util.List;
 
-        @Override
-        @Transactional(readOnly = true)
-        public List<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest req) {
-            List<ChargingStation> stations = stationRepo.findAll();
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ChargingStationServiceImpl implements ChargingStationService {
 
-            List<ChargingStation> filteredStations = stations.stream()
-                    .peek(s -> s.setDistance(calculateDistance(req.getLatitude(), req.getLongitude(),
-                            s.getLatitude(), s.getLongitude())))
-                    .filter(s -> s.getDistance() != null && s.getDistance() <= req.getRadius())
-                    .filter(s -> filterByConnectors(s, req.getConnectors()))
-                    .filter(s -> filterByPower(s, req.getMinPower(), req.getMaxPower()))
-                    .filter(s -> filterByPrice(s, req.getMinPrice(), req.getMaxPrice()))
-                    .filter(s -> !req.getAvailableOnly() || hasAvailablePillar(s))
-                    .sorted(getComparator(req.getSort()))
-                    .toList();
+    private final ChargingStationRepository stationRepository;
+    private final StationMapper stationMapper;
 
-            int startIndex = req.getPage() * req.getSize();
-            int endIndex = Math.min(startIndex + req.getSize(), filteredStations.size());
 
-            if (startIndex >= filteredStations.size()) {
-                return List.of();
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request) {
+
+        List<String> connectors = request.getConnectors();
+        if (connectors != null && connectors.isEmpty()) {
+            connectors = null;
+        }
+
+        Integer availableOnlyParam = null;
+        if (request.getAvailableOnly() != null) {
+            availableOnlyParam = request.getAvailableOnly() ? 1 : 0;
+        }
+
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+
+        Page<ChargingStation> page = stationRepository.findNearbyStations(
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getRadius(),
+                connectors,
+                request.getMinPower(),
+                request.getMaxPower(),
+                request.getMinPrice(),
+                request.getMaxPrice(),
+                availableOnlyParam,
+                request.getSearch(),
+                pageable
+        );
+
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            double lat = request.getLatitude();
+            double lon = request.getLongitude();
+            page.getContent().forEach(station ->
+                    station.setDistance(calculateDistance(lat, lon, station.getLatitude(), station.getLongitude()))
+            );
+        }
+
+        return page.map(stationMapper::toSummaryResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude) {
+
+        ChargingStation station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Station not found with id: " + stationId
+                ));
+
+        Double distance = (latitude != null && longitude != null)
+                ? calculateDistance(latitude, longitude, station.getLatitude(), station.getLongitude())
+                : null;
+
+        station.setDistance(distance);
+        return stationMapper.toDetailResponse(station, distance);
+    }
+
+    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+
+        final int R = 6371;
+        double latDist = Math.toRadians(lat2 - lat1);
+        double lonDist = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(latDist / 2) * Math.sin(latDist / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDist / 2) * Math.sin(lonDist / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return Math.round(R * c * 100.0) / 100.0;
+    }
+
+
+
+    @Override
+    public ChargingStationDetailResponse addStation( StationRequest request) {
+        // Validate request
+        validateAddStationRequest(request);
+
+        // Create station entity
+        ChargingStation station = new ChargingStation();
+        station.setName(request.getStationName());
+        station.setAddress(request.getAddress());
+        station.setLatitude(request.getLatitude());
+        station.setLongitude(request.getLongitude());
+        station.setStatus("Available");
+
+        // Add pillars and connectors (if provided)
+        if (request.getPillars() != null && !request.getPillars().isEmpty()) {
+            for (StationRequest.PillarRequest pillarReq : request.getPillars()) {
+                ChargerPillar pillar = new ChargerPillar();
+                pillar.setCode(pillarReq.getCode());
+                pillar.setPower(pillarReq.getPower());
+                pillar.setPricePerKwh(pillarReq.getPricePerKwh());
+                pillar.setStatus("Available");
+
+                // Add connectors to pillar
+                if (pillarReq.getConnectors() != null && !pillarReq.getConnectors().isEmpty()) {
+                    for (StationRequest.ConnectorRequest connReq : pillarReq.getConnectors()) {
+                        Connector connector = new Connector();
+                        connector.setType(connReq.getConnectorType());
+                        pillar.addConnector(connector);
+                    }
+                }
+
+                station.addPillar(pillar);
             }
-            return filteredStations.subList(startIndex, endIndex).stream()
-                    .map(this::convertToSummaryResponse)
-                    .toList();
         }
 
-        @Override
-        @Transactional(readOnly = true)
-        public ChargingStationDetailResponse getStationDetail(GetStationRequest request) {
-            ChargingStation station = stationRepo.findById(request.getStationId())
-                    .orElseThrow(() -> new RuntimeException("Station not found"));
-            if (request.getLatitude() != null && request.getLongitude() != null &&
-                    station.getLatitude() != null && station.getLongitude() != null) {
+        // Save station (cascade will save pillars and connectors)
+        ChargingStation savedStation = stationRepository.save(station);
 
-                Double distance = calculateDistance(
-                        request.getLatitude(), request.getLongitude(),
-                        station.getLatitude(), station.getLongitude()
-                );
-                station.setDistance(distance);
-            }
-            return convertToDetailResponse(station);
+        // Convert to DTO using mapper (without distance parameter)
+        return stationMapper.toDetailResponse(savedStation);
+    }
+
+    private void validateAddStationRequest(StationRequest request) {
+        if (request.getStationName() == null || request.getStationName().trim().isEmpty()) {
+            throw new ValidationException("Station name is required");
         }
-
-        private ChargingStationSummaryResponse convertToSummaryResponse(ChargingStation s) {
-            List<ChargerPillar> pillars = Optional.ofNullable(s.getPillars()).orElse(List.of());
-
-            int total = pillars.size();
-            int available = (int) pillars.stream()
-                    .filter(p -> "Available".equalsIgnoreCase(p.getStatus()))
-                    .count();
-
-            List<String> connectorTypes = pillars.stream()
-                    .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).stream())
-                    .map(Connector::getType)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .toList();
-
-            Double minPrice = pillars.stream().map(ChargerPillar::getPricePerKwh).filter(Objects::nonNull).min(Double::compareTo).orElse(null);
-            Double maxPrice = pillars.stream().map(ChargerPillar::getPricePerKwh).filter(Objects::nonNull).max(Double::compareTo).orElse(null);
-            Double minPower = pillars.stream().map(ChargerPillar::getPower).filter(Objects::nonNull).min(Double::compareTo).orElse(null);
-            Double maxPower = pillars.stream().map(ChargerPillar::getPower).filter(Objects::nonNull).max(Double::compareTo).orElse(null);
-
-            return new ChargingStationSummaryResponse(
-                    s.getId(),
-                    s.getName(),
-                    s.getAddress(),
-                    s.getLatitude(),
-                    s.getLongitude(),
-                    s.getDistance(),
-                    available > 0 ? "Available" : "Occupied",
-                    available,
-                    total,
-                    minPrice,
-                    maxPrice,
-                    minPower,
-                    maxPower,
-                    connectorTypes
-            );
+        if (request.getAddress() == null || request.getAddress().trim().isEmpty()) {
+            throw new ValidationException("Address is required");
         }
-
-        private ChargingStationDetailResponse convertToDetailResponse(ChargingStation s) {
-            List<ChargingStationDetailResponse.PillarDto> pillarDtos = Optional.ofNullable(s.getPillars())
-                    .orElse(List.of())
-                    .stream()
-                    .map(p -> new ChargingStationDetailResponse.PillarDto(
-                            p.getCode(),
-                            p.getStatus(),
-                            p.getPower(),
-                            p.getPricePerKwh(),
-                            Optional.ofNullable(p.getConnectors()).orElse(List.of())
-                                    .stream()
-                                    .map(c -> new ChargingStationDetailResponse.ConnectorDto(c.getId(), c.getType()))
-                                    .toList()
-                    ))
-                    .toList();
-
-            List<ChargingStationDetailResponse.ReviewDto> reviewDtos = stationReviewRepo
-                    .findByChargingStationIdOrderByCreatedAtDesc(s.getId())
-                    .stream()
-                    .map(this::convertToReviewDto)
-                    .toList();
-
-            return new ChargingStationDetailResponse(
-                    s.getId(),
-                    s.getName(),
-                    s.getAddress(),
-                    s.getLatitude(),
-                    s.getLongitude(),
-                    s.getDistance(),
-                    s.getStatus(),
-                    (int) pillarDtos.stream().filter(p -> "Available".equalsIgnoreCase(p.getStatus())).count(),
-                    pillarDtos.size(),
-                    getMin(pillarDtos, ChargingStationDetailResponse.PillarDto::getPricePerKwh),
-                    getMax(pillarDtos, ChargingStationDetailResponse.PillarDto::getPricePerKwh),
-                    getMin(pillarDtos, ChargingStationDetailResponse.PillarDto::getPower),
-                    getMax(pillarDtos, ChargingStationDetailResponse.PillarDto::getPower),
-                    pillarDtos,
-                    reviewDtos
-            );
+        if (request.getLatitude() < -90 || request.getLatitude() > 90) {
+            throw new ValidationException("Invalid latitude value");
         }
-        private ChargingStationDetailResponse.ReviewDto convertToReviewDto(StationReview review) {
-            String userName = review.getUser() != null
-                    ? review.getUser().getFull_name()
-                    : "Anonymous User";
-
-            return new ChargingStationDetailResponse.ReviewDto(
-                    review.getId().toString(),
-                    userName,
-                    review.getRating(),
-                    review.getComment(),
-                    review.getCreatedAt().toString()
-            );
-        }
-
-        private <T extends Number> Double getMin(List<ChargingStationDetailResponse.PillarDto> list, Function<ChargingStationDetailResponse.PillarDto, T> fn) {
-            return list.stream().map(fn).filter(Objects::nonNull).mapToDouble(Number::doubleValue).min().orElse(Double.NaN);
-        }
-
-        private <T extends Number> Double getMax(List<ChargingStationDetailResponse.PillarDto> list, Function<ChargingStationDetailResponse.PillarDto, T> fn) {
-            return list.stream().map(fn).filter(Objects::nonNull).mapToDouble(Number::doubleValue).max().orElse(Double.NaN);
-        }
-
-        private boolean filterByConnectors(ChargingStation s, List<String> connectors) {
-            if (connectors == null || connectors.isEmpty()) return true;
-            return s.getPillars().stream()
-                    .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).stream())
-                    .map(Connector::getType)
-                    .anyMatch(connectors::contains);
-        }
-
-        private boolean filterByPower(ChargingStation s, Double min, Double max) {
-            return s.getPillars().stream().anyMatch(p ->
-                    (min == null || p.getPower() >= min) &&
-                            (max == null || p.getPower() <= max)
-            );
-        }
-
-        private boolean filterByPrice(ChargingStation s, Double min, Double max) {
-            return s.getPillars().stream().anyMatch(p ->
-                    (min == null || p.getPricePerKwh() >= min) &&
-                            (max == null || p.getPricePerKwh() <= max)
-            );
-        }
-
-        private boolean hasAvailablePillar(ChargingStation s) {
-            return s.getPillars().stream().anyMatch(p -> "Available".equalsIgnoreCase(p.getStatus()));
-        }
-
-        private Comparator<ChargingStation> getComparator(String sort) {
-            return Comparator.comparingDouble(ChargingStation::getDistance);
-        }
-
-        private double getMinPrice(ChargingStation s) {
-            return s.getPillars().stream()
-                    .map(ChargerPillar::getPricePerKwh)
-                    .filter(Objects::nonNull)
-                    .min(Double::compareTo)
-                    .orElse(Double.MAX_VALUE);
-        }
-
-        private double getMaxPower(ChargingStation s) {
-            return s.getPillars().stream()
-                    .map(ChargerPillar::getPower)
-                    .filter(Objects::nonNull)
-                    .max(Double::compareTo)
-                    .orElse(Double.MIN_VALUE);
-        }
-
-        @Override
-        public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-            if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
-                return null;
-            }
-            final int R = 6371;
-            double latDistance = Math.toRadians(lat2 - lat1);
-            double lonDistance = Math.toRadians(lon2 - lon1);
-            double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                    + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                    * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            double distance = R * c;
-            return Math.round(distance * 100.0) / 100.0;
-        }
-
-        @Override
-        public AddStationResponse addStation(String userName, AddStationRequest request) {
-            return null;
+        if (request.getLongitude() < -180 || request.getLongitude() > 180) {
+            throw new ValidationException("Invalid longitude value");
         }
     }
+}

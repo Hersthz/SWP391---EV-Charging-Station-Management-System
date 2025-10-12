@@ -30,7 +30,7 @@ const QuickActions = () => {
       desc: "Manage balance and transactions",
       color: "bg-purple-500",
       btnText: "Open Wallet",
-      btnAction: () => {},
+      btnAction: () => navigate("/wallet"),
       bg: "from-purple-50 to-purple-100 border-purple-200",
     },
     {
