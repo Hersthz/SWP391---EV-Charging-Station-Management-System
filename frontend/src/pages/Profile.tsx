@@ -124,7 +124,7 @@ const Profile = () => {
       // Gọi API đổi mật khẩu — chỉnh endpoint nếu backend của bạn khác
       // Ví dụ payload phổ biến:
       // { current_password: "...", new_password: "..." }
-      await api.post("/user/change-password", {
+      await api.post("/users/change-password", {
         current_password: passwords.current,
         new_password: passwords.new,
       });
@@ -836,7 +836,7 @@ const Profile = () => {
                   <div className="flex justify-end">
                     <Button
                       onClick={handleChangePassword}
-                      className="bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-electric"
+                      className="bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-2 focus-visible:ring-sky-400 shadow-md"
                     >
                       <Shield className="w-4 h-4 mr-2" />
                       Change password
