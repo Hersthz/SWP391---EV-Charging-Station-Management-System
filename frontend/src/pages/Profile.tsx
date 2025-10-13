@@ -85,7 +85,7 @@ const Profile = () => {
   const [fullName, setFullName] = useState(localStorage.getItem("full_name") || "UserRandom");
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
-
+  const [date, setDate] = useState(localStorage.getItem("date") || "");
   // ===== vehicle state =====
   const [vehicleMake, setVehicleMake] = useState(localStorage.getItem("vehicle_make") || "Tesla");
   const [vehicleModel, setVehicleModel] = useState(localStorage.getItem("vehicle_model") || "Model 3");
@@ -188,6 +188,7 @@ const Profile = () => {
         setFullName(data.full_name ?? "");
         setEmail(data.email ?? "");
         setPhone(data.phone ?? "");
+        setDate(data.date ?? "");
         setVehicleMake(data.vehicle_make ?? vehicleMake);
         setVehicleModel(data.vehicle_model ?? vehicleModel);
         setVehicleYear(data.vehicle_year ?? vehicleYear);
@@ -216,6 +217,7 @@ const Profile = () => {
         full_name: fullName.trim(),
         email,
         phone,
+        date,
         vehicle_make: vehicleMake,
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear,
@@ -224,6 +226,7 @@ const Profile = () => {
       localStorage.setItem("full_name", data.full_name);
       localStorage.setItem("email", data.email);
       localStorage.setItem("phone", data.phone);
+      localStorage.setItem("date", data.date ?? "");
       localStorage.setItem("vehicle_make", data.vehicle_make ?? "");
       localStorage.setItem("vehicle_model", data.vehicle_model ?? "");
       localStorage.setItem("vehicle_year", data.vehicle_year ?? "");
@@ -482,7 +485,17 @@ const Profile = () => {
                         className={!isEditing ? "bg-slate-50" : ""}
                       />
                     </div>
-                    
+                    <div className="space-y-2">
+                      <Label htmlFor="date" className="flex items-center gap-2">Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        disabled={!isEditing}
+                        className={!isEditing ? "bg-slate-50" : ""}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-3">
