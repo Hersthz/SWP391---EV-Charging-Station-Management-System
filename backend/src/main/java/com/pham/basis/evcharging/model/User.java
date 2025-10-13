@@ -54,6 +54,5 @@ public class User{
     private LocalDate date_of_birth;
 
     @OneToOne(mappedBy = "manager")
-    @JsonIgnore
     private ChargingStation managedStation;
 }
