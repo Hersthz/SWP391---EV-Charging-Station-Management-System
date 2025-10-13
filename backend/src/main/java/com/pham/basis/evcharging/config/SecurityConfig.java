@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .requestMatchers("/book/**").permitAll()
                         .requestMatchers("/chat/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/test/**").permitAll()
+                        .requestMatchers("/api/payment/**").permitAll()
                         .requestMatchers("/charging-stations/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/station-managers/**").permitAll()
