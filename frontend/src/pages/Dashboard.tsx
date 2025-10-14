@@ -9,6 +9,7 @@ import VehicleSection from "../components/dashboard/VehicleSection";
 import RecentSessions from "../components/dashboard/RecentSessions";
 import StatsSection from "../components/dashboard/StatsSection";
 import api from "../api/axios";
+import { ChatBot } from "./ChatBot";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ const Dashboard = () => {
             <ProfileSection />
             <VehicleSection />
             <StatsSection />
+            <ChatBot />
           </div>
         </div>
       </main>

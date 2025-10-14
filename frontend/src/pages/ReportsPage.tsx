@@ -20,6 +20,7 @@ import {
   Battery,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ChatBot } from "./ChatBot";
 
 const ReportsPage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
@@ -608,6 +609,7 @@ const ReportsPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <ChatBot />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import {
   Wallet,
   CreditCard,
   AlertTriangle,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -20,8 +21,11 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useToast } from "../hooks/use-toast";
 import mockStations from "../../stations.json";
 import api from "../api/axios";
+import { ChatBot } from "./ChatBot";
 
-
+/* =========================
+   Types
+========================= */
 type BookingStep = "selection" | "summary" | "confirmed";
 
 type Station = {
@@ -108,21 +112,244 @@ function toNum(x: number | string | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-const HOLD_RATE_PER_MIN = 1500;
+const HOLD_RATE_PER_MIN = 0.05;
 
+/* =========================
+   Time helpers + TimePicker
+========================= */
+const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+const toHM = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const addMinutes = (hm: string, m: number) => {
+  const [H, M] = hm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(H, M, 0, 0);
+  d.setMinutes(d.getMinutes() + m);
+  return toHM(d);
+};
+const roundToStep = (hm: string, step = 5) => {
+  const [H, M] = hm.split(":").map(Number);
+  const rounded = Math.round(M / step) * step;
+  const h = (H + Math.floor(rounded / 60)) % 24;
+  const m = rounded % 60;
+  return `${pad(h)}:${pad(m)}`;
+};
+const nowHM = (step = 5) => {
+  const d = new Date();
+  return roundToStep(`${pad(d.getHours())}:${pad(d.getMinutes())}`, step);
+};
+const isToday = (yyyyMmDd?: string) => {
+  if (!yyyyMmDd) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return yyyyMmDd === today;
+};
+const hmToMinutes = (hm: string) => {
+  const [H, M] = hm.split(":").map(Number);
+  return H * 60 + M;
+};
+
+type TimePickerProps = {
+  label?: string;
+  value: string;
+  onChange: (v: string) => void;
+  date?: string;          // yyyy-MM-dd
+  step?: number;          // minutes
+  minHM?: string | null;  // clamp min HM (ví dụ End >= Start)
+  maxHM?: string | null;  // clamp max HM
+  suggest?: string[];     // quick presets
+};
+
+const TimePicker = ({
+  label,
+  value,
+  onChange,
+  date,
+  step = 5,
+  minHM = null,
+  maxHM = null,
+  suggest = ["Now", "+15", "+30", "+60"],
+}: TimePickerProps) => {
+  const [open, setOpen] = useState(false);
+
+  // Min hiệu lực: ưu tiên minHM (ràng buộc logic), nếu không thì nếu là hôm nay -> chặn quá khứ
+  const todayMin = isToday(date) ? nowHM(step) : null;
+  const effectiveMin = minHM ?? todayMin;
+
+  // Tách giờ/phút của min để áp rule cùng-giờ-thì-phút-≥-min
+  const [minH, minM] = effectiveMin ? effectiveMin.split(":").map(Number) : [undefined, undefined];
+
+  const hours = Array.from({ length: 24 }, (_, i) => pad(i));
+  const minutes = Array.from({ length: Math.floor(60 / step) }, (_, i) => pad(i * step));
+
+  const clampByMinMax = (hm: string) => {
+    let v = hm;
+    if (effectiveMin && hmToMinutes(v) < hmToMinutes(effectiveMin)) v = effectiveMin;
+    if (maxHM && hmToMinutes(v) > hmToMinutes(maxHM)) v = maxHM;
+    return v;
+  };
+
+  const pick = (h: string, m: string) => {
+    let H = Number(h);
+    let M = Number(m);
+    if (effectiveMin && minH !== undefined && minM !== undefined && H === minH && M < minM) {
+      M = minM; // cùng giờ -> nâng phút lên min
+    }
+    let v = `${pad(H)}:${pad(M)}`;
+    v = clampByMinMax(v);
+    onChange(v);
+    setOpen(false);
+  };
+
+  const pressPreset = (preset: string) => {
+    let v = value || nowHM(step);
+    if (preset === "Now") v = nowHM(step);
+    if (preset.startsWith("+")) {
+      const mins = Number(preset.slice(1));
+      v = addMinutes(value || nowHM(step), mins);
+      v = roundToStep(v, step);
+    }
+    v = clampByMinMax(v);
+    onChange(v);
+  };
+
+  const [hCur, mCur] = (value || "").split(":");
+  const btnText = value ? value : "--:--";
+
+  const hourDisabled = (h: string) => {
+    if (!effectiveMin) return false;
+    const H = Number(h);
+    return H < Number(minH); // giờ nhỏ hơn min -> disable, =min thì ok (phút sẽ được lọc ở list phút)
+  };
+
+  const minuteDisabled = (m: string, hPicked?: string) => {
+    if (!effectiveMin) return false;
+    const H = Number(hPicked ?? hCur ?? new Date().getHours());
+    const M = Number(m);
+    if (minH === undefined || minM === undefined) return false;
+    if (H < minH) return true;
+    if (H > minH) return false;
+    return M < minM; // cùng giờ -> phút < minM thì disable
+  };
+
+  return (
+    <div className="relative">
+      {label && <div className="text-sm text-muted-foreground mb-1">{label}</div>}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full h-10 px-3 border rounded-lg text-left hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+      >
+        {btnText}
+      </button>
+
+      {open && (
+        <div className="absolute z-40 mt-2 w-[320px] rounded-xl border bg-white shadow-xl p-3">
+          {/* Presets */}
+          <div className="mb-2 flex gap-2">
+            {suggest.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => pressPreset(s)}
+                className="px-3 py-1.5 rounded-lg border bg-slate-50 hover:bg-slate-100 text-sm"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Hours */}
+            <div className="max-h-48 overflow-auto rounded-lg border">
+              {hours.map((h) => {
+                const disabled = hourDisabled(h);
+                return (
+                  <button
+                    key={h}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => pick(h, mCur ?? "00")}
+                    className={[
+                      "w-full px-3 py-2 text-left hover:bg-slate-100",
+                      h === hCur ? "bg-primary/10 font-semibold" : "",
+                      disabled ? "opacity-40 cursor-not-allowed" : "",
+                    ].join(" ")}
+                  >
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Minutes */}
+            <div className="max-h-48 overflow-auto rounded-lg border">
+              {minutes.map((m) => {
+                const disabled = minuteDisabled(m);
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => pick(hCur ?? pad(new Date().getHours()), m)}
+                    className={[
+                      "w-full px-3 py-2 text-left hover:bg-slate-100",
+                      m === mCur ? "bg-primary/10 font-semibold" : "",
+                      disabled ? "opacity-40 cursor-not-allowed" : "",
+                    ].join(" ")}
+                  >
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-sm px-3 py-1.5 rounded-md hover:bg-slate-100"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* =========================
+   Core date functions
+========================= */
+function combineLocalDateTimeToDate(dateStr?: string, timeStr?: string): Date | null {
+  if (!dateStr || !timeStr) return null;
+  const d = new Date(`${dateStr}T${timeStr}`);
+  return isNaN(d.getTime()) ? null : d;
+}
+function toUtcISOString(d: Date | null): string | null {
+  return d ? d.toISOString() : null;
+}
+
+/* =========================
+   Page
+========================= */
 export default function BookingPage() {
   const [currentStep, setCurrentStep] = useState<BookingStep>("selection");
 
   // selection UI state
   const [selectedPillarCode, setSelectedPillarCode] = useState<string>("");
-  const [selectedConnectorId, setSelectedConnectorId] = useState<string>(""); // for highlight
+  const [selectedConnectorId, setSelectedConnectorId] = useState<string>("");
   const [selectedConnectorLabel, setSelectedConnectorLabel] = useState<string>("");
 
-  // NEW: keep real IDs to submit
+  // real IDs
   const [selectedPillarId, setSelectedPillarId] = useState<number | string | null>(null);
   const [selectedConnectorIdNum, setSelectedConnectorIdNum] = useState<number | string | null>(null);
 
-  const [etaMinutes, setEtaMinutes] = useState<number>(30);
+  // Timeslot (date, start, end)
+  const [bookingDate, setBookingDate] = useState<string>(""); // yyyy-MM-dd
+  const [startTime, setStartTime] = useState<string>("");     // HH:mm
+  const [endTime, setEndTime] = useState<string>("");         // HH:mm
+
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
 
   // booking state
@@ -135,7 +362,7 @@ export default function BookingPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Location: giữ kiểu gốc, chỉ cast state khi cần
+  // Location/station
   const loc = useLocation();
   const stationFromState = (loc.state as { station?: Station } | undefined)?.station;
   let station: Station | undefined = stationFromState;
@@ -150,9 +377,28 @@ export default function BookingPage() {
     return null;
   }
 
-  const estimatedHold = useMemo(() => etaMinutes * HOLD_RATE_PER_MIN, [etaMinutes]);
+  // Derived duration
+  const startDateObj = useMemo(
+    () => combineLocalDateTimeToDate(bookingDate, startTime),
+    [bookingDate, startTime]
+  );
+  const endDateObj = useMemo(
+    () => combineLocalDateTimeToDate(bookingDate, endTime),
+    [bookingDate, endTime]
+  );
 
-  // ===== fetch station detail (pillars from backend) =====
+  const durationMinutes = useMemo(() => {
+    if (!startDateObj || !endDateObj) return 0;
+    const diff = (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60);
+    return diff > 0 ? Math.round(diff) : 0;
+  }, [startDateObj, endDateObj]);
+
+  const estimatedHold = useMemo(
+    () => (durationMinutes > 0 ? durationMinutes * HOLD_RATE_PER_MIN : 0),
+    [durationMinutes]
+  );
+
+  // ===== fetch station detail =====
   const [stationDetail, setStationDetail] = useState<StationDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(true);
 
@@ -173,7 +419,7 @@ export default function BookingPage() {
           id: data.id,
           name: data.name ?? data.stationName,
           pillars: (pillars || []).map((p: any, idx: number) => ({
-            id: p.id ?? p.pillarId ,
+            id: p.id ?? p.pillarId,
             code: p.code ?? p.name ?? `P${idx + 1}`,
             name: p.name ?? p.code ?? `P${idx + 1}`,
             connectors: (p.connectors ?? p.connectorDtos ?? p.sockets ?? []).map((c: any) => ({
@@ -204,20 +450,20 @@ export default function BookingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [station?.id]);
 
-  // ===== helpers =====
+  // helpers
   function labelOf(c: any): string {
     const raw = c?.name ?? c?.type ?? c?.connectorType ?? String(c?.id ?? "");
     return raw.trim();
   }
 
-  // ===== Pillars UI from backend =====
+  // Pillars UI
   type PillarUI = {
     code: string;
     name: string;
     pillarId: number | string;
     status: "available" | "occupied" | "maintenance";
     power?: string;
-    connectorLabels: string[]; // all types on this pillar
+    connectorLabels: string[];
     defaultConnector?: { id: string | number; name: string } | null;
   };
 
@@ -241,11 +487,12 @@ export default function BookingPage() {
     });
   }, [stationDetail]);
 
-  // ===== CONNECTORS: chỉ hiển thị của đúng Pillar đã chọn =====
+  // Connectors for selected pillar
   const normalizedConnectors = useMemo(() => {
     if (stationDetail?.pillars?.length && selectedPillarCode) {
       const pillar = stationDetail.pillars.find((p, i) =>
-        (p.code ?? p.name ?? `P${i + 1}`).toString().toLowerCase() === selectedPillarCode.toLowerCase()
+        (p.code ?? p.name ?? `P${i + 1}`).toString().toLowerCase() ===
+        selectedPillarCode.toLowerCase()
       );
       const list = pillar?.connectors ?? [];
       const dedup = new Map<string, { id: string | number; name: string }>();
@@ -259,7 +506,7 @@ export default function BookingPage() {
     return [];
   }, [stationDetail, selectedPillarCode]);
 
-  // ===== flow =====
+  // flow
   const goSummary = () => {
     if (!selectedPillarId) {
       toast({ title: "Chưa chọn trụ sạc (Pillar).", variant: "destructive" });
@@ -267,6 +514,14 @@ export default function BookingPage() {
     }
     if (!selectedConnectorIdNum) {
       toast({ title: "Chưa chọn đầu nối (Connector).", variant: "destructive" });
+      return;
+    }
+    if (!bookingDate || !startTime || !endTime) {
+      toast({ title: "Thiếu thời gian đặt", description: "Vui lòng chọn ngày và khung giờ.", variant: "destructive" });
+      return;
+    }
+    if (durationMinutes <= 0) {
+      toast({ title: "Khung giờ không hợp lệ", description: "Giờ kết thúc phải sau giờ bắt đầu.", variant: "destructive" });
       return;
     }
     setInsufficient(null);
@@ -283,12 +538,10 @@ export default function BookingPage() {
   async function fetchCurrentUserId(): Promise<number> {
     try {
       const { data } = await api.get<any>("/auth/me");
-      console.log("🔹 /auth/me (fetchCurrentUserId):", data);
       const id = typeof data?.user_id === "number"
         ? data.user_id
         : (typeof data?.id === "number" ? data.id : undefined);
       if (!id) throw new Error("No userId");
-      // cache userId
       localStorage.setItem("userId", String(id));
       return id;
     } catch (e: any) {
@@ -307,7 +560,6 @@ export default function BookingPage() {
   const confirmAndCreateBooking = async () => {
     if (!station) return;
 
-    // ✅ Kiểm tra bắt buộc
     if (!selectedPillarId) {
       toast({
         title: "Chưa chọn trụ sạc (Pillar)",
@@ -324,6 +576,22 @@ export default function BookingPage() {
         variant: "destructive",
       });
       setCurrentStep("selection");
+      return;
+    }
+    if (!bookingDate || !startTime || !endTime) {
+      toast({
+        title: "Thiếu thời gian đặt",
+        description: "Vui lòng chọn ngày và khung giờ.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (durationMinutes <= 0) {
+      toast({
+        title: "Khung giờ không hợp lệ",
+        description: "Giờ kết thúc phải sau giờ bắt đầu.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -343,33 +611,22 @@ export default function BookingPage() {
     try {
       const userId = await fetchCurrentUserId();
 
-      // ✅ Payload chuẩn
+      const startDate = combineLocalDateTimeToDate(bookingDate, startTime);
+      const endDate = combineLocalDateTimeToDate(bookingDate, endTime);
+      const startISO = toUtcISOString(startDate);
+      const endISO = toUtcISOString(endDate);
+
       const payload = {
         userId,
         stationId: station.id,
         pillarId: Number(selectedPillarId),
         connectorId: Number(selectedConnectorIdNum),
-        arrivalEtaMinutes: etaMinutes,
+        arrivalDate: bookingDate,
+        startTime: startISO,
+        endTime: endISO,
       };
 
-      // ✅ Log debug ra console để test
-      console.debug("🧾 Booking payload gửi lên:", payload);
-
-      if (!payload.pillarId || Number.isNaN(payload.pillarId)) {
-        toast({
-          title: "Lỗi dữ liệu",
-          description: "Pillar ID không hợp lệ, vui lòng chọn lại.",
-          variant: "destructive",
-        });
-        setSubmitting(false);
-        return;
-      }
-
-      // ✅ Gửi booking
       const { data } = await api.post("/book/booking", payload);
-      console.log("✅ Booking response:", data);
-
-      // Nếu BE trả các field sau, set lại state để show màn xác nhận:
       setReservationId(data.reservationId);
       setServerHoldFee(Number(data.holdFee ?? 0));
       setTransactionId(data.depositTransaction ?? data.depositTransactionId ?? null);
@@ -377,14 +634,13 @@ export default function BookingPage() {
       toast({ title: "Đặt chỗ thành công", description: `Mã: ${data.reservationId}` });
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Đặt chỗ thất bại!";
-
+      toast({ title: "Lỗi", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
 
-
-  // ===== UI helpers =====
+  // UI helpers
   const renderPaymentSwitch = () => (
     <div className="flex items-center gap-2">
       <Button
@@ -406,7 +662,9 @@ export default function BookingPage() {
     </div>
   );
 
-  // ===== step: selection =====
+  /* =========================
+     Steps
+  ========================= */
   const renderSelectionStep = () => (
     <div className="space-y-6">
       <Card className="shadow-card rounded-2xl">
@@ -442,58 +700,91 @@ export default function BookingPage() {
         </CardContent>
       </Card>
 
-      {/* ETA + hold estimate */}
+      {/* Reservation Time (Date + Start + End with TimePicker) */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">I will come within</h3>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5" /> Reservation Time
+          </h3>
           {renderPaymentSwitch()}
         </div>
+
         <Card className="rounded-2xl border-primary/20">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
+          <CardContent className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Date</div>
+                <input
+                  type="date"
+                  value={bookingDate}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBookingDate(val);
+                    if (isToday(val) && startTime && hmToMinutes(startTime) < hmToMinutes(nowHM(5))) {
+                      const nw = nowHM(5);
+                      setStartTime(nw);
+                      if (!endTime || hmToMinutes(endTime) <= hmToMinutes(nw)) {
+                        setEndTime(addMinutes(nw, 30));
+                      }
+                    }
+                  }}
+                  className="w-full border rounded-lg h-10 px-3"
+                />
+              </div>
+
+              <TimePicker
+                label="Start time"
+                value={startTime}
+                onChange={(v) => {
+                  setStartTime(v);
+                  if (!endTime) setEndTime(addMinutes(v, 30));
+                  else if (hmToMinutes(endTime) <= hmToMinutes(v)) setEndTime(addMinutes(v, 15));
+                }}
+                date={bookingDate}
+                step={5}
+                suggest={["Now", "+15", "+30", "+60"]}
+              />
+
+              <TimePicker
+                label="End time"
+                value={endTime}
+                onChange={(v) => {
+                  if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
+                    setEndTime(addMinutes(startTime, 15));
+                  } else setEndTime(v);
+                }}
+                date={bookingDate}
+                step={5}
+                minHM={startTime || null} // rule: End >= Start; nếu cùng giờ thì phút >= phút Start
+              />
+            </div>
+
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-4 h-4 text-info" />
-                <span className="text-sm text-muted-foreground">Estimated timeframe</span>
+                <span>Duration</span>
               </div>
               <Badge className="rounded-full bg-primary/10 text-primary border-primary/20">
-                {etaMinutes} minutes
+                {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
               </Badge>
             </div>
 
-            <input
-              type="range"
-              min={5}
-              max={60}
-              step={5}
-              value={etaMinutes}
-              onChange={(e) => setEtaMinutes(parseInt(e.target.value, 10))}
-              className="w-full accent-primary"
-            />
-
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>5’</span>
-              <span>15’</span>
-              <span>30’</span>
-              <span>45’</span>
-              <span>60’</span>
-            </div>
-
-            <div className="mt-4 bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-xl flex items-center justify-between">
+            <div className="mt-3 bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-xl flex items-center justify-between">
               <div className="text-sm">
-                Cọc tạm tính: <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
-                <span className="font-semibold">{etaMinutes} minutes</span>
+                <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
+                <span className="font-semibold">{durationMinutes || 0} minutes</span>
               </div>
-              <div className="text-lg font-bold text-primary">{formatVND(estimatedHold)}</div>
+              <div className="text-lg font-bold text-primary">{formatVND(estimatedHold || 0)}</div>
             </div>
 
-            <div className="text-xs text-muted-foreground mt-2">
-              *Số tiền chính xác sẽ do máy chủ xác nhận ở bước tiếp theo.
-            </div>
+            {durationMinutes <= 0 && bookingDate && startTime && endTime && (
+              <div className="text-xs text-destructive mt-1">* Giờ kết thúc phải sau giờ bắt đầu.</div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* PILLARS (from backend) */}
+      {/* PILLARS */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold">Select Charging Pillar</h3>
@@ -513,41 +804,32 @@ export default function BookingPage() {
                 key={String(p.pillarId)}
                 onClick={() => {
                   if (!isAvailable) return;
-                  console.debug("🧱 Chọn pillar:", p);
-
                   setSelectedPillarCode(p.code);
                   setSelectedPillarId(
                     typeof p.pillarId === "string" && /^\d+$/.test(p.pillarId)
                       ? Number(p.pillarId)
                       : p.pillarId
                   );
-
-                  // reset connector khi đổi pillar
                   setSelectedConnectorId("");
                   setSelectedConnectorIdNum(null);
                   setSelectedConnectorLabel("");
-
-                  // auto-chọn nếu pillar chỉ có 1 connector
                   if (p.defaultConnector && p.connectorLabels?.length === 1) {
                     setSelectedConnectorId(String(p.defaultConnector.id));
                     setSelectedConnectorIdNum(p.defaultConnector.id);
                     setSelectedConnectorLabel(p.defaultConnector.name);
                   }
                 }}
-
                 className={[
                   "cursor-pointer transition-colors rounded-xl",
                   active
                     ? "border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md"
                     : !isAvailable
-                      ? "bg-muted/50 opacity-60 cursor-not-allowed"
-                      : "hover:border-primary/40",
+                    ? "bg-muted/50 opacity-60 cursor-not-allowed"
+                    : "hover:border-primary/40",
                 ].join(" ")}
               >
                 <CardContent className="p-3 text-center">
                   <div className="font-semibold">{p.name}</div>
-
-                  {/* Hiển thị TẤT CẢ connector types của pillar */}
                   <div className="flex flex-wrap gap-1 justify-center mt-1 min-h-[22px]">
                     {p.connectorLabels.length ? (
                       p.connectorLabels.map((lbl) => (
@@ -559,7 +841,6 @@ export default function BookingPage() {
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </div>
-
                   {p.power && <div className="text-xs font-medium text-primary mt-1">{p.power}</div>}
                   <Badge
                     className={[
@@ -567,8 +848,8 @@ export default function BookingPage() {
                       isAvailable
                         ? "bg-success/10 text-success border-success/20"
                         : p.status === "occupied"
-                          ? "bg-destructive/10 text-destructive border-destructive/20"
-                          : "bg-warning/10 text-warning border-warning/20",
+                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                        : "bg-warning/10 text-warning border-warning/20",
                     ].join(" ")}
                   >
                     {isAvailable ? "Available" : p.status === "occupied" ? "Occupied" : "Maintenance"}
@@ -580,10 +861,9 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* CONNECTOR TYPE (only from the selected pillar) */}
+      {/* CONNECTOR TYPE */}
       <div>
         <h3 className="text-lg font-semibold mb-3">Select Connector</h3>
-
         {!selectedPillarCode ? (
           <div className="text-sm text-muted-foreground">Vui lòng chọn trụ sạc trước.</div>
         ) : (
@@ -594,8 +874,8 @@ export default function BookingPage() {
                 <button
                   key={String(c.id)}
                   onClick={() => {
-                    setSelectedConnectorId(String(c.id));   // highlight
-                    setSelectedConnectorIdNum(c.id);         // LƯU ID THẬT
+                    setSelectedConnectorId(String(c.id));
+                    setSelectedConnectorIdNum(c.id);
                     setSelectedConnectorLabel(c.name);
                   }}
                   className={[
@@ -618,7 +898,6 @@ export default function BookingPage() {
     </div>
   );
 
-  // ===== banners / summary / confirmed =====
   const renderInsufficientBanner = () =>
     insufficient && (
       <Card className="border-destructive/30 bg-destructive/10 rounded-xl">
@@ -629,9 +908,7 @@ export default function BookingPage() {
             <div className="mb-1">
               Cần nạp thêm <b>{formatVND(insufficient.recommended_topup)}</b> để giữ chỗ.
             </div>
-            <div>
-              Phí giữ chỗ: <b>{formatVND(insufficient.holdFee)}</b>
-            </div>
+            <div>Phí giữ chỗ: <b>{formatVND(insufficient.holdFee)}</b></div>
             {insufficient.estimated_final_cost ? (
               <div className="text-muted-foreground">
                 Ước tính chi phí phiên sạc: {formatVND(insufficient.estimated_final_cost)}
@@ -642,9 +919,7 @@ export default function BookingPage() {
             <Button
               variant="outline"
               className="h-9"
-              onClick={() =>
-                toast({ title: "Chưa nối top-up API", description: "Gọi /wallet/topup ở đây." })
-              }
+              onClick={() => toast({ title: "Chưa nối top-up API", description: "Gọi /wallet/topup ở đây." })}
             >
               Nạp {formatVND(insufficient.recommended_topup)}
             </Button>
@@ -662,7 +937,7 @@ export default function BookingPage() {
             <Receipt className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Booking Summary</h2>
-          <p className="text-muted-foreground">Kiểm tra lựa chọn và thanh toán giữ chỗ</p>
+          <p className="text-muted-foreground">Kiểm tra thời gian, lựa chọn và thanh toán giữ chỗ</p>
         </div>
 
         {renderInsufficientBanner()}
@@ -693,8 +968,10 @@ export default function BookingPage() {
                 <div className="flex items-center p-4 bg-gradient-to-r from-info/10 to-info/5 rounded-xl">
                   <Clock className="w-5 h-5 text-info mr-3" />
                   <div>
-                    <div className="text-sm text-muted-foreground">Arrival ETA</div>
-                    <div className="font-bold text-lg">Trong {etaMinutes} phút</div>
+                    <div className="text-sm text-muted-foreground">Timeslot</div>
+                    <div className="font-bold text-lg">
+                      {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} ({durationMinutes}’)
+                    </div>
                   </div>
                 </div>
 
@@ -714,13 +991,11 @@ export default function BookingPage() {
               <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-6 rounded-2xl">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-lg font-semibold">Hold fee</span>
-                  <span className="text-3xl font-bold text-primary">
-                    {formatVND(holdToShow)}
-                  </span>
+                  <span className="text-3xl font-bold text-primary">{formatVND(holdToShow)}</span>
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Phương thức: <b>{paymentMethod === "wallet" ? "Ví" : "Thẻ"}</b>. Hệ thống sẽ khóa số tiền
-                  tạm giữ tương ứng với ETA. Phần dư sẽ hoàn lại sau khi kết thúc phiên sạc.
+                  tạm giữ tương ứng với thời lượng đặt chỗ. Phần dư sẽ hoàn lại sau khi kết thúc phiên sạc.
                 </div>
               </div>
             </div>
@@ -777,8 +1052,10 @@ export default function BookingPage() {
                 </div>
 
                 <div className="bg-gradient-to-r from-info/10 to-info/5 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Arrival ETA</div>
-                  <div className="font-bold text-lg">Trong {etaMinutes} phút</div>
+                  <div className="text-sm text-muted-foreground mb-1">Timeslot</div>
+                  <div className="font-bold text-lg">
+                    {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} ({durationMinutes}’)
+                  </div>
                 </div>
               </div>
 
@@ -838,7 +1115,7 @@ export default function BookingPage() {
               className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              {currentStep === "selection" ? "Back to ETA" : "Back"}
+              {currentStep === "selection" ? "Back to Selection" : "Back"}
             </button>
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 bg-gradient-primary rounded-lg flex items-center justify-center">
@@ -869,7 +1146,14 @@ export default function BookingPage() {
               {currentStep === "selection" && (
                 <Button
                   onClick={goSummary}
-                  disabled={!selectedPillarId || !selectedConnectorIdNum}
+                  disabled={
+                    !selectedPillarId ||
+                    !selectedConnectorIdNum ||
+                    !bookingDate ||
+                    !startTime ||
+                    !endTime ||
+                    durationMinutes <= 0
+                  }
                   className="h-11 px-8"
                 >
                   Continue to Payment
@@ -886,6 +1170,7 @@ export default function BookingPage() {
           </div>
         </div>
       )}
+      <ChatBot />
     </div>
   );
 }

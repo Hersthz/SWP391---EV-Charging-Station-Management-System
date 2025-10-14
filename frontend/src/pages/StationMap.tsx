@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  Star, ArrowLeft, Search, Navigation, Bookmark,
-  ChevronLeft, ChevronRight, ChevronDown, X
-} from "lucide-react";
+import { Star, ArrowLeft, Search, Navigation, Bookmark, ChevronLeft, ChevronRight, ChevronDown, X, Zap, MapPin } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
@@ -10,7 +7,7 @@ import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose
 } from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
 import { useDebounce } from "use-debounce";
@@ -21,6 +18,7 @@ import "leaflet/dist/leaflet.css";
 import * as L from "leaflet";
 import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
+import { ChatBot } from "./ChatBot";
 
 /* =========================
    Types - UPDATED to match BE DTOs
@@ -177,6 +175,40 @@ const Stars = ({ value }: { value: number }) => (
     ))}
   </div>
 );
+
+const statusStyles: Record<string, string> = {
+  Available: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Occupied: "bg-amber-50 text-amber-700 border-amber-200",
+  Offline: "bg-slate-100 text-slate-600 border-slate-200",
+  Maintenance: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+const PillarStatusBadge = ({ status }: { status: string }) => (
+  <Badge className={`border ${statusStyles[status] ?? "bg-slate-100 text-slate-700 border-slate-200"}`}>
+    {status}
+  </Badge>
+);
+
+const StatTile = ({
+  label, value, sub
+}: { label: string; value: React.ReactNode; sub?: React.ReactNode }) => (
+  <div className="rounded-xl border bg-white p-3 shadow-sm">
+    <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+    <div className="mt-1 text-lg font-semibold">{value}</div>
+    {sub && <div className="mt-0.5 text-xs text-slate-500">{sub}</div>}
+  </div>
+);
+
+const avgRating = (reviews: Review[]) =>
+  reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) : 0;
+
+const initials = (name?: string) =>
+  (name ?? "")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
 // map helpers: convert BE summary -> Station
 const mapSummaryToStation = (s: ChargingStationSummaryResponse): Station => {
@@ -770,106 +802,151 @@ const StationMap = () => {
         </div>
       </div>
 
-      {/* DETAIL DIALOG - UPDATED for new station format */}
+      {/* DETAIL DIALOG – Polished */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">
-              {selectedStation?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedStation?.address}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedStation ? (
-            <div className="space-y-4">
-              {/* Info grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-lg border p-3 bg-sky-50/50">
-                  <p className="text-xs text-slate-500">Status</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge className={selectedStation.status === "Available" ? "bg-green-100 text-green-700 border-green-200" : "bg-yellow-100 text-yellow-800 border-yellow-200"}>
+        <DialogContent className="w-[92vw] max-w-3xl p-0 overflow-hidden sm:rounded-2xl sm:max-h-[90vh] [&>button]:hidden">
+          <div className="flex max-h-[82vh] flex-col">
+          {/* Header cover */}
+          <div className="relative h-20 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500">
+            <DialogClose asChild>
+              <button
+                type="button"
+                onClick={() => setDetailOpen(false)}
+                className="absolute right-3 top-3 rounded-full bg-white/90 p-2 shadow hover:bg-white"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </DialogClose>
+            
+            <div className="relative z-10 flex h-full items-end gap-3 px-5 pb-4">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-white text-slate-700 shadow">
+                <span className="text-sm font-bold">{initials(selectedStation?.name)}</span>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="truncate text-lg font-semibold text-white">
+                    {selectedStation?.name ?? "Loading…"}
+                  </h2>
+                  {selectedStation && (
+                    <Badge
+                      className={`border ${statusStyles[selectedStation.status] ?? "bg-slate-100 text-slate-700 border-slate-200"} bg-white/90`}
+                    >
                       {selectedStation.status}
                     </Badge>
-                    <span className="text-xs text-slate-500">{selectedStation.availablePorts}/{selectedStation.totalPorts} available</span>
-                  </div>
+                  )}
                 </div>
+                <p className="truncate text-sm text-white/90">{selectedStation?.address}</p>
+              </div>
+            </div>
+          </div>
 
-                <div className="rounded-lg border p-3 bg-sky-50/50">
-                  <p className="text-xs text-slate-500">Price Range</p>
-                  <p className="font-semibold mt-1">
-                    ${selectedStation.minPrice?.toFixed(2)}
-                    {selectedStation.maxPrice && selectedStation.maxPrice !== selectedStation.minPrice ? ` - $${selectedStation.maxPrice.toFixed(2)}` : ''}/kWh
-                  </p>
-                </div>
-
-                <div className="rounded-lg border p-3 bg-sky-50/50">
-                  <p className="text-xs text-slate-500">Max Power</p>
-                  <p className="font-semibold mt-1">{selectedStation.maxPower} kW</p>
-                </div>
-
-                <div className="rounded-lg border p-3 bg-sky-50/50">
-                  <p className="text-xs text-slate-500">Distance</p>
-                  <p className="font-semibold mt-1">
-                    {selectedStation.distance?.toFixed(1) ?? "—"} km
-                  </p>
-                </div>
+          {/* Body */}
+          {selectedStation ? (
+            <div className="flex-1 overflow-y-auto space-y-4 p-4">
+              {/* Stats row */}
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <StatTile
+                  label="Availability"
+                  value={
+                    <div className="flex items-center gap-2">
+                      <span>{selectedStation.availablePorts}/{selectedStation.totalPorts}</span>
+                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                  }
+                  sub="Free / Total ports"
+                />
+                <StatTile
+                  label="Price Range"
+                  value={
+                    <>
+                      ${selectedStation.minPrice?.toFixed(2)}
+                      {selectedStation.maxPrice && selectedStation.maxPrice !== selectedStation.minPrice
+                        ? `–$${selectedStation.maxPrice.toFixed(2)}`
+                        : ""}/kWh
+                    </>
+                  }
+                />
+                <StatTile
+                  label="Max Power"
+                  value={`${selectedStation.maxPower ?? "—"} kW`}
+                  sub={(selectedStation.maxPower ?? 0) >= 150 ? "Fast" : "Standard"}
+                />
+                <StatTile
+                  label="Distance"
+                  value={`${selectedStation.distance?.toFixed(1) ?? "—"} km`}
+                />
               </div>
 
-              {/* Connectors */}
+              {/* Connector chips */}
               <div>
-                <p className="text-xs text-slate-500 mb-2">Available Connectors</p>
+                <div className="mb-2 text-xs font-medium text-slate-500">Available Connectors</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {selectedStation.connectorTypes?.map((c) => (
-                    <Badge key={c} variant="outline" className="rounded-full">{c}</Badge>
-                  ))}
+                  {selectedStation.connectorTypes?.length
+                    ? selectedStation.connectorTypes.map((c) => (
+                        <Badge key={c} variant="outline" className="rounded-full">
+                          {c}
+                        </Badge>
+                      ))
+                    : <span className="text-sm text-slate-500">No connector info.</span>
+                  }
                 </div>
               </div>
 
-              {/* Pillars Details */}
+              {/* Pillars */}
               <div>
-                <p className="text-xs text-slate-500 mb-2">Charging Ports</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                  {selectedStation.pillars.map((pillar) => (
-                    <Card key={pillar.code} className="p-3">
-                      <div className="flex items-center justify-between">
+                <div className="mb-2 text-xs font-medium text-slate-500">Charging Pillars</div>
+                <div className="grid max-h-72 grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+                  {selectedStation.pillars.map((p) => (
+                    <div
+                      key={p.code}
+                      className="group relative rounded-xl border bg-white p-4 shadow-sm transition hover:-translate-y-[1px] hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between">
                         <div>
-                          <div className="font-medium">{pillar.code}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {pillar.power} kW • ${pillar.pricePerKwh.toFixed(2)}/kWh
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-semibold">{p.code}</div>
+                            <PillarStatusBadge status={p.status} />
                           </div>
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {pillar.connectors.map((connector, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {connector.type}
+                          <div className="mt-1 text-sm text-slate-600">
+                            {p.power} kW • ${p.pricePerKwh.toFixed(2)}/kWh
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {p.connectors.map((c, i) => (
+                              <Badge key={i} variant="secondary" className="rounded-full text-xs">
+                                {c.type}
                               </Badge>
                             ))}
                           </div>
                         </div>
-                        <Badge
-                          className={
-                            pillar.status === "Available"
-                              ? "bg-green-100 text-green-700 border-green-200"
-                              : pillar.status === "Occupied"
-                                ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                : "bg-gray-100 text-gray-700 border-gray-200"
-                          }
-                        >
-                          {pillar.status}
-                        </Badge>
                       </div>
-                    </Card>
+
+                      {/* right ribbon */}
+                      <div className="pointer-events-none absolute right-0 top-0 rounded-bl-xl rounded-tr-xl bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500 opacity-0 ring-1 ring-slate-200 transition group-hover:opacity-100">
+                        Port
+                      </div>
+                    </div>
                   ))}
+                  {selectedStation.pillars.length === 0 && (
+                    <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">
+                      No detailed port information from server.
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <Separator />
-
               {/* Reviews */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">User Reviews</h3>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold">User Reviews</h3>
+                    {reviews.length > 0 && (
+                      <div className="flex items-center gap-1 text-sm text-slate-600">
+                        <Stars value={Math.round(avgRating(reviews))} />
+                        <span className="ml-1 text-xs">({reviews.length})</span>
+                      </div>
+                    )}
+                  </div>
                   {!reviewsLoading && (
                     <div className="text-sm text-slate-500">
                       {reviews.length} review{reviews.length !== 1 ? "s" : ""}
@@ -878,57 +955,68 @@ const StationMap = () => {
                 </div>
 
                 {reviewsLoading ? (
-                  <div className="text-sm text-slate-500">Loading reviews…</div>
+                  <div className="rounded-xl border bg-white p-4 text-sm text-slate-500">Loading reviews…</div>
                 ) : reviews.length === 0 ? (
-                  <div className="text-sm text-slate-500">No reviews yet.</div>
+                  <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">No reviews yet.</div>
                 ) : (
-                  <div className="space-y-3 max-h-64 overflow-auto pr-1">
+                  <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                     {reviews.map((r) => (
-                      <div key={r.id} className="rounded-lg border p-3">
+                      <div key={r.id} className="rounded-xl border bg-white p-3 shadow-sm">
                         <div className="flex items-center justify-between">
                           <div className="font-medium">{r.userName}</div>
                           <Stars value={r.rating} />
                         </div>
-                        <p className="text-sm mt-1">{r.comment}</p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {new Date(r.createdAt).toLocaleString()}
-                        </p>
+                        <p className="mt-1 text-sm">{r.comment}</p>
+                        <p className="mt-1 text-xs text-slate-500">{new Date(r.createdAt).toLocaleString()}</p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2 pt-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setDetailOpen(false);
-                    if (selectedStation) navigate(`/booking/${selectedStation.id}`, { state: { station: selectedStation } });
-                  }}
-                >
-                  <Bookmark className="w-4 h-4 mr-1" />
-                  Book this Station
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setDetailOpen(false);
-                    if (selectedStation) navigateToStation(selectedStation);
-                  }}
-                >
-                  <Navigation className="w-4 h-4 mr-1" />
-                  Navigate
-                </Button>
+              {/* Sticky action bar */}
+              <div className="sticky bottom-0 -mx-4 border-t bg-white/95 px-4 py-3 backdrop-blur">
+                <div className="flex gap-3">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      setDetailOpen(false);
+                      if (selectedStation) navigate(`/booking/${selectedStation.id}`, { state: { station: selectedStation } });
+                    }}
+                  >
+                    <Bookmark className="mr-1 h-4 w-4" />
+                    Book this Station
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setDetailOpen(false);
+                      if (selectedStation) navigateToStation(selectedStation);
+                    }}
+                  >
+                    <Navigation className="mr-1 h-4 w-4" />
+                    Navigate
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
-            <div>Loading...</div>
+            // Skeleton while waiting for detail fetch
+            <div className="space-y-4 p-5">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+                ))}
+              </div>
+              <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
+              <div className="h-36 animate-pulse rounded-xl bg-slate-100" />
+            </div>
           )}
+          </div>
         </DialogContent>
       </Dialog>
+      <ChatBot />
     </div>
   );
 }
