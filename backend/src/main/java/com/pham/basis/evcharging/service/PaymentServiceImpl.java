@@ -53,10 +53,6 @@ public class PaymentServiceImpl implements PaymentService {
     public static final String METHOD_VNPAY = "VNPAY";
     public static final String METHOD_WALLET = "WALLET";
 
-    private String billingMobile=null;
-    private String billingEmail=null;
-    private String billingFullName=null;
-
     @Override
     @Transactional
     public PaymentResponse createPayment(PaymentCreateRequest req, Long userId, String clientIp) {
@@ -206,7 +202,6 @@ public class PaymentServiceImpl implements PaymentService {
                     "ReferenceId is required for MEMBERSHIP payments");
         }
 
-        // WALLET type doesn't need referenceId (it's for top-up)
     }
 
     private void validatePaymentType(String type) {
@@ -289,17 +284,12 @@ public class PaymentServiceImpl implements PaymentService {
         vnp_Params.put("vnp_Amount", String.valueOf(vnpAmount));
         vnp_Params.put("vnp_CurrCode", "VND");
 
-        String orderInfo = buildOrderInfo(req);
-        vnp_Params.put("vnp_OrderInfo", orderInfo);
-
+        vnp_Params.put("vnp_OrderInfo", buildOrderInfo(req));
         vnp_Params.put("vnp_OrderType", req.getType());
-
-        // Locale
-        String locale = Optional.ofNullable(req.getLocale()).orElse("vn");
-        vnp_Params.put("vnp_Locale", locale);
+        vnp_Params.put("vnp_Locale", req.getLocale() != null ? req.getLocale() : "vn");
 
         // Return URL and IP
-        String returnUrl = Optional.ofNullable(req.getReturnUrl()).orElse(vnpayConfig.getVnpReturnUrl());
+        String returnUrl = req.getReturnUrl() != null ? req.getReturnUrl() : vnpayConfig.getVnpReturnUrl();
         vnp_Params.put("vnp_ReturnUrl", returnUrl);
         vnp_Params.put("vnp_IpAddr", clientIp);
 
@@ -333,65 +323,10 @@ public class PaymentServiceImpl implements PaymentService {
 //                vnp_Params.put("vnp_Bill_LastName", "");
 //            }
 //        }
-        // Billing information (if available in your PaymentCreateRequest)
-        // Billing mobile/email (chỉ thêm nếu không null/blank)
-        Optional.ofNullable(billingMobile)
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .ifPresent(m -> vnp_Params.put("vnp_Bill_Mobile", m));
-
-        Optional.ofNullable(billingEmail)
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .ifPresent(e -> vnp_Params.put("vnp_Bill_Email", e));
-
-// Billing full name: an toàn với null và chuỗi chỉ có khoảng trắng
-        Optional.ofNullable(billingFullName)
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .ifPresent(fullName -> {
-                    String[] parts = fullName.split("\\s+");
-                    String firstName = parts[0];
-                    String lastName = parts.length > 1 ? parts[parts.length - 1] : "";
-                    vnp_Params.put("vnp_Bill_FirstName", firstName);
-                    if (!lastName.isEmpty()) {
-                        vnp_Params.put("vnp_Bill_LastName", lastName);
-                    }
-                });
-
-        // Build data and signature (giống hệt code gốc)
-        List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-        Collections.sort(fieldNames);
-        StringBuilder hashData = new StringBuilder();
-        StringBuilder query = new StringBuilder();
-
-        Iterator<String> itr = fieldNames.iterator();
-        while (itr.hasNext()) {
-            String fieldName = itr.next();
-            String fieldValue = vnp_Params.get(fieldName);
-            if ((fieldValue != null) && (!fieldValue.isEmpty())) {
-                // Build hash data
-                hashData.append(fieldName)
-                        .append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
-
-                // Build query
-                query.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8))
-                        .append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
-
-                if (itr.hasNext()) {
-                    query.append('&');
-                    hashData.append('&');
-                }
-            }
-        }
-
-        String queryUrl = query.toString();
-        String vnp_SecureHash = HmacUtils.hmacSha512Hex(vnpayConfig.getVnpHashSecret(), hashData.toString());
-        queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
-
-        String paymentUrl = vnpayConfig.getVnpPayUrl() + "?" + queryUrl;
+        // Build data
+        String queryUrl = VNPayConfig.buildQuery(vnp_Params);
+        String vnp_SecureHash = VNPayConfig.hmacSHA512(vnpayConfig.getVnpHashSecret(), queryUrl);
+        String paymentUrl = vnpayConfig.getVnpPayUrl() + "?" + queryUrl + "&vnp_SecureHash=" + vnp_SecureHash;
 
         log.debug("Built VNPay URL for transaction: {}", txnRef);
         return paymentUrl;
@@ -503,7 +438,7 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("IPN processed for txnRef={}, type={}, newStatus={}", txnRef, tx.getType(), newStatus);
         return "OK";
     }
-
+//
     private void handlePaymentSuccess(PaymentTransaction tx) {
         try {
             switch (tx.getType()) {
@@ -566,4 +501,58 @@ public class PaymentServiceImpl implements PaymentService {
                 .expiresAt(OffsetDateTime.of(tx.getUpdatedAt().plusMinutes(15), ZoneOffset.UTC))
                 .build();
     }
+
+    @Override
+    public String vnpReturn(HttpServletRequest request) {
+        String result;
+
+        Map<String, String> fields = new HashMap<>();
+        // Lấy tất cả parameter từ VNPAY trả về
+        request.getParameterMap().forEach((key, values) -> {
+            if (values.length > 0 && values[0] != null && !values[0].isEmpty()) {
+                fields.put(key, values[0]);
+            }
+        });
+
+        String vnp_SecureHash = request.getParameter("vnp_SecureHash");
+
+        // Xóa 2 field này trước khi hash
+        fields.remove("vnp_SecureHashType");
+        fields.remove("vnp_SecureHash");
+
+        // ⚠Bước quan trọng: URL encode toàn bộ các value trước khi build chuỗi
+        List<String> fieldNames = new ArrayList<>(fields.keySet());
+        Collections.sort(fieldNames);
+        StringBuilder hashData = new StringBuilder();
+        for (int i = 0; i < fieldNames.size(); i++) {
+            String fieldName = fieldNames.get(i);
+            String fieldValue = fields.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                hashData.append(fieldName)
+                        .append("=")
+                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
+                if (i < fieldNames.size() - 1) {
+                    hashData.append("&");
+                }
+            }
+        }
+
+        // Hash bằng HMAC SHA512 với vnp_HashSecret
+        String signValue = vnpayConfig.hmacSHA512(vnpayConfig.getVnpHashSecret(), hashData.toString());
+
+        if (signValue.equalsIgnoreCase(vnp_SecureHash)) {
+            // Nếu chữ ký hợp lệ, kiểm tra mã phản hồi
+            String responseCode = request.getParameter("vnp_ResponseCode");
+            if ("00".equals(responseCode)) {
+                result = "Giao dịch thành công";
+            } else {
+                result = "Giao dịch không thành công (mã: " + responseCode + ")";
+            }
+        } else {
+            result = "Chữ ký không hợp lệ";
+        }
+
+        return result;
+    }
+
 }

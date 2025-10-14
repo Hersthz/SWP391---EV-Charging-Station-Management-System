@@ -57,6 +57,12 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.handleIpn(request));
     }
 
+    @GetMapping("/payment-return")
+    public ResponseEntity<String> handleVnpayReturn(HttpServletRequest request) {
+        String result = paymentService.vnpReturn(request);
+        return ResponseEntity.ok(result);
+    }
+
     private Long extractUserId(Principal principal) {
         if (principal == null) return null;
         try {

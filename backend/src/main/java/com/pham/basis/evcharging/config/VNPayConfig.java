@@ -52,92 +52,42 @@ public class VNPayConfig {
         log.info("VNPay configuration loaded successfully - TMNCode: {}", vnpTmnCode);
     }
 
+    // Sinh chuỗi HMAC SHA512
     public static String hmacSHA512(String key, String data) {
         return HmacUtils.hmacSha512Hex(key, data);
     }
 
+    // Lấy IP client
     public static String getClientIp(HttpServletRequest request) {
-        try {
-            // List of headers to check (in order of priority)
-            String[] headers = {
-                    "X-Forwarded-For",
-                    "X-Real-IP",
-                    "Proxy-Client-IP",
-                    "WL-Proxy-Client-IP",
-                    "HTTP_CLIENT_IP",
-                    "HTTP_X_FORWARDED_FOR"
-            };
-
-            for (String header : headers) {
-                String ip = request.getHeader(header);
-                if (isValidIp(ip)) {
-                    // X-Forwarded-For can contain multiple IPs, take the first one
-                    if (header.equals("X-Forwarded-For") && ip.contains(",")) {
-                        ip = ip.split(",")[0].trim();
-                    }
-                    return normalizeIpAddress(ip);
-                }
-            }
-
-            // Fallback to remote address
-            return normalizeIpAddress(request.getRemoteAddr());
-
-        } catch (Exception e) {
-            log.warn("Error getting client IP, using fallback", e);
-            return "127.0.0.1";
-        }
-    }
-
-    private static boolean isValidIp(String ip) {
-        return ip != null &&
-                !ip.isEmpty() &&
-                !"unknown".equalsIgnoreCase(ip) &&
-                !"0:0:0:0:0:0:0:1".equals(ip);
-    }
-    private static String normalizeIpAddress(String ip) {
+        String ip = request.getHeader("X-FORWARDED-FOR");
         if (ip == null || ip.isEmpty()) {
-            return "127.0.0.1";
+            ip = request.getRemoteAddr();
         }
-
-        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
-            return "127.0.0.1";
-        }
-
-        if (ip.contains(":") && !ip.contains(".")) {
-            log.warn("IPv6 address detected: {}, using fallback", ip);
-            return "127.0.0.1";
-        }
-
         return ip;
     }
-
+    // Random UUID cho vnp_TxnRef
     public static String generateTxnRef() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
 
     public static String buildQuery(Map<String, String> params) {
+        if (params == null || params.isEmpty()) return "";
         try {
-            List<String> fieldNames = new ArrayList<>(params.keySet());
-            Collections.sort(fieldNames);
+            List<String> keys = new ArrayList<>(params.keySet());
+            Collections.sort(keys);
             StringBuilder sb = new StringBuilder();
-
-            for (Iterator<String> itr = fieldNames.iterator(); itr.hasNext();) {
-                String fieldName = itr.next();
-                String fieldValue = params.get(fieldName);
-
-                if (fieldValue != null && !fieldValue.isEmpty()) {
-                    sb.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.name()))
-                            .append("=")
-                            .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.name()));
-                    if (itr.hasNext()) {
-                        sb.append("&");
-                    }
-                }
+            for (Iterator<String> it = keys.iterator(); it.hasNext();) {
+                String k = it.next();
+                String v = params.get(k);
+                if (v == null || v.isEmpty()) continue;
+                sb.append(URLEncoder.encode(k, StandardCharsets.UTF_8.name()))
+                        .append("=")
+                        .append(URLEncoder.encode(v, StandardCharsets.UTF_8.name()));
+                if (it.hasNext()) sb.append("&");
             }
             return sb.toString();
         } catch (Exception e) {
-            log.error("Error building query string", e);
-            throw new RuntimeException("Failed to build query string", e);
+            throw new RuntimeException("Failed to build query", e);
         }
     }
 
