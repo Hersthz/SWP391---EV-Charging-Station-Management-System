@@ -86,8 +86,7 @@ const Profile = () => {
   const [fullName, setFullName] = useState(localStorage.getItem("full_name") || "UserRandom");
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
-  const [address, setAddress] = useState("123 Main Street, City");
-
+  const [date, setDate] = useState(localStorage.getItem("date") || "");
   // ===== vehicle state =====
   const [vehicleMake, setVehicleMake] = useState(localStorage.getItem("vehicle_make") || "Tesla");
   const [vehicleModel, setVehicleModel] = useState(localStorage.getItem("vehicle_model") || "Model 3");
@@ -126,7 +125,7 @@ const Profile = () => {
       // Gọi API đổi mật khẩu — chỉnh endpoint nếu backend của bạn khác
       // Ví dụ payload phổ biến:
       // { current_password: "...", new_password: "..." }
-      await api.post("/user/change-password", {
+      await api.post("/users/change-password", {
         current_password: passwords.current,
         new_password: passwords.new,
       });
@@ -190,6 +189,7 @@ const Profile = () => {
         setFullName(data.full_name ?? "");
         setEmail(data.email ?? "");
         setPhone(data.phone ?? "");
+        setDate(data.date ?? "");
         setVehicleMake(data.vehicle_make ?? vehicleMake);
         setVehicleModel(data.vehicle_model ?? vehicleModel);
         setVehicleYear(data.vehicle_year ?? vehicleYear);
@@ -218,6 +218,7 @@ const Profile = () => {
         full_name: fullName.trim(),
         email,
         phone,
+        date,
         vehicle_make: vehicleMake,
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear,
@@ -226,6 +227,7 @@ const Profile = () => {
       localStorage.setItem("full_name", data.full_name);
       localStorage.setItem("email", data.email);
       localStorage.setItem("phone", data.phone);
+      localStorage.setItem("date", data.date ?? "");
       localStorage.setItem("vehicle_make", data.vehicle_make ?? "");
       localStorage.setItem("vehicle_model", data.vehicle_model ?? "");
       localStorage.setItem("vehicle_year", data.vehicle_year ?? "");
@@ -485,11 +487,12 @@ const Profile = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="address" className="flex items-center gap-2">Address</Label>
+                      <Label htmlFor="date" className="flex items-center gap-2">Date</Label>
                       <Input
-                        id="address"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
+                        id="date"
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
                         disabled={!isEditing}
                         className={!isEditing ? "bg-slate-50" : ""}
                       />
@@ -834,7 +837,7 @@ const Profile = () => {
                   <div className="flex justify-end">
                     <Button
                       onClick={handleChangePassword}
-                      className="bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-electric"
+                      className="bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-2 focus-visible:ring-sky-400 shadow-md"
                     >
                       <Shield className="w-4 h-4 mr-2" />
                       Change password
