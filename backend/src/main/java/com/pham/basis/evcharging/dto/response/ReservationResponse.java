@@ -19,7 +19,6 @@ public class ReservationResponse {
     private String status; //pending
     private BigDecimal holdFee;
     private String depositTransaction;
-    private LocalDate arrivalDate;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime createdAt;

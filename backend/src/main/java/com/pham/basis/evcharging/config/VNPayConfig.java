@@ -76,19 +76,28 @@ public class VNPayConfig {
             List<String> keys = new ArrayList<>(params.keySet());
             Collections.sort(keys);
             StringBuilder sb = new StringBuilder();
-            for (Iterator<String> it = keys.iterator(); it.hasNext();) {
-                String k = it.next();
+            boolean first = true;
+            for (String k : keys) {
                 String v = params.get(k);
                 if (v == null || v.isEmpty()) continue;
+                if (!first) sb.append("&");
                 sb.append(URLEncoder.encode(k, StandardCharsets.UTF_8.name()))
                         .append("=")
                         .append(URLEncoder.encode(v, StandardCharsets.UTF_8.name()));
-                if (it.hasNext()) sb.append("&");
+                first = false;
             }
             return sb.toString();
         } catch (Exception e) {
             throw new RuntimeException("Failed to build query", e);
         }
+    }
+
+
+    public boolean verifySignature(Map<String, String> params, String receivedHash) {
+        if (receivedHash == null) return false;
+        String query = buildQuery(params);
+        String expectedHash = hmacSHA512(vnpHashSecret, query);
+        return expectedHash.equalsIgnoreCase(receivedHash);
     }
 
     public static String hashAllFields(Map<String, String> params, String secretKey) {

@@ -3,6 +3,7 @@ package com.pham.basis.evcharging.service;
 import com.pham.basis.evcharging.config.VNPayConfig;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
+import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.repository.PaymentTransactionRepository;
@@ -10,7 +11,6 @@ import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.WalletRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.codec.digest.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -20,8 +20,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -67,7 +65,6 @@ public class PaymentServiceImpl implements PaymentService {
             }
 
             BigDecimal amountInVND = req.getAmount().setScale(0, RoundingMode.HALF_UP);
-            log.debug("Processing payment amount: {}", amountInVND);
 
             // Idempotence check
             Optional<PaymentTransaction> existing = txRepo.findPendingByTypeAndReference(
@@ -118,20 +115,19 @@ public class PaymentServiceImpl implements PaymentService {
     //Thanh toán bằng wallet
     private PaymentResponse processWalletPayment(PaymentCreateRequest req, Long userId,
                                                  BigDecimal amountInVND, String txnRef) {
-        BigDecimal amount = amountInVND;
 
         // Kiểm tra số dư ví
         Wallet wallet = walletRepo.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Wallet not found for user: " + userId));
 
-        if (wallet.getBalance().compareTo(amount) < 0) {
+        if (wallet.getBalance().compareTo(amountInVND) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Insufficient wallet balance. Current: " + wallet.getBalance() + ", Required: " + amount);
+                    "Insufficient wallet balance. Current: " + wallet.getBalance() + ", Required: " + amountInVND);
         }
 
         // Trừ tiền từ ví
-        int updatedRows = walletRepo.deductBalance(userId, amount);
+        int updatedRows = walletRepo.deductBalance(userId, amountInVND);
         if (updatedRows == 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Failed to deduct from wallet. Please try again.");
@@ -141,11 +137,9 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentTransaction tx = createPaymentTransaction(req, userId, amountInVND, txnRef);
         tx.setStatus("SUCCESS");
         txRepo.save(tx);
-        log.info("Created WALLET payment transaction: {}", txnRef);
 
         // Xử lý business logic ngay lập tức
         handlePaymentSuccess(tx);
-
         return buildPaymentResponse(tx, null); // Không có URL cho wallet
     }
 
@@ -157,12 +151,9 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             // 1. Validate signature
             String receivedHash = params.remove("vnp_SecureHash");
-            if (receivedHash == null) {
-                log.warn("IPN missing vnp_SecureHash");
-                return "INVALID_SIGNATURE";
-            }
+            params.remove("vnp_SecureHashType");
 
-            if (!isValidSignature(params, receivedHash)) {
+            if (receivedHash == null || !vnpayConfig.verifySignature(params, receivedHash)) {
                 log.warn("IPN signature mismatch");
                 return "INVALID_SIGNATURE";
             }
@@ -382,12 +373,6 @@ public class PaymentServiceImpl implements PaymentService {
         return params;
     }
 
-    private boolean isValidSignature(Map<String, String> params, String receivedHash) {
-        String query = VNPayConfig.buildQuery(params);
-        String expectedHash = HmacUtils.hmacSha512Hex(vnpayConfig.getVnpHashSecret(), query);
-        return expectedHash.equalsIgnoreCase(receivedHash);
-    }
-
     private String processIpnTransaction(Map<String, String> params) {
         String txnRef = params.get("vnp_TxnRef");
         String vnpAmountStr = params.get("vnp_Amount");
@@ -503,56 +488,59 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public String vnpReturn(HttpServletRequest request) {
-        String result;
+    public PaymentResultResponse vnpReturn(HttpServletRequest request) {
+        // Use extractParameters to get params consistently
+        Map<String, String> fields = extractParameters(request);
 
-        Map<String, String> fields = new HashMap<>();
-        // Lấy tất cả parameter từ VNPAY trả về
-        request.getParameterMap().forEach((key, values) -> {
-            if (values.length > 0 && values[0] != null && !values[0].isEmpty()) {
-                fields.put(key, values[0]);
-            }
-        });
-
+        // Secure hash provided by VNPay
         String vnp_SecureHash = request.getParameter("vnp_SecureHash");
 
-        // Xóa 2 field này trước khi hash
+        // Remove hash fields before building query
         fields.remove("vnp_SecureHashType");
         fields.remove("vnp_SecureHash");
 
-        // ⚠Bước quan trọng: URL encode toàn bộ các value trước khi build chuỗi
-        List<String> fieldNames = new ArrayList<>(fields.keySet());
-        Collections.sort(fieldNames);
-        StringBuilder hashData = new StringBuilder();
-        for (int i = 0; i < fieldNames.size(); i++) {
-            String fieldName = fieldNames.get(i);
-            String fieldValue = fields.get(fieldName);
-            if (fieldValue != null && !fieldValue.isEmpty()) {
-                hashData.append(fieldName)
-                        .append("=")
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                if (i < fieldNames.size() - 1) {
-                    hashData.append("&");
-                }
-            }
+        // Build query using VNPayConfig.buildQuery (same method used for creating URL)
+        if (!vnpayConfig.verifySignature(fields, vnp_SecureHash)) {
+            log.warn("vnpReturn: invalid signature");
+            return PaymentResultResponse.builder()
+                    .status("INVALID_SIGNATURE")
+                    .orderId(fields.get("vnp_TxnRef"))
+                    .message("Chữ ký không hợp lệ")
+                    .build();
         }
 
-        // Hash bằng HMAC SHA512 với vnp_HashSecret
-        String signValue = vnpayConfig.hmacSHA512(vnpayConfig.getVnpHashSecret(), hashData.toString());
+        String responseCode = request.getParameter("vnp_ResponseCode");
+        String txnRef = request.getParameter("vnp_TxnRef");
+        String transNo = request.getParameter("vnp_TransactionNo");
+        String amountStr = request.getParameter("vnp_Amount");
 
-        if (signValue.equalsIgnoreCase(vnp_SecureHash)) {
-            // Nếu chữ ký hợp lệ, kiểm tra mã phản hồi
-            String responseCode = request.getParameter("vnp_ResponseCode");
-            if ("00".equals(responseCode)) {
-                result = "Giao dịch thành công";
-            } else {
-                result = "Giao dịch không thành công (mã: " + responseCode + ")";
+        BigDecimal amount = null;
+        try {
+            if (amountStr != null && !amountStr.isEmpty()) {
+                long vnpAmountLong = Long.parseLong(amountStr);
+                amount = BigDecimal.valueOf(vnpAmountLong).divide(BigDecimal.valueOf(100));
             }
+        } catch (NumberFormatException ex) {
+            log.warn("vnpReturn: invalid amount format {}", amountStr);
+        }
+
+        if ("00".equals(responseCode)) {
+            return PaymentResultResponse.builder()
+                    .status("SUCCESS")
+                    .orderId(txnRef)
+                    .message("Giao dịch thành công")
+                    .amount(amount)
+                    .transactionNo(transNo)
+                    .build();
         } else {
-            result = "Chữ ký không hợp lệ";
+            return PaymentResultResponse.builder()
+                    .status("FAILED")
+                    .orderId(txnRef)
+                    .message("Giao dịch không thành công (mã: " + responseCode + ")")
+                    .amount(amount)
+                    .transactionNo(transNo)
+                    .build();
         }
-
-        return result;
     }
 
 }
