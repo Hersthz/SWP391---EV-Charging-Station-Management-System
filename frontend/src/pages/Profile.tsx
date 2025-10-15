@@ -221,7 +221,7 @@ const Profile = () => {
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear,
       };
-      const { data } = await api.put("/auth/me", payload);
+      const { data } = await api.post("/user/update-profile", payload);
       localStorage.setItem("full_name", data.full_name);
       localStorage.setItem("email", data.email);
       localStorage.setItem("phone", data.phone);
