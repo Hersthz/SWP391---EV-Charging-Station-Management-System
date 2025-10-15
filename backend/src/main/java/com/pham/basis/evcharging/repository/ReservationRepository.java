@@ -12,6 +12,9 @@ import java.util.List;
 
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+    List<Reservation> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+
     @Query("SELECT r FROM Reservation r WHERE " +
             "r.pillar.id = :pillarId AND " +
             "r.status IN ('PENDING', 'CONFIRMED') AND " +

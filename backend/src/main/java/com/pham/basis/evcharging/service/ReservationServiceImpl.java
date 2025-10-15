@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -81,6 +82,35 @@ public class ReservationServiceImpl implements ReservationService {
                 .expiredAt(saved.getExpiredAt())
                 .build();
     }
+
+    @Override
+    public List<ReservationResponse> getReservationsByUser(Long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Reservation> reservations = reservationRepository
+                .findByUserIdOrderByCreatedAtDesc(userId);
+
+        return reservations.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ReservationResponse toResponse(Reservation saved) {
+        return ReservationResponse.builder()
+                .reservationId(saved.getId())
+                .stationId(saved.getStation().getId())
+                .stationName(saved.getStation().getName())
+                .pillarId(saved.getPillar().getId())
+                .connectorId(saved.getConnector().getId())
+                .status(saved.getStatus())
+                .holdFee(saved.getHoldFee())
+                .arrivalDate(saved.getArrivalDate())
+                .startTime(saved.getStartTime())
+                .endTime(saved.getEndTime())
+                .createdAt(saved.getCreatedAt())
+                .expiredAt(saved.getExpiredAt())
+                .build();
     //
     private void validateTime(ReservationRequest req){
         LocalDateTime now = LocalDateTime.now();
