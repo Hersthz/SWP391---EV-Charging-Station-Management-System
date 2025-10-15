@@ -56,6 +56,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
+import { ChatBot } from "./ChatBot";
 
 // ================= Mock data (giữ nguyên có thể thay bằng API sau) =================
 const walletBalance = 450000; // VND
@@ -550,6 +551,7 @@ export default function WalletPaymentPage() {
           </CardContent>
         </Card>
       </div>
+      <ChatBot />
     </div>
   );
 }

@@ -25,9 +25,6 @@ public class ReservationRequest {
     @NotNull(message = "Connector ID is required")
     private Long connectorId;
 
-    @NotNull(message = "ArrivalDate is required")
-    private LocalDate arrivalDate;
-
     @NotNull(message = "StartTime  required")
     private LocalDateTime startTime;
 

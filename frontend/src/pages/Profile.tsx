@@ -58,6 +58,7 @@ import {
 
 import { useToast } from "../hooks/use-toast";
 import api from "../api/axios";
+import { ChatBot } from "./ChatBot";
 
 type Vehicle = {
   id: number;
@@ -1023,6 +1024,7 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <ChatBot />
     </div>
   );
 };
