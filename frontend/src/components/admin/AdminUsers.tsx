@@ -27,6 +27,11 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState("all-roles");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [roleEditorOpen, setRoleEditorOpen] = useState(false);
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  // Role Editor selections
+  const [roleEditorSelectedUserId, setRoleEditorSelectedUserId] = useState<string>("");
+  const [roleEditorSelectedRole, setRoleEditorSelectedRole] = useState<string>("");
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -35,7 +40,83 @@ const AdminUsers = () => {
     subscription: "pay-per-use"
   });
   const [addUserOpen, setAddUserOpen] = useState(false);
-  const users = [
+
+  const handleAddUser = () => {
+    if (!newUser.name || !newUser.email || !newUser.phone) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // map role/subscription sang format hiển thị trong bảng
+    const roleMap: Record<string, string> = {
+      basic: "Basic User",
+      premium: "Premium User",
+      fleet: "Fleet Manager",
+    };
+    const subscriptionMap: Record<string, string> = {
+      "pay-per-use": "Pay-per-use",
+      basic: "Basic Monthly",
+      premium: "Premium Monthly",
+      enterprise: "Enterprise",
+    };
+
+    const nextId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
+    const now = new Date();
+    const joinDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    const newRow = {
+      id: nextId,
+      name: newUser.name.trim(),
+      email: newUser.email.trim(),
+      phone: newUser.phone.trim(),
+      joinDate,
+      role: roleMap[newUser.role] ?? "Basic User",
+      status: "Active",
+      sessions: 0,
+      subscription: subscriptionMap[newUser.subscription] ?? "Pay-per-use",
+    };
+
+    setUsers(prev => [newRow, ...prev]);
+
+    toast({
+      title: "User Created Successfully",
+      description: `${newRow.name} has been added to the system`,
+    });
+
+    setAddUserOpen(false);
+    setNewUser({
+      name: "",
+      email: "",
+      phone: "",
+      role: "basic",
+      subscription: "pay-per-use",
+    });
+  };
+
+  const handleToggleStatus = (userId: number) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const newStatus = u.status === "Active" ? "Suspended" : "Active";
+        toast({
+          title: `User ${newStatus}`,
+          description: `${u.name} has been ${newStatus.toLowerCase()}`,
+        });
+        return { ...u, status: newStatus };
+      }
+      return u;
+    }));
+  };
+
+  const openEditDialog = (user: any) => {
+    setSelectedUser({ ...user });
+    setEditUserOpen(true);
+  };
+
+  const [users, setUsers] = useState([
     {
       id: 1,
       name: "John Doe",
@@ -80,31 +161,20 @@ const AdminUsers = () => {
       sessions: 23,
       subscription: "Basic Monthly"
     }
-  ];
+  ]);
 
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.phone) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
+  const handleEditUser = () => {
+    if (!selectedUser) return;
+
+    setUsers(users.map(u => u.id === selectedUser.id ? selectedUser : u));
 
     toast({
-      title: "User Created Successfully",
-      description: `${newUser.name} has been added to the system`,
+      title: "User Updated Successfully",
+      description: `${selectedUser.name}'s information has been updated`,
     });
 
-    setAddUserOpen(false);
-    setNewUser({
-      name: "",
-      email: "",
-      phone: "",
-      role: "basic",
-      subscription: "pay-per-use"
-    });
+    setEditUserOpen(false);
+    setSelectedUser(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -384,11 +454,11 @@ const AdminUsers = () => {
               Cancel
             </Button>
             <Button
-  onClick={handleAddUser}
-  className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:brightness-110 active:translate-y-[1px] focus-visible:ring-2 focus-visible:ring-primary/50 shadow-electric transition-all"
->
-  Create User
-</Button>
+              onClick={handleAddUser}
+              className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:brightness-110 active:translate-y-[1px] focus-visible:ring-2 focus-visible:ring-primary/50 shadow-electric transition-all"
+            >
+              Create User
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -529,7 +599,12 @@ const AdminUsers = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm" className="border-primary/20 text-primary hover:bg-primary/10">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-primary/20 text-primary hover:bg-primary/10"
+                          onClick={() => openEditDialog(user)}
+                        >
                           <Edit className="w-3 h-3 mr-1" />
                           Edit
                         </Button>
@@ -539,6 +614,7 @@ const AdminUsers = () => {
                           className={user.status === 'Active'
                             ? 'text-destructive border-destructive/20 hover:bg-destructive/10'
                             : 'text-success border-success/20 hover:bg-success/10'}
+                          onClick={() => handleToggleStatus(user.id)}
                         >
                           <UserX className="w-3 h-3 mr-1" />
                           {user.status === 'Active' ? 'Suspend' : 'Activate'}
@@ -552,6 +628,119 @@ const AdminUsers = () => {
           </div>
         </CardContent>
       </Card>
+      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-xl">
+              <Edit className="w-5 h-5 mr-2 text-primary" />
+              Edit User Information
+            </DialogTitle>
+            <DialogDescription>
+              Update user details and account settings
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name" className="text-sm font-medium">Full Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={selectedUser.name}
+                  onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-email" className="text-sm font-medium">Email Address *</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={selectedUser.email}
+                  onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone" className="text-sm font-medium">Phone Number *</Label>
+                <Input
+                  id="edit-phone"
+                  value={selectedUser.phone}
+                  onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-role" className="text-sm font-medium">User Role</Label>
+                  <Select
+                    value={selectedUser.role === "Basic User" ? "basic" : selectedUser.role === "Premium User" ? "premium" : "fleet"}
+                    onValueChange={(value) => {
+                      const roleMap: any = {
+                        "basic": "Basic User",
+                        "premium": "Premium User",
+                        "fleet": "Fleet Manager"
+                      };
+                      setSelectedUser({ ...selectedUser, role: roleMap[value] });
+                    }}
+                  >
+                    <SelectTrigger id="edit-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">Basic User</SelectItem>
+                      <SelectItem value="premium">Premium User</SelectItem>
+                      <SelectItem value="fleet">Fleet Manager</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-subscription" className="text-sm font-medium">Subscription</Label>
+                  <Select
+                    value={selectedUser.subscription}
+                    onValueChange={(value) => setSelectedUser({ ...selectedUser, subscription: value })}
+                  >
+                    <SelectTrigger id="edit-subscription">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pay-per-use">Pay-per-use</SelectItem>
+                      <SelectItem value="Basic Monthly">Basic Monthly</SelectItem>
+                      <SelectItem value="Premium Monthly">Premium Monthly</SelectItem>
+                      <SelectItem value="Enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-status" className="text-sm font-medium">Account Status</Label>
+                <Select
+                  value={selectedUser.status}
+                  onValueChange={(value) => setSelectedUser({ ...selectedUser, status: value })}
+                >
+                  <SelectTrigger id="edit-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={() => setEditUserOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditUser} className="bg-gradient-primary text-primary-foreground hover:opacity-90">
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
