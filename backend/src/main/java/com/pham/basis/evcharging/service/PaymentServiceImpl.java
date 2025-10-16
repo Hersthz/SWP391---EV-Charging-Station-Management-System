@@ -24,7 +24,6 @@ import java.text.SimpleDateFormat;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -38,7 +37,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final WalletRepository walletRepo;
     private final VNPayConfig vnpayConfig;
 
-    private static final DateTimeFormatter VNP_CREATE_DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
 
     // Payment types

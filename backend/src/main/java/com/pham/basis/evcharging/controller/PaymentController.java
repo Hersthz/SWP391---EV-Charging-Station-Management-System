@@ -86,7 +86,6 @@ public class PaymentController {
 
     private String buildFrontendRedirectUrl(PaymentResultResponse result) {
 
-
         return UriComponentsBuilder.fromHttpUrl(frontendUrl)
                 .queryParam("status", result.getStatus())
                 .queryParam("orderId", result.getOrderId())
