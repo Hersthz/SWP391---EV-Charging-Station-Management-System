@@ -383,9 +383,12 @@ const AdminUsers = () => {
             <Button variant="outline" onClick={() => setAddUserOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddUser} className="bg-gradient-primary text-primary-foreground hover:opacity-90">
-              Create User
-            </Button>
+            <Button
+  onClick={handleAddUser}
+  className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:brightness-110 active:translate-y-[1px] focus-visible:ring-2 focus-visible:ring-primary/50 shadow-electric transition-all"
+>
+  Create User
+</Button>
           </div>
         </DialogContent>
       </Dialog>
