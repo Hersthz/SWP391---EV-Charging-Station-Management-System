@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.controller;
 
 import com.pham.basis.evcharging.dto.request.LoginRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
+import com.pham.basis.evcharging.dto.response.LoginResponse;
 import com.pham.basis.evcharging.dto.response.UserResponse;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.security.CookieUtil;
@@ -62,7 +63,8 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        return ResponseEntity.ok(Map.of("message", "logged_in"));
+        LoginResponse responseLogin = new LoginResponse(user.getUsername(),user.getRole().getName(),user.getFull_name());
+        return ResponseEntity.ok(Map.of("message","login successfully"));
     }
 
     @GetMapping("/verify")

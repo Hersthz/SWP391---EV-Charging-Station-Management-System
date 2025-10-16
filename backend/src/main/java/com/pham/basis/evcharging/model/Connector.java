@@ -14,7 +14,7 @@ public class Connector {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String type; // CCS, CHAdeMO, AC
+    private String type; // (CCS, CHAdeMO) DC , (AC, Type2) AC
 
     @ManyToOne
     @JoinColumn(name = "pillar_id")

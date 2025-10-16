@@ -19,9 +19,9 @@ public class ChargerPillar {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String code;    // Mã trụ
+    private String code;    // Mã trụ AC 15KW  DC 60KW
     private String status;  // Available, Occupied, Maintenance
-    private Double power;   // kW
+    private Double power;   // 15kW
     @Column(name = "price_per_kwh")
     private Double pricePerKwh; // Giá theo kWh
 
