@@ -16,7 +16,10 @@ import org.springframework.stereotype.Service;
 
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -69,7 +72,7 @@ public class UserServiceImpl implements UserService {
             u.setRole(defaultRole);
             u.setCreated_at(LocalDateTime.now());
             userRepository.save(u);
-        }else {
+        } else {
             boolean changed = false;
             if (!Objects.equals(user.getFull_name(), full_name)) {
                 user.setFull_name(full_name);
@@ -82,6 +85,7 @@ public class UserServiceImpl implements UserService {
             if (changed) userRepository.save(user);
         }
     }
+
     @Override
     public User findByEmail(String email) {
         return userRepository.findByEmail(email);
@@ -89,32 +93,34 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByUsername(String username) {
-        return userRepository.findUserByUsername( username);
+        return userRepository.findUserByUsername(username);
     }
 
     @Override
-    public User findByPhone(String phone) { return userRepository.findByPhone(phone); }
+    public User findByPhone(String phone) {
+        return userRepository.findByPhone(phone);
+    }
 
     @Override
     public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request) {
         User user = userRepository.findUserByUsername(userName);
-        if(user == null){
+        if (user == null) {
             throw new RuntimeException("User not found");
         }
         user.setFull_name(request.getFull_name());
         //Kiem tra phone number
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-           // Does exist?
+            // Does exist?
             User existingUser = userRepository.findByPhone(request.getPhone());
             if (existingUser != null && !existingUser.getUsername().equals(userName)) {
-                    throw new RuntimeException("The phone number has already been used by another account");
+                throw new RuntimeException("The phone number has already been used by another account");
             }
             user.setPhone(request.getPhone());
         }
         if (!user.getEmail().equals(request.getEmail())) {
             User existingUser = userRepository.findByEmail(request.getEmail());
             if (existingUser != null && !existingUser.getUsername().equals(userName)) {
-                throw new RuntimeException( "The email has already been used by another account");
+                throw new RuntimeException("The email has already been used by another account");
             }
             //can verify khi doi email
             user.setEmail(request.getEmail());
@@ -134,10 +140,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public ChangePasswordResponse changePassword(String userName, ChangePasswordRequest request) {
         User user = userRepository.findUserByUsername(userName);
-        if(user == null){
+        if (user == null) {
             throw new RuntimeException("User not found");
         }
-        if("null".equals(user.getPassword())){
+        if ("null".equals(user.getPassword())) {
             return new ChangePasswordResponse(false,
                     "Google's account can not change password");
         }
@@ -158,4 +164,25 @@ public class UserServiceImpl implements UserService {
 
     }
 
+    public void setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole) {
+        User user = userRepository.findUserByUsername(username);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found: " + username);
+        }
+
+        Role targetRole = roleRepository.findByName(targetRoleName);
+        if (targetRole == null) {
+            throw new IllegalArgumentException("Role not found: " + targetRoleName);
+        }
+
+        Set<Role> newRoles = new HashSet<>();
+        newRoles.add(targetRole);
+
+        if (keepUserBaseRole) {
+            Role baseUser = roleRepository.findByName("ROLE_USER");
+            if (baseUser != null) {
+                newRoles.add(baseUser);
+            }
+        }
+    }
 }
