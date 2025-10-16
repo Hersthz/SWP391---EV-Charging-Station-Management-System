@@ -3,8 +3,10 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import { 
   Search,
   UserPlus,
@@ -15,15 +17,24 @@ import {
   Filter,
   MoreHorizontal,
   Shield,
-  Calendar
+  Calendar,
+  CheckCircle
 } from "lucide-react";
 import AdminLayout from "./AdminLayout";
-
+import { toast } from "../../components/ui/use-toast";
 const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all-roles");
   const [statusFilter, setStatusFilter] = useState("all-status");
-
+  const [roleEditorOpen, setRoleEditorOpen] = useState(false);
+   const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "basic",
+    subscription: "pay-per-use"
+  });
+const [addUserOpen, setAddUserOpen] = useState(false);
   const users = [
     {
       id: 1,
@@ -70,6 +81,31 @@ const AdminUsers = () => {
       subscription: "Basic Monthly"
     }
   ];
+
+  const handleAddUser = () => {
+    if (!newUser.name || !newUser.email || !newUser.phone) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    toast({
+      title: "User Created Successfully",
+      description: `${newUser.name} has been added to the system`,
+    });
+    
+    setAddUserOpen(false);
+    setNewUser({
+      name: "",
+      email: "",
+      phone: "",
+      role: "basic",
+      subscription: "pay-per-use"
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -160,15 +196,197 @@ const AdminUsers = () => {
         </SelectContent>
       </Select>
 
-      <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
-        <Shield className="w-4 h-4 mr-2" />
-        Role Editor
-      </Button>
+<Dialog open={roleEditorOpen} onOpenChange={setRoleEditorOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
+            <Shield className="w-4 h-4 mr-2" />
+            Role Editor
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-xl">
+              <Shield className="w-5 h-5 mr-2 text-primary" />
+              Role Management System
+            </DialogTitle>
+            <DialogDescription>
+              Manage user roles and permissions for the platform
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4">
+                  <div className="text-center space-y-2">
+                    <div className="text-3xl">👤</div>
+                    <h3 className="font-semibold text-foreground">Basic User</h3>
+                    <p className="text-xs text-muted-foreground">Standard access to charging stations</p>
+                    <Badge variant="outline" className="text-xs">
+                      {users.filter(u => u.role === "Basic User").length} users
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
 
-      <Button className="bg-success text-success-foreground hover:bg-success/90">
-        <UserPlus className="w-4 h-4 mr-2" />
-        Add User
-      </Button>
+              <Card className="border-warning/20 bg-warning/5">
+                <CardContent className="p-4">
+                  <div className="text-center space-y-2">
+                    <div className="text-3xl">⭐</div>
+                    <h3 className="font-semibold text-foreground">Premium User</h3>
+                    <p className="text-xs text-muted-foreground">Priority access & discounts</p>
+                    <Badge variant="outline" className="text-xs">
+                      {users.filter(u => u.role === "Premium User").length} users
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-secondary/20 bg-secondary/5">
+                <CardContent className="p-4">
+                  <div className="text-center space-y-2">
+                    <div className="text-3xl">🚗</div>
+                    <h3 className="font-semibold text-foreground">Fleet Manager</h3>
+                    <p className="text-xs text-muted-foreground">Manage multiple vehicles</p>
+                    <Badge variant="outline" className="text-xs">
+                      {users.filter(u => u.role === "Fleet Manager").length} users
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-foreground">Role Permissions</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">Access charging stations</span>
+                  <div className="flex gap-2">
+                    <CheckCircle className="w-4 h-4 text-success" />
+                    <CheckCircle className="w-4 h-4 text-success" />
+                    <CheckCircle className="w-4 h-4 text-success" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">Priority booking</span>
+                  <div className="flex gap-2">
+                    <span className="w-4 h-4 text-muted-foreground">—</span>
+                    <CheckCircle className="w-4 h-4 text-success" />
+                    <CheckCircle className="w-4 h-4 text-success" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">Fleet management</span>
+                  <div className="flex gap-2">
+                    <span className="w-4 h-4 text-muted-foreground">—</span>
+                    <span className="w-4 h-4 text-muted-foreground">—</span>
+                    <CheckCircle className="w-4 h-4 text-success" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setRoleEditorOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+        <DialogTrigger asChild>
+          <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-electric">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-xl">
+              <UserPlus className="w-5 h-5 mr-2 text-primary" />
+              Add New User
+            </DialogTitle>
+            <DialogDescription>
+              Create a new user account with basic information and permissions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
+              <Input
+                id="name"
+                placeholder="John Doe"
+                value={newUser.name}
+                onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john.doe@email.com"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-sm font-medium">Phone Number *</Label>
+              <Input
+                id="phone"
+                placeholder="+1 (555) 123-4567"
+                value={newUser.phone}
+                onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-sm font-medium">User Role</Label>
+                <Select value={newUser.role} onValueChange={(value) => setNewUser({...newUser, role: value})}>
+                  <SelectTrigger id="role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="basic">Basic User</SelectItem>
+                    <SelectItem value="premium">Premium User</SelectItem>
+                    <SelectItem value="fleet">Fleet Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="subscription" className="text-sm font-medium">Subscription</Label>
+                <Select value={newUser.subscription} onValueChange={(value) => setNewUser({...newUser, subscription: value})}>
+                  <SelectTrigger id="subscription">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pay-per-use">Pay-per-use</SelectItem>
+                    <SelectItem value="basic">Basic Monthly</SelectItem>
+                    <SelectItem value="premium">Premium Monthly</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={() => setAddUserOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddUser} className="bg-gradient-primary text-primary-foreground hover:opacity-90">
+              Create User
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 
