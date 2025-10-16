@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Slf4j
 @Validated
 @RestController
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class ChargingStationController {
 
     private final ChargingStationService stationService;
+    private final ChargingStationService chargingStationService;
 
     @GetMapping("/nearby")
     public ResponseEntity<Page<ChargingStationSummaryResponse>> getNearbyStations(
@@ -50,5 +53,15 @@ public class ChargingStationController {
         log.info("Adding station");
         return ResponseEntity.ok(stationService.addStation(request));
     }
+    @PostMapping("/{stationId}/pillars")
+    public ResponseEntity<ChargingStationDetailResponse> addPillars(
+            @PathVariable Long stationId,
+            @Valid @RequestBody List<StationRequest.PillarRequest> pillars) {
+
+        var resp = chargingStationService.addPillarsWithConnectors(stationId, pillars);
+        return ResponseEntity.ok(resp);
+    }
+
+
 
 }

@@ -164,4 +164,74 @@ public class ChargingStationServiceImpl implements ChargingStationService {
             throw new ValidationException("Invalid longitude value");
         }
     }
+
+
+    @Override
+    public ChargingStationDetailResponse addPillarsWithConnectors(Long stationId, List<StationRequest.PillarRequest> pillarRequests) {
+        if (stationId == null) {
+            throw new ValidationException("stationId is required");
+        }
+        if (pillarRequests == null || pillarRequests.isEmpty()) {
+            throw new ValidationException("At least one pillar is required");
+        }
+
+        ChargingStation station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new RuntimeException("Station not found with id: " + stationId));
+
+        for (StationRequest.PillarRequest pillarReq : pillarRequests) {
+            validatePillarRequest(pillarReq);
+
+            ChargerPillar pillar = new ChargerPillar();
+            pillar.setCode(pillarReq.getCode());
+            pillar.setPower(pillarReq.getPower());
+            pillar.setPricePerKwh(pillarReq.getPricePerKwh());
+            pillar.setStatus("AVAILABLE");
+
+            // Add connectors (1–2 connectors per your preference)
+            if (pillarReq.getConnectors() != null && !pillarReq.getConnectors().isEmpty()) {
+                if (pillarReq.getConnectors().size() > 2) {
+                    throw new ValidationException("Each pillar can have at most 2 connectors");
+                }
+                for (StationRequest.ConnectorRequest connReq : pillarReq.getConnectors()) {
+                    validateConnectorRequest(connReq);
+
+                    Connector connector = new Connector();
+                    connector.setType(connReq.getConnectorType());
+
+                    // set both sides if needed
+                    connector.setPillar(pillar);
+                    pillar.addConnector(connector);
+                }
+            } else {
+                // optional: enforce at least 1 connector
+                throw new ValidationException("Each pillar must have at least 1 connector");
+            }
+
+            // link pillar to station
+            pillar.setStation(station);
+            station.addPillar(pillar);
+        }
+
+        ChargingStation saved = stationRepository.save(station);
+        return stationMapper.toDetailResponse(saved);
+    }
+
+    private void validatePillarRequest(StationRequest.PillarRequest pillarReq) {
+        if (pillarReq.getCode() == null || pillarReq.getCode().trim().isEmpty()) {
+            throw new ValidationException("Pillar code is required");
+        }
+        if (pillarReq.getPower() == null || pillarReq.getPower().doubleValue() <= 0) {
+            throw new ValidationException("Pillar power must be positive");
+        }
+        if (pillarReq.getPricePerKwh() == null || pillarReq.getPricePerKwh().doubleValue() < 0) {
+            throw new ValidationException("Price per kWh cannot be negative");
+        }
+    }
+
+    private void validateConnectorRequest(StationRequest.ConnectorRequest connReq) {
+        if (connReq.getConnectorType() == null || connReq.getConnectorType().trim().isEmpty()) {
+            throw new ValidationException("Connector type is required");
+        }
+    }
+
 }
