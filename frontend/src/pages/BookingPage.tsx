@@ -112,7 +112,7 @@ function toNum(x: number | string | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-const HOLD_RATE_PER_MIN = 0.05;
+const HOLD_RATE_PER_MIN = 300;
 
 /* =========================
    Time helpers + TimePicker
@@ -330,6 +330,11 @@ function toUtcISOString(d: Date | null): string | null {
   return d ? d.toISOString() : null;
 }
 
+function toLocalDateTimeString(dateStr?: string, timeStr?: string): string | null {
+  if (!dateStr || !timeStr) return null;
+  const hhmmss = timeStr.length === 5 ? `${timeStr}:00` : timeStr; // đảm bảo có giây
+  return `${dateStr}T${hhmmss}`; // KHÔNG có 'Z'
+}
 /* =========================
    Page
 ========================= */
@@ -354,6 +359,7 @@ export default function BookingPage() {
 
   // booking state
   const [submitting, setSubmitting] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const [reservationId, setReservationId] = useState<string | number | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [insufficient, setInsufficient] = useState<Insufficient | null>(null);
@@ -611,19 +617,22 @@ export default function BookingPage() {
     try {
       const userId = await fetchCurrentUserId();
 
-      const startDate = combineLocalDateTimeToDate(bookingDate, startTime);
-      const endDate = combineLocalDateTimeToDate(bookingDate, endTime);
-      const startISO = toUtcISOString(startDate);
-      const endISO = toUtcISOString(endDate);
+      const startStr = toLocalDateTimeString(bookingDate, startTime);
+      const endStr   = toLocalDateTimeString(bookingDate, endTime);
+
+      if (!startStr || !endStr) {
+      toast({ title: "Thiếu thời gian", description: "Ngày/giờ không hợp lệ.", variant: "destructive" });
+      setSubmitting(false);
+      return;
+      }
 
       const payload = {
         userId,
         stationId: station.id,
         pillarId: Number(selectedPillarId),
         connectorId: Number(selectedConnectorIdNum),
-        arrivalDate: bookingDate,
-        startTime: startISO,
-        endTime: endISO,
+        startTime: startStr, 
+        endTime: endStr,
       };
 
       const { data } = await api.post("/book/booking", payload);
@@ -639,6 +648,8 @@ export default function BookingPage() {
       setSubmitting(false);
     }
   };
+
+  
 
   // UI helpers
   const renderPaymentSwitch = () => (

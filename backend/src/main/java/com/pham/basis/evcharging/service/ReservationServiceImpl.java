@@ -105,13 +105,13 @@ public class ReservationServiceImpl implements ReservationService {
                 .connectorId(saved.getConnector().getId())
                 .status(saved.getStatus())
                 .holdFee(saved.getHoldFee())
-                .arrivalDate(saved.getArrivalDate())
                 .startTime(saved.getStartTime())
                 .endTime(saved.getEndTime())
                 .createdAt(saved.getCreatedAt())
                 .expiredAt(saved.getExpiredAt())
                 .build();
-    //
+    }
+
     private void validateTime(ReservationRequest req){
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = LocalDate.now();

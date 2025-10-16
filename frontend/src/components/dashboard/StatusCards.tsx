@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 
 /** Toggle to always use mock data for quick UI preview */
-const USE_MOCK = true;
+const USE_MOCK = false; 
 
 /** ===== Types ===== */
 type ReservationStatus =
@@ -46,6 +46,23 @@ interface MyReservationsResponse {
   nextBooking?: Partial<ReservationItem>;
 }
 
+/** ===== Backend DTO (đang có ở BE) ===== */
+interface ReservationResponseBE {
+  reservationId: number;
+  stationId: number;
+  stationName: string;
+  pillarId: number;
+  pillarCode?: string;          // khuyến khích BE thêm; nếu chưa có sẽ fallback từ pillarId
+  connectorId: number;
+  connectorType?: string;       // khuyến khích BE thêm; nếu chưa có sẽ fallback
+  status: string;               // PENDING | PAID | CANCELLED | EXPIRED | ...
+  holdFee?: number;
+  startTime: string;            // ISO
+  endTime?: string;
+  createdAt?: string;
+  expiredAt?: string;
+}
+
 /** ===== Mock data ===== */
 const MOCK_RESERVATIONS: MyReservationsResponse = {
   items: [
@@ -66,7 +83,6 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       stationName: "Mall Station #2",
       pillarCode: "P2",
       connectorType: "AC Fast 22kW",
-      // tomorrow 14:00
       startTime: new Date(
         new Date().getFullYear(),
         new Date().getMonth(),
@@ -85,7 +101,6 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       stationName: "Highway Station #7",
       pillarCode: "P1",
       connectorType: "DC Fast 150kW",
-      // today 18:00
       startTime: new Date(
         new Date().getFullYear(),
         new Date().getMonth(),
@@ -121,6 +136,49 @@ const fmtDateTime = (iso?: string) =>
 const fmtVnd = (n: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
+/** Map status DB -> FE */
+function mapStatus(dbStatus: string, startTime?: string): ReservationStatus {
+  const s = (dbStatus || "").toUpperCase();
+  if (s === "CANCELLED") return "CANCELLED";
+  if (s === "EXPIRED") return "EXPIRED";
+  if (s === "PENDING") return "PENDING_PAYMENT";
+  if (s === "PAID" || s === "CONFIRMED") {
+    const future = startTime ? new Date(startTime).getTime() > Date.now() : false;
+    return future ? "SCHEDULED" : "CONFIRMED";
+  }
+  return "PENDING_PAYMENT";
+}
+
+/** Map BE -> FE item */
+function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
+  return rows.map((d) => ({
+    reservationId: d.reservationId,
+    stationId: d.stationId,
+    stationName: d.stationName,
+    pillarCode: d.pillarCode ?? `P${d.pillarId}`,
+    connectorType: d.connectorType ?? `Connector ${d.connectorId}`,
+    startTime: d.startTime,
+    status: mapStatus(d.status, d.startTime),
+    holdFee: d.holdFee ?? 0,
+    payment: { paid: (d.status || "").toUpperCase() === "PAID" },
+  }));
+}
+
+/** Lấy next booking gần nhất trong tương lai */
+function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefined {
+  const future = items
+    .filter((i) => new Date(i.startTime).getTime() > Date.now())
+    .sort((a, b) => +new Date(a.startTime) - +new Date(b.startTime));
+  const n = future[0];
+  if (!n) return undefined;
+  return {
+    stationName: n.stationName,
+    pillarCode: n.pillarCode,
+    connectorType: n.connectorType,
+    startTime: n.startTime,
+  };
+}
+
 /** ===== Component ===== */
 const StatusCards = () => {
   const batteryPct = 85;
@@ -144,20 +202,35 @@ const StatusCards = () => {
           return;
         }
 
-        const { data } = await api.get<MyReservationsResponse>("/reservations/my", {
-          withCredentials: true,
-        });
+        // Lấy userId hiện tại
+        const me = await api.get("/auth/me", { withCredentials: true });
+        const userId =
+          typeof me.data?.user_id === "number"
+            ? me.data.user_id
+            : typeof me.data?.id === "number"
+            ? me.data.id
+            : undefined;
+
+        if (!userId) throw new Error("Cannot determine current user id.");
+
+        // Gọi API backend có sẵn: GET /user/{userId}/reservations
+        const { data } = await api.get<ReservationResponseBE[]>(
+          `/user/${userId}/reservations`,
+          { withCredentials: true }
+        );
 
         if (!mounted) return;
-        setItems(data.items || []);
-        setNext(data.nextBooking);
+
+        const feItems = mapBEToFE(Array.isArray(data) ? data : []);
+        setItems(feItems);
+        setNext(pickNext(feItems));
       } catch (e: any) {
-        // Fallback to mocks if API fails
+        // Fallback to mocks nếu có lỗi
         setItems(MOCK_RESERVATIONS.items);
         setNext(MOCK_RESERVATIONS.nextBooking);
         toast({
           title: "Showing mock data",
-          description: "Could not reach backend. Using sample reservations.",
+          description: e?.response?.data?.message || e?.message || "Could not reach backend.",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -184,7 +257,7 @@ const StatusCards = () => {
   const onStartCharging = async (r: ReservationItem) => {
     try {
       if (USE_MOCK) {
-        toast({ 
+        toast({
           title: "Charging session started ",
           description: `${r.stationName} • ${r.pillarCode}`,
         });

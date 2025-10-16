@@ -1,87 +1,38 @@
 // src/pages/WalletPaymentPage.tsx
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { ScrollArea } from "../components/ui/scroll-area";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger, } from "../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "../components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, } from "../components/ui/dialog";
 
-import { toast } from "../hooks/use-toast";
-
+import { useToast } from "../hooks/use-toast";
 import {
-  ArrowLeft,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Battery,
-  CheckCircle2,
-  Clock,
-  CreditCard,
-  Download,
-  FileText,
-  Filter,
-  History,
-  Shield,
+  ArrowLeft, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, CreditCard, Download, FileText, Filter, History, Shield,
   Sparkles,
   TrendingUp,
   Wallet,
   Zap,
 } from "lucide-react";
+import api from "../api/axios";
 import { ChatBot } from "./ChatBot";
 
-// ================= Mock data (giữ nguyên có thể thay bằng API sau) =================
-const walletBalance = 450000; // VND
+/* ================= Helpers ================= */
+type TxItem = {
+  id: string | number;
+  type: "CREDIT" | "DEBIT" | "HOLD" | "RELEASE";
+  amount: number;
+  description: string;
+  date: string;
+  status: "COMPLETED" | "PENDING" | "FAILED";
+  ref?: string;
+};
 
-const transactions = [
-  { id: 1, type: "DEBIT", amount: -75000, description: "Charging Session - Central Station", date: "2025-10-05 14:30", status: "COMPLETED", ref: "CHG-001234" },
-  { id: 2, type: "CREDIT", amount: 200000, description: "Top-up via Bank Transfer", date: "2025-10-05 09:15", status: "COMPLETED", ref: "TOP-001233" },
-  { id: 3, type: "HOLD", amount: -50000, description: "Deposit Hold - Downtown Station", date: "2025-10-04 18:20", status: "PENDING", ref: "HLD-001232" },
-  { id: 4, type: "RELEASE", amount: 50000, description: "Deposit Released - Downtown Station", date: "2025-10-04 19:45", status: "COMPLETED", ref: "RLS-001232" },
-  { id: 5, type: "DEBIT", amount: -50000, description: "No-show Fee - Airport Station", date: "2025-10-03 16:00", status: "COMPLETED", ref: "FEE-001231" },
-  { id: 6, type: "CREDIT", amount: 500000, description: "Top-up via Credit Card", date: "2025-10-01 12:00", status: "COMPLETED", ref: "TOP-001230" },
-];
-
-const paymentMethods = [
-  { id: 1, type: "card", last4: "4242", brand: "Visa", expiry: "12/26", isDefault: true },
-  { id: 2, type: "card", last4: "8888", brand: "Mastercard", expiry: "08/25", isDefault: false },
-];
-
-const invoices = [
-  { id: 1, date: "2025-10-05", amount: 75000, session: "Central Station - Port 3", status: "PAID", pdfUrl: "#" },
-  { id: 2, date: "2025-10-04", amount: 82000, session: "Downtown Station - Port 1", status: "PAID", pdfUrl: "#" },
-  { id: 3, date: "2025-10-01", amount: 95000, session: "Airport Station - Port 5", status: "PAID", pdfUrl: "#" },
-];
-
-// ================= Helpers =================
 const txIcon = (type: string) => {
   switch (type) {
     case "CREDIT": return <ArrowUpCircle className="h-5 w-5 text-green-600" />;
@@ -105,17 +56,89 @@ const statusBadge = (status: string) => {
   }
 };
 
-// ================= Page =================
+/* ================= Page ================= */
 export default function WalletPaymentPage() {
+  const { toast } = useToast();
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+
+  const [transactions, setTransactions] = useState<TxItem[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
+
   const [topUpAmount, setTopUpAmount] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
 
-  const handleTopUp = (amount: number) => {
-    toast({
-      title: "Top-up Initiated",
-      description: `Processing ${amount.toLocaleString("vi-VN")}₫...`,
-    });
+  // Try fetching balance/transactions if backend provides them later.
+  useEffect(() => {
+    (async () => {
+      setLoadingBalance(true);
+      try {
+        // const { data } = await api.get("/api/wallet/me");
+        // setBalance(Number(data?.balance ?? 0));
+        setBalance(null);
+      } catch {
+        setBalance(null);
+      } finally {
+        setLoadingBalance(false);
+      }
+    })();
+
+    (async () => {
+      setLoadingTx(true);
+      try {
+        // const { data } = await api.get("/api/payment/transactions");
+        // setTransactions(Array.isArray(data) ? data : (data?.data ?? []));
+        setTransactions([]);
+      } catch {
+        setTransactions([]);
+      } finally {
+        setLoadingTx(false);
+      }
+    })();
+  }, []);
+
+  // Real top-up flow via VNPAY
+  const createVnpayTopUp = async (amount: number) => {
+    const payload = {
+      amount,
+      type: "WALLET",              // top-up wallet
+      method: "VNPAY",             // gateway
+      returnUrl: window.location.origin + "/api/payment/payment-return",
+      locale: "en" as const,
+      description: `Top-up ${amount} VND`,
+    };
+    const res = await api.post("/api/payment/create", payload);
+    const paymentUrl =
+      res?.data?.data?.paymentUrl ??
+      res?.data?.paymentUrl ??
+      res?.data?.data?.url ??
+      res?.data?.url;
+    if (!paymentUrl) {
+      throw new Error("paymentUrl is missing from backend response");
+    }
+    window.location.href = paymentUrl;
+  };
+
+  const handleTopUp = async (amount: number) => {
+    try {
+      if (!Number.isFinite(amount) || amount < 10000) {
+        toast({
+          title: "Invalid amount",
+          description: "Minimum top-up is 10,000₫.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Creating payment", description: `${amount.toLocaleString("vi-VN")}₫` });
+      await createVnpayTopUp(amount);
+    } catch (e: any) {
+      toast({
+        title: "Top-up failed",
+        description: e?.response?.data?.message || e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCustomTopUp = () => {
@@ -123,7 +146,7 @@ export default function WalletPaymentPage() {
     if (val < 10000) {
       toast({
         title: "Invalid amount",
-        description: "Minimum top-up is 10,000₫",
+        description: "Minimum top-up is 10,000₫.",
         variant: "destructive",
       });
       return;
@@ -132,11 +155,13 @@ export default function WalletPaymentPage() {
     setTopUpAmount("");
   };
 
-  const filtered = transactions.filter((t) => {
-    if (filterType !== "all" && t.type !== filterType) return false;
-    // filterDate có thể thêm logic sau
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return transactions.filter((t) => {
+      if (filterType !== "all" && t.type !== (filterType as any)) return false;
+      // Add date filtering (today/week/month) when backend provides timestamps.
+      return true;
+    });
+  }, [transactions, filterType, filterDate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
@@ -195,7 +220,11 @@ export default function WalletPaymentPage() {
             </CardHeader>
             <CardContent>
               <div className="text-5xl font-extrabold bg-gradient-to-r from-sky-600 to-emerald-500 bg-clip-text text-transparent">
-                {walletBalance.toLocaleString("vi-VN")}₫
+                {loadingBalance
+                  ? "—"
+                  : balance === null
+                    ? "—"
+                    : `${balance.toLocaleString("vi-VN")}₫`}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-3">
@@ -246,17 +275,24 @@ export default function WalletPaymentPage() {
                       </Button>
 
                       <p className="text-xs text-muted-foreground text-center">
-                        Supports Bank Transfer, Cards and QR payment
+                        VNPAY will handle bank/QR payment. Your wallet will be credited after successful confirmation.
                       </p>
                     </div>
                   </DialogContent>
                 </Dialog>
 
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" disabled>
                   <TrendingUp className="h-4 w-4" />
                   View History
                 </Button>
               </div>
+
+              {balance === null && !loadingBalance && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  * Backend has no balance endpoint yet. Once available (e.g. <code>/api/wallet/me</code>),
+                  this section will display your current balance.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -267,18 +303,18 @@ export default function WalletPaymentPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">This month</span>
-                <span className="font-bold text-red-600">-250K ₫</span>
+                <span className="font-bold text-foreground">—</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pending holds</span>
-                <span className="font-bold text-orange-600">50K ₫</span>
+                <span className="font-bold text-foreground">—</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total top-ups</span>
-                <span className="font-bold text-green-600">700K ₫</span>
+                <span className="font-bold text-foreground">—</span>
               </div>
               <div className="pt-2 text-xs text-muted-foreground">
-                💡 Keep at least 100K₫ for smooth check-in at stations.
+                💡 Keep at least 100,000₫ for smooth check-in at stations.
               </div>
             </CardContent>
           </Card>
@@ -354,35 +390,45 @@ export default function WalletPaymentPage() {
               </CardHeader>
 
               <CardContent>
-                <ScrollArea className="h-[460px] pr-2">
-                  <div className="space-y-3">
-                    {filtered.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between p-4 rounded-lg border bg-gradient-card hover:bg-white transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="p-2 rounded-lg bg-sky-100">{txIcon(t.type)}</div>
-                          <div>
-                            <p className="font-medium">{t.description}</p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span>{t.date}</span>
-                              <span>•</span>
-                              <span className="font-mono">{t.ref}</span>
+                {loadingTx ? (
+                  <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+                    Loading...
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground text-center">
+                    No transaction API available yet.<br />
+                    Once provided (e.g. <code>/api/payment/transactions</code>), your history will appear here.
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[460px] pr-2">
+                    <div className="space-y-3">
+                      {filtered.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-gradient-card hover:bg-white transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-lg bg-sky-100">{txIcon(t.type)}</div>
+                            <div>
+                              <p className="font-medium">{t.description}</p>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span>{t.date}</span>
+                                {t.ref ? (<><span>•</span><span className="font-mono">{t.ref}</span></>) : null}
+                              </div>
                             </div>
                           </div>
+                          <div className="text-right space-y-1">
+                            <p className={`font-bold ${t.amount > 0 ? "text-green-600" : "text-foreground"}`}>
+                              {t.amount > 0 ? "+" : ""}
+                              {t.amount.toLocaleString("vi-VN")} ₫
+                            </p>
+                            {statusBadge(t.status)}
+                          </div>
                         </div>
-                        <div className="text-right space-y-1">
-                          <p className={`font-bold ${t.amount > 0 ? "text-green-600" : "text-foreground"}`}>
-                            {t.amount > 0 ? "+" : ""}
-                            {t.amount.toLocaleString("vi-VN")} ₫
-                          </p>
-                          {statusBadge(t.status)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -395,55 +441,19 @@ export default function WalletPaymentPage() {
                   <CardTitle>Payment methods</CardTitle>
                   <CardDescription>Manage your saved payment methods</CardDescription>
                 </div>
-                <Button className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
+                <Button className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90" disabled>
                   <CreditCard className="h-4 w-4 mr-2" />
                   Add new
                 </Button>
               </CardHeader>
 
               <CardContent className="space-y-3">
-                {paymentMethods.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-gradient-card hover:bg-white transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-lg bg-sky-100">
-                        <CreditCard className="h-6 w-6 text-sky-600" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">
-                            {m.brand} •••• {m.last4}
-                          </p>
-                          {m.isDefault && (
-                            <Badge variant="outline" className="text-xs">
-                              Default
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">Expires {m.expiry}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {!m.isDefault && (
-                        <Button variant="outline" size="sm" className="border-sky-200 text-sky-700 hover:bg-sky-50">
-                          Set default
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm">
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
                 <div className="p-6 rounded-lg border-2 border-dashed border-sky-200 text-center bg-sky-50/40">
                   <CreditCard className="h-12 w-12 mx-auto mb-3 text-sky-500" />
                   <p className="text-sm text-muted-foreground mb-3">
-                    Add a new payment method
+                    Backend does not yet support saving payment methods. This section will be enabled when available.
                   </p>
-                  <Button variant="outline" className="border-sky-200 hover:bg-sky-50">
+                  <Button variant="outline" className="border-sky-200 hover:bg-sky-50" disabled>
                     Add card or bank account
                   </Button>
                 </div>
@@ -460,7 +470,7 @@ export default function WalletPaymentPage() {
               <CardContent className="space-y-2 text-sm">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
-                  <p>All payment data is encrypted & tokenized.</p>
+                  <p>All payment data is encrypted and tokenized.</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
@@ -482,34 +492,13 @@ export default function WalletPaymentPage() {
                 <CardDescription>Download and view your payment receipts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {invoices.map((inv) => (
-                  <div
-                    key={inv.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-gradient-card hover:bg-white transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-green-500/10">
-                        <FileText className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{inv.session}</p>
-                        <p className="text-sm text-muted-foreground">{inv.date}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="font-bold">{inv.amount.toLocaleString("vi-VN")} ₫</p>
-                        <Badge className="bg-green-500/10 text-green-700 border-green-500/20 mt-1">
-                          {inv.status}
-                        </Badge>
-                      </div>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Download className="h-4 w-4" />
-                        PDF
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                <div className="p-6 rounded-lg border-2 border-dashed border-sky-200 text-center bg-sky-50/40">
+                  <FileText className="h-10 w-10 mx-auto mb-3 text-green-600" />
+                  <p className="text-sm text-muted-foreground">
+                    No invoice API yet. When backend provides it (e.g. <code>/api/payment/invoices</code>),
+                    you’ll be able to list and download PDFs here.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -526,7 +515,8 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-medium">Deposit hold</p>
                 <p className="text-muted-foreground">
-                  A deposit (~50,000₫) is held on booking. Final charge after session; excess is released immediately.
+                  A deposit amount (calculated by backend) will be held on booking. Any remaining balance is released
+                  after the charging session ends.
                 </p>
               </div>
             </div>
@@ -535,7 +525,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-medium">Free cancellation</p>
                 <p className="text-muted-foreground">
-                  Cancel ≥15 minutes before slot for full refund (release within 1–3 business days).
+                  Cancel ≥15 minutes before your slot for a full deposit release (subject to backend policy).
                 </p>
               </div>
             </div>
@@ -544,7 +534,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-medium">No-show & late cancellation</p>
                 <p className="text-muted-foreground">
-                  Cancel &lt;15 minutes or no check-in within 30 minutes will incur a fee equal to deposit.
+                  Cancelling &lt;15 minutes before start or no check-in on time may forfeit the deposit.
                 </p>
               </div>
             </div>
