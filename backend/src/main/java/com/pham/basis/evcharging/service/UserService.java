@@ -18,5 +18,6 @@ public interface UserService {
     UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request);
     ChangePasswordResponse changePassword(String userName ,ChangePasswordRequest changePasswordRequest);
     User findByPhone(String phone);
+    void setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole);
 }
 
