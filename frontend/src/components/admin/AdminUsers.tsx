@@ -7,7 +7,7 @@ import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
-import { 
+import {
   Search,
   UserPlus,
   Edit,
@@ -27,14 +27,14 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState("all-roles");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [roleEditorOpen, setRoleEditorOpen] = useState(false);
-   const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState({
     name: "",
     email: "",
     phone: "",
     role: "basic",
     subscription: "pay-per-use"
   });
-const [addUserOpen, setAddUserOpen] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
   const users = [
     {
       id: 1,
@@ -49,19 +49,19 @@ const [addUserOpen, setAddUserOpen] = useState(false);
     },
     {
       id: 2,
-      name: "Sarah Johnson", 
+      name: "Sarah Johnson",
       email: "sarah.j@email.com",
       phone: "+1 (555) 234-5678",
       joinDate: "2023-03-22",
       role: "Basic User",
-      status: "Active", 
+      status: "Active",
       sessions: 89,
       subscription: "Pay-per-use"
     },
     {
       id: 3,
       name: "Mike Chen",
-      email: "mike.chen@company.com", 
+      email: "mike.chen@company.com",
       phone: "+1 (555) 345-6789",
       joinDate: "2022-11-08",
       role: "Fleet Manager",
@@ -73,7 +73,7 @@ const [addUserOpen, setAddUserOpen] = useState(false);
       id: 4,
       name: "Emma Wilson",
       email: "emma.w@email.com",
-      phone: "+1 (555) 456-7890", 
+      phone: "+1 (555) 456-7890",
       joinDate: "2024-02-14",
       role: "Basic User",
       status: "Suspended",
@@ -91,12 +91,12 @@ const [addUserOpen, setAddUserOpen] = useState(false);
       });
       return;
     }
-    
+
     toast({
       title: "User Created Successfully",
       description: `${newUser.name} has been added to the system`,
     });
-    
+
     setAddUserOpen(false);
     setNewUser({
       name: "",
@@ -120,26 +120,26 @@ const [addUserOpen, setAddUserOpen] = useState(false);
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      'Premium User': { 
-        className: "bg-warning/10 text-warning border-warning/20", 
+      'Premium User': {
+        className: "bg-warning/10 text-warning border-warning/20",
         icon: "⭐",
-        text: "Premium User" 
+        text: "Premium User"
       },
-      'Fleet Manager': { 
-        className: "bg-primary/10 text-primary border-primary/20", 
+      'Fleet Manager': {
+        className: "bg-primary/10 text-primary border-primary/20",
         icon: "🚗",
-        text: "Fleet Manager" 
+        text: "Fleet Manager"
       },
-      'Basic User': { 
-        className: "bg-muted/50 text-muted-foreground border-muted", 
+      'Basic User': {
+        className: "bg-muted/50 text-muted-foreground border-muted",
         icon: "👤",
-        text: "Basic User" 
+        text: "Basic User"
       }
     };
-    
+
     const config = roleConfig[role as keyof typeof roleConfig];
     if (!config) return <Badge variant="outline">{role}</Badge>;
-    
+
     return (
       <Badge className={`${config.className} flex items-center gap-1`}>
         <span>{config.icon}</span>
@@ -150,14 +150,14 @@ const [addUserOpen, setAddUserOpen] = useState(false);
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all-roles" || 
-                       (roleFilter === "basic" && user.role === "Basic User") ||
-                       (roleFilter === "premium" && user.role === "Premium User") ||
-                       (roleFilter === "fleet" && user.role === "Fleet Manager");
-    const matchesStatus = statusFilter === "all-status" || 
-                         user.status.toLowerCase() === statusFilter;
-    
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === "all-roles" ||
+      (roleFilter === "basic" && user.role === "Basic User") ||
+      (roleFilter === "premium" && user.role === "Premium User") ||
+      (roleFilter === "fleet" && user.role === "Fleet Manager");
+    const matchesStatus = statusFilter === "all-status" ||
+      user.status.toLowerCase() === statusFilter;
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -165,14 +165,14 @@ const [addUserOpen, setAddUserOpen] = useState(false);
     <>
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-        <Input 
+        <Input
           placeholder="Search users by name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-9 w-80"
         />
       </div>
-      
+
       <Select value={roleFilter} onValueChange={setRoleFilter}>
         <SelectTrigger className="w-40">
           <SelectValue placeholder="All Roles" />
@@ -196,7 +196,7 @@ const [addUserOpen, setAddUserOpen] = useState(false);
         </SelectContent>
       </Select>
 
-<Dialog open={roleEditorOpen} onOpenChange={setRoleEditorOpen}>
+      <Dialog open={roleEditorOpen} onOpenChange={setRoleEditorOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
             <Shield className="w-4 h-4 mr-2" />
@@ -295,7 +295,9 @@ const [addUserOpen, setAddUserOpen] = useState(false);
 
       <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
         <DialogTrigger asChild>
-          <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-electric">
+          <Button
+            className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:opacity-90 shadow-electric"
+          >
             <UserPlus className="w-4 h-4 mr-2" />
             Add User
           </Button>
@@ -317,11 +319,11 @@ const [addUserOpen, setAddUserOpen] = useState(false);
                 id="name"
                 placeholder="John Doe"
                 value={newUser.name}
-                onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                 className="w-full"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Email Address *</Label>
               <Input
@@ -329,26 +331,26 @@ const [addUserOpen, setAddUserOpen] = useState(false);
                 type="email"
                 placeholder="john.doe@email.com"
                 value={newUser.email}
-                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 className="w-full"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="phone" className="text-sm font-medium">Phone Number *</Label>
               <Input
                 id="phone"
                 placeholder="+1 (555) 123-4567"
                 value={newUser.phone}
-                onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
                 className="w-full"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-sm font-medium">User Role</Label>
-                <Select value={newUser.role} onValueChange={(value) => setNewUser({...newUser, role: value})}>
+                <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
@@ -359,10 +361,10 @@ const [addUserOpen, setAddUserOpen] = useState(false);
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="subscription" className="text-sm font-medium">Subscription</Label>
-                <Select value={newUser.subscription} onValueChange={(value) => setNewUser({...newUser, subscription: value})}>
+                <Select value={newUser.subscription} onValueChange={(value) => setNewUser({ ...newUser, subscription: value })}>
                   <SelectTrigger id="subscription">
                     <SelectValue />
                   </SelectTrigger>
@@ -376,7 +378,7 @@ const [addUserOpen, setAddUserOpen] = useState(false);
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-3">
             <Button variant="outline" onClick={() => setAddUserOpen(false)}>
               Cancel
@@ -528,11 +530,11 @@ const [addUserOpen, setAddUserOpen] = useState(false);
                           <Edit className="w-3 h-3 mr-1" />
                           Edit
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
-                          className={user.status === 'Active' 
-                            ? 'text-destructive border-destructive/20 hover:bg-destructive/10' 
+                          className={user.status === 'Active'
+                            ? 'text-destructive border-destructive/20 hover:bg-destructive/10'
                             : 'text-success border-success/20 hover:bg-success/10'}
                         >
                           <UserX className="w-3 h-3 mr-1" />
