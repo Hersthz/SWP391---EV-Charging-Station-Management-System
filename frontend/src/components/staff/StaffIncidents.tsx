@@ -193,7 +193,7 @@ const StaffIncidents = () => {
         withCredentials: true,
         headers: { "Content-Type": "application/json" },
       });
-
+      
       toast({ title: "Incident Reported", description: "Your incident report has been submitted successfully." });
       setForm({ stationId: "", pillarId: "", title: "", priority: "", description: "" });
       setIsReportDialogOpen(false);
