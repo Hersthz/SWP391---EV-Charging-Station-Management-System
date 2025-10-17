@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { cn } from "../lib/utils";
+import api from "../api/axios";
 
 interface Message {
   role: "user" | "assistant";
@@ -39,13 +40,24 @@ export const ChatBot = () => {
     setIsLoading(true);
 
     try {
-      
-    } catch (error) {
+      const { data } = await api.post("/chat/suggest", {
+        question: userMessage.content,
+      });
+
+      // Ưu tiên lấy nội dung từ data.data, fallback sang data.message
+      const answer =
+        (typeof data?.data === "string" && data.data.trim()) ||
+        (typeof data?.message === "string" && data.message.trim()) ||
+        "Mình chưa nhận được nội dung phù hợp để trả lời.";
+
+      const botMessage: Message = { role: "assistant", content: answer };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error: any ) {
       console.error("Chat error:", error);
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau."
-      }]);
+      const msg =
+        error?.response?.data?.message ||
+        "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.";
+      setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
     } finally {
       setIsLoading(false);
     }
