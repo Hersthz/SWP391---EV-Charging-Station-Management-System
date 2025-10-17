@@ -2,7 +2,7 @@
   {
     "id": 1,
     "name": "Linh Trung Hub A",
-    "address": "15 Đường Số 4, Linh Trung, TP Thủ Đức, HCMC",
+    "address": "15 Street No. 4, Linh Trung, Thu Duc City, HCMC",
     "latitude": 10.8781,
     "longitude": 106.8022,
     "status": "Available",
@@ -10,7 +10,7 @@
       {
         "code": "DC-P1",
         "status": "Available",
-        "power": 310,
+        "power": 300,
         "pricePerKwh": 0.65,
         "connectors": [
           { "type": "CCS" },
@@ -23,7 +23,8 @@
         "power": 20,
         "pricePerKwh": 0.45,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -57,8 +58,8 @@
   },
   {
     "id": 2,
-    "name": "Khu CNC Gate Station",
-    "address": "9 Đường D1, Khu Công Nghệ Cao, TP Thủ Đức, HCMC",
+    "name": "High-Tech Park Gate Station",
+    "address": "9 D1 Street, Saigon Hi-Tech Park, Thu Duc City, HCMC",
     "latitude": 10.8729,
     "longitude": 106.7979,
     "status": "Available",
@@ -66,28 +67,29 @@
       {
         "code": "DC-P1",
         "status": "Available",
-        "power": 290,
+        "power": 260,
         "pricePerKwh": 0.75,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
-        "code": "DC-P2",
+        "code": "AC-P2",
+        "status": "Available",
+        "power": 10,
+        "pricePerKwh": 0.45,
+        "connectors": [
+          { "type": "AC" }
+        ]
+      },
+      {
+        "code": "DC-P3",
         "status": "Occupied",
         "power": 80,
         "pricePerKwh": 0.65,
         "connectors": [
           { "type": "CHAdeMO" }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 0.45,
-        "connectors": [
-          { "type": "AC" }
         ]
       },
       {
@@ -103,8 +105,8 @@
   },
   {
     "id": 3,
-    "name": "Võ Văn Ngân Charge",
-    "address": "120 Võ Văn Ngân, Linh Chiểu, TP Thủ Đức, HCMC",
+    "name": "Vo Van Ngan Charge",
+    "address": "120 Vo Van Ngan, Linh Chieu, Thu Duc City, HCMC",
     "latitude": 10.8804,
     "longitude": 106.7991,
     "status": "Available",
@@ -115,7 +117,8 @@
         "power": 20,
         "pricePerKwh": 0.55,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -142,15 +145,16 @@
         "power": 300,
         "pricePerKwh": 0.75,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       }
     ]
   },
   {
     "id": 4,
-    "name": "Xa Lộ Hà Nội Spot",
-    "address": "Km 17 Xa Lộ Hà Nội, Linh Trung, TP Thủ Đức, HCMC",
+    "name": "Xa Lo Ha Noi Spot",
+    "address": "Km 17 Hanoi Highway, Linh Trung, Thu Duc City, HCMC",
     "latitude": 10.8718,
     "longitude": 106.8046,
     "status": "Available",
@@ -170,7 +174,8 @@
         "power": 10,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -183,29 +188,29 @@
         ]
       },
       {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 0.55,
-        "connectors": [
-          { "type": "AC" }
-        ]
-      },
-      {
-        "code": "DC-P5",
+        "code": "DC-P4",
         "status": "Available",
         "power": 70,
         "pricePerKwh": 0.65,
         "connectors": [
           { "type": "CHAdeMO" }
         ]
+      },
+      {
+        "code": "AC-P5",
+        "status": "Available",
+        "power": 20,
+        "pricePerKwh": 0.55,
+        "connectors": [
+          { "type": "AC" }
+        ]
       }
     ]
   },
   {
     "id": 5,
-    "name": "ĐH Quốc Gia Station",
-    "address": "Khu A, ĐHQG TP.HCM, TP Thủ Đức, HCMC",
+    "name": "VNU Campus Station",
+    "address": "Zone A, Vietnam National University, Thu Duc City, HCMC",
     "latitude": 10.877,
     "longitude": 106.8061,
     "status": "Available",
@@ -251,8 +256,8 @@
   },
   {
     "id": 6,
-    "name": "Kha Vạn Cân EV",
-    "address": "300 Kha Vạn Cân, Linh Đông, TP Thủ Đức, HCMC",
+    "name": "Kha Van Can EV",
+    "address": "300 Kha Van Can, Linh Dong, Thu Duc City, HCMC",
     "latitude": 10.8696,
     "longitude": 106.7987,
     "status": "Available",
@@ -263,7 +268,8 @@
         "power": 10,
         "pricePerKwh": 0.35,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -297,8 +303,8 @@
   },
   {
     "id": 7,
-    "name": "Phạm Văn Đồng Quick",
-    "address": "Cầu vượt Phạm Văn Đồng, Linh Tây, TP Thủ Đức, HCMC",
+    "name": "Pham Van Dong Quick",
+    "address": "Pham Van Dong Overpass, Linh Tay, Thu Duc City, HCMC",
     "latitude": 10.8766,
     "longitude": 106.7938,
     "status": "Available",
@@ -309,7 +315,8 @@
         "power": 220,
         "pricePerKwh": 0.60,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -336,7 +343,8 @@
         "power": 10,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       }
     ]
@@ -344,7 +352,7 @@
   {
     "id": 8,
     "name": "Linh Trung Hub B",
-    "address": "22 Đường Số 6, Linh Trung, TP Thủ Đức, HCMC",
+    "address": "22 Street No. 6, Linh Trung, Thu Duc City, HCMC",
     "latitude": 10.8747,
     "longitude": 106.8015,
     "status": "Available",
@@ -364,7 +372,8 @@
         "power": 10,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -373,7 +382,8 @@
         "power": 180,
         "pricePerKwh": 0.60,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -389,8 +399,8 @@
   },
   {
     "id": 9,
-    "name": "Nguyễn Văn Bá Point",
-    "address": "180 Nguyễn Văn Bá, Trường Thọ, TP Thủ Đức, HCMC",
+    "name": "Nguyen Van Ba Point",
+    "address": "180 Nguyen Van Ba, Truong Tho, Thu Duc City, HCMC",
     "latitude": 10.8735,
     "longitude": 106.8068,
     "status": "Available",
@@ -398,10 +408,11 @@
       {
         "code": "AC-P1",
         "status": "Available",
-        "power": 10,
+        "power": 20,
         "pricePerKwh": 0.50,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -414,16 +425,7 @@
         ]
       },
       {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 0.55,
-        "connectors": [
-          { "type": "AC" }
-        ]
-      },
-      {
-        "code": "DC-P4",
+        "code": "DC-P3",
         "status": "Available",
         "power": 90,
         "pricePerKwh": 0.65,
@@ -435,8 +437,8 @@
   },
   {
     "id": 10,
-    "name": "Tân Lập EV Spot",
-    "address": "41 Đường Tân Lập 2, Linh Trung, TP Thủ Đức, HCMC",
+    "name": "Tan Lap EV Spot",
+    "address": "41 Tan Lap 2 Street, Linh Trung, Thu Duc City, HCMC",
     "latitude": 10.8743,
     "longitude": 106.8009,
     "status": "Available",
@@ -447,7 +449,8 @@
         "power": 180,
         "pricePerKwh": 0.55,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -474,7 +477,8 @@
         "power": 20,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       }
     ]
@@ -482,7 +486,7 @@
   {
     "id": 11,
     "name": "Hi-Tech Park East",
-    "address": "Cổng Đông Khu CNC, TP Thủ Đức, HCMC",
+    "address": "East Gate, Saigon Hi-Tech Park, Thu Duc City, HCMC",
     "latitude": 10.8893,
     "longitude": 106.8157,
     "status": "Available",
@@ -511,7 +515,8 @@
         "power": 300,
         "pricePerKwh": 0.75,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -527,8 +532,8 @@
   },
   {
     "id": 12,
-    "name": "Tam Bình Service",
-    "address": "Tô Ngọc Vân, Tam Bình, TP Thủ Đức, HCMC",
+    "name": "Tam Binh Service",
+    "address": "To Ngoc Van, Tam Binh, Thu Duc City, HCMC",
     "latitude": 10.8607,
     "longitude": 106.7875,
     "status": "Available",
@@ -539,7 +544,8 @@
         "power": 10,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -557,7 +563,7 @@
         "power": 20,
         "pricePerKwh": 0.50,
         "connectors": [
-          { "type": "Type2" }
+          { "type": "AC" }
         ]
       },
       {
@@ -573,8 +579,8 @@
   },
   {
     "id": 13,
-    "name": "An Phú Midtown",
-    "address": "Song Hành, An Phú, TP Thủ Đức, HCMC",
+    "name": "An Phu Midtown",
+    "address": "Song Hanh Road, An Phu, Thu Duc City, HCMC",
     "latitude": 10.8442,
     "longitude": 106.7996,
     "status": "Available",
@@ -585,7 +591,8 @@
         "power": 300,
         "pricePerKwh": 0.75,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -619,8 +626,8 @@
   },
   {
     "id": 14,
-    "name": "Bình Thọ Corner",
-    "address": "Đặng Văn Bi, Bình Thọ, TP Thủ Đức, HCMC",
+    "name": "Binh Tho Corner",
+    "address": "Dang Van Bi, Binh Tho, Thu Duc City, HCMC",
     "latitude": 10.8689,
     "longitude": 106.814,
     "status": "Available",
@@ -649,7 +656,8 @@
         "power": 10,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -665,8 +673,8 @@
   },
   {
     "id": 15,
-    "name": "Thảo Điền Riverside",
-    "address": "Nguyễn Văn Hưởng, Thảo Điền, TP Thủ Đức, HCMC",
+    "name": "Thao Dien Riverside",
+    "address": "Nguyen Van Huong, Thao Dien, Thu Duc City, HCMC",
     "latitude": 10.8087,
     "longitude": 106.7404,
     "status": "Available",
@@ -695,7 +703,8 @@
         "power": 300,
         "pricePerKwh": 0.75,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -711,8 +720,8 @@
   },
   {
     "id": 16,
-    "name": "Hiệp Bình Chánh Deck",
-    "address": "QL13, Hiệp Bình Chánh, TP Thủ Đức, HCMC",
+    "name": "Hiep Binh Chanh Deck",
+    "address": "QL13 (National Highway 13), Hiep Binh Chanh, Thu Duc City, HCMC",
     "latitude": 10.8525,
     "longitude": 106.7108,
     "status": "Available",
@@ -741,7 +750,8 @@
         "power": 180,
         "pricePerKwh": 0.60,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -757,8 +767,8 @@
   },
   {
     "id": 17,
-    "name": "Cát Lái Port EV",
-    "address": "Cảng Cát Lái, TP Thủ Đức, HCMC",
+    "name": "Cat Lai Port EV",
+    "address": "Cat Lai Port, Thu Duc City, HCMC",
     "latitude": 10.7824,
     "longitude": 106.8091,
     "status": "Available",
@@ -803,8 +813,8 @@
   },
   {
     "id": 18,
-    "name": "Rạch Chiếc Stop",
-    "address": "Mai Chí Thọ, An Phú, TP Thủ Đức, HCMC",
+    "name": "Rach Chiec Stop",
+    "address": "Mai Chi Tho, An Phu, Thu Duc City, HCMC",
     "latitude": 10.7901,
     "longitude": 106.7768,
     "status": "Available",
@@ -815,7 +825,8 @@
         "power": 20,
         "pricePerKwh": 0.55,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -833,7 +844,7 @@
         "power": 10,
         "pricePerKwh": 0.45,
         "connectors": [
-          { "type": "Type2" }
+          { "type": "AC" }
         ]
       },
       {
@@ -849,8 +860,8 @@
   },
   {
     "id": 19,
-    "name": "Linh Tây Service",
-    "address": "Đường 20, Linh Tây, TP Thủ Đức, HCMC",
+    "name": "Linh Tay Service",
+    "address": "Street No. 20, Linh Tay, Thu Duc City, HCMC",
     "latitude": 10.8898,
     "longitude": 106.7846,
     "status": "Available",
@@ -867,10 +878,11 @@
       {
         "code": "AC-P2",
         "status": "Available",
-        "power": 10,
+        "power": 20,
         "pricePerKwh": 0.40,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -879,24 +891,16 @@
         "power": 250,
         "pricePerKwh": 0.70,
         "connectors": [
-          { "type": "CCS" }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 0.50,
-        "connectors": [
-          { "type": "Type2" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       }
     ]
   },
   {
     "id": 20,
-    "name": "Trường Thọ Yard",
-    "address": "Nguyễn Văn Bá, Trường Thọ, TP Thủ Đức, HCMC",
+    "name": "Truong Tho Yard",
+    "address": "Nguyen Van Ba, Truong Tho, Thu Duc City, HCMC",
     "latitude": 10.8622,
     "longitude": 106.8185,
     "status": "Available",
@@ -941,8 +945,8 @@
   },
   {
     "id": 21,
-    "name": "Bình Thạnh Center",
-    "address": "Điện Biên Phủ, Bình Thạnh, HCMC",
+    "name": "Binh Thanh Center",
+    "address": "Dien Bien Phu, Binh Thanh District, HCMC",
     "latitude": 10.8002,
     "longitude": 106.7119,
     "status": "Available",
@@ -953,7 +957,8 @@
         "power": 350,
         "pricePerKwh": 0.75,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -987,8 +992,8 @@
   },
   {
     "id": 22,
-    "name": "Gò Vấp North",
-    "address": "Quang Trung, Gò Vấp, HCMC",
+    "name": "Go Vap North",
+    "address": "Quang Trung, Go Vap District, HCMC",
     "latitude": 10.8536,
     "longitude": 106.6477,
     "status": "Available",
@@ -1008,7 +1013,8 @@
         "power": 250,
         "pricePerKwh": 0.70,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -1033,8 +1039,8 @@
   },
   {
     "id": 23,
-    "name": "Phú Nhuận Midpoint",
-    "address": "Phan Đăng Lưu, Phú Nhuận, HCMC",
+    "name": "Phu Nhuan Midpoint",
+    "address": "Phan Dang Luu, Phu Nhuan District, HCMC",
     "latitude": 10.8008,
     "longitude": 106.6804,
     "status": "Available",
@@ -1051,10 +1057,11 @@
       {
         "code": "AC-P2",
         "status": "Available",
-        "power": 10,
+        "power": 20,
         "pricePerKwh": 0.45,
         "connectors": [
-          { "type": "AC" }
+          { "type": "AC" },
+          { "type": "Type2" }
         ]
       },
       {
@@ -1069,18 +1076,18 @@
       {
         "code": "AC-P4",
         "status": "Available",
-        "power": 20,
+        "power": 10,
         "pricePerKwh": 0.50,
         "connectors": [
-          { "type": "Type2" }
+          { "type": "AC" }
         ]
       }
     ]
   },
   {
     "id": 24,
-    "name": "Thủ Thiêm East Bank",
-    "address": "Vòng xoay Thủ Thiêm, TP Thủ Đức, HCMC",
+    "name": "Thu Thiem East Bank",
+    "address": "Thu Thiem Roundabout, Thu Duc City, HCMC",
     "latitude": 10.7873,
     "longitude": 106.7261,
     "status": "Available",
@@ -1100,7 +1107,8 @@
         "power": 200,
         "pricePerKwh": 0.70,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
@@ -1125,8 +1133,8 @@
   },
   {
     "id": 25,
-    "name": "Quận 9 Tech Park",
-    "address": "Lê Văn Việt, Quận 9 (TP Thủ Đức), HCMC",
+    "name": "District 9 Tech Park",
+    "address": "Le Van Viet, District 9 (Thu Duc City), HCMC",
     "latitude": 10.8499,
     "longitude": 106.8463,
     "status": "Available",
@@ -1137,7 +1145,8 @@
         "power": 300,
         "pricePerKwh": 0.80,
         "connectors": [
-          { "type": "CCS" }
+          { "type": "CCS" },
+          { "type": "CHAdeMO" }
         ]
       },
       {
