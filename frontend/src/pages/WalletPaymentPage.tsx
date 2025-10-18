@@ -104,7 +104,7 @@ export default function WalletPaymentPage() {
       amount,
       type: "WALLET",              // top-up wallet
       method: "VNPAY",             // gateway
-      returnUrl: window.location.origin + "/api/payment/payment-return",
+      returnUrl: "https://fd6503c381f0.ngrok-free.app/api/payment/payment-return",
       locale: "en" as const,
       description: `Top-up ${amount} VND`,
     };

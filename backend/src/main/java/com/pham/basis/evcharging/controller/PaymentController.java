@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,6 +30,7 @@ public class PaymentController {
     private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
     private final VNPayConfig vnPayConfig;
     private final PaymentService paymentService;
+    private final UserRepository userRepository;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -39,16 +41,16 @@ public class PaymentController {
             HttpServletRequest servletRequest,
             Principal principal
     ) {
-//        if (principal == null) {
-//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-//                    .body(new ApiResponse<>("401", "Unauthorized", null));
-//        }
-//        Long userId = extractUserId(principal);
-//        if (userId == null) {
-//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-//                    .body(new ApiResponse<>("401", "Invalid user identity", null));
-//        }
-        Long userId = 10L;
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>("401", "Unauthorized", null));
+        }
+        Long userId = userRepository.findUserByUsername(principal.getName()).getId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>("401", "Invalid user identity", null));
+        }
+       // Long userId = 10L;
         String clientIp = vnPayConfig.getClientIp(servletRequest);
 
         logger.info("Create payment request: reservationId={}, userId={}, amount={}",
@@ -86,7 +88,7 @@ public class PaymentController {
 
     private String buildFrontendRedirectUrl(PaymentResultResponse result) {
 
-        return UriComponentsBuilder.fromHttpUrl(frontendUrl)
+        return UriComponentsBuilder.fromHttpUrl(frontendUrl+"/depositss")
                 .queryParam("status", result.getStatus())
                 .queryParam("orderId", result.getOrderId())
                 .queryParam("message", result.getMessage())

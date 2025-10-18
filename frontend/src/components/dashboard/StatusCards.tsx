@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 
 /** Toggle to always use mock data for quick UI preview */
-const USE_MOCK = false; 
+const USE_MOCK = false;
 
 /** ===== Types ===== */
 type ReservationStatus =
@@ -138,30 +138,58 @@ const fmtVnd = (n: number) =>
 
 /** Map status DB -> FE */
 function mapStatus(dbStatus: string, startTime?: string): ReservationStatus {
-  const s = (dbStatus || "").toUpperCase();
+  const s = (dbStatus || "").toUpperCase().trim();
+
+  // Trường hợp rõ ràng
   if (s === "CANCELLED") return "CANCELLED";
   if (s === "EXPIRED") return "EXPIRED";
-  if (s === "PENDING") return "PENDING_PAYMENT";
+
+  // Nếu backend trả SCHEDULED (hoặc từ ngữ tương đương)
+  if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED") {
+    return "SCHEDULED";
+  }
+
+  // Pending (có thể BE dùng "PENDING" hoặc "PENDING_PAYMENT")
+  if (s === "PENDING" || s === "PENDING_PAYMENT") return "PENDING_PAYMENT";
+
+  // Paid/Confirmed: nếu startTime vẫn ở tương lai => SCHEDULED, ngược lại CONFIRMED
   if (s === "PAID" || s === "CONFIRMED") {
     const future = startTime ? new Date(startTime).getTime() > Date.now() : false;
     return future ? "SCHEDULED" : "CONFIRMED";
   }
+
+  // Fallback: log để debug và trả về Pending (an toàn)
+  console.warn("Unknown backend status:", dbStatus);
   return "PENDING_PAYMENT";
 }
 
 /** Map BE -> FE item */
 function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
-  return rows.map((d) => ({
-    reservationId: d.reservationId,
-    stationId: d.stationId,
-    stationName: d.stationName,
-    pillarCode: d.pillarCode ?? `P${d.pillarId}`,
-    connectorType: d.connectorType ?? `Connector ${d.connectorId}`,
-    startTime: d.startTime,
-    status: mapStatus(d.status, d.startTime),
-    holdFee: d.holdFee ?? 0,
-    payment: { paid: (d.status || "").toUpperCase() === "PAID" },
-  }));
+  return rows.map((d) => {
+    const normalized = (d.status || "").toUpperCase().trim();
+
+    // Nếu backend đã đưa object payment, ưu tiên dùng nó
+    const bePayment = (d as any).payment;
+
+    return {
+      reservationId: d.reservationId,
+      stationId: d.stationId,
+      stationName: d.stationName,
+      pillarCode: d.pillarCode ?? `P${d.pillarId}`,
+      connectorType: d.connectorType ?? `Connector ${d.connectorId}`,
+      startTime: d.startTime,
+      status: mapStatus(d.status, d.startTime),
+      holdFee: d.holdFee ?? 0,
+      payment: {
+        // nếu BE có payment.paid thì dùng, còn không dùng status === PAID
+        paid:
+          (typeof bePayment?.paid === "boolean" && bePayment.paid) ||
+          normalized === "PAID" ||
+          normalized === "PAID_CONFIRMED",
+        depositTransactionId: bePayment?.depositTransactionId || undefined,
+      },
+    };
+  });
 }
 
 /** Lấy next booking gần nhất trong tương lai */
@@ -208,8 +236,8 @@ const StatusCards = () => {
           typeof me.data?.user_id === "number"
             ? me.data.user_id
             : typeof me.data?.id === "number"
-            ? me.data.id
-            : undefined;
+              ? me.data.id
+              : undefined;
 
         if (!userId) throw new Error("Cannot determine current user id.");
 
@@ -284,10 +312,21 @@ const StatusCards = () => {
   };
 
   const onPayNow = (r: ReservationItem) => {
-    if (USE_MOCK) {
-      toast({ title: "Redirecting (mock)", description: "Opening Wallet…" });
-    }
-    navigate("/wallet", { state: { reservationId: r.reservationId } });
+    const amount =
+      (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
+
+    navigate("/reservation/deposit", {
+      state: {
+        reservationId: r.reservationId,
+        amount,
+        stationName: r.stationName,
+        portLabel: r.pillarCode,        // ví dụ "P18"
+        connectorLabel: r.connectorType, // ví dụ "Connector 22"
+        startTime: r.startTime,
+        description: `Deposit for reservation #${r.reservationId}`,
+        // method: "VNPAY" | "WALLET" // nếu muốn preselect
+      },
+    });
   };
 
   /** Row renderer */
@@ -304,8 +343,8 @@ const StatusCards = () => {
           ready
             ? "bg-gradient-to-r from-emerald-50 via-emerald-25 to-transparent border-emerald-200 hover:border-emerald-300"
             : scheduled
-            ? "bg-gradient-to-r from-amber-50 via-amber-25 to-transparent border-amber-200 hover:border-amber-300"
-            : "bg-gradient-to-r from-rose-50 via-rose-25 to-transparent border-rose-200 hover:border-rose-300",
+              ? "bg-gradient-to-r from-amber-50 via-amber-25 to-transparent border-amber-200 hover:border-amber-300"
+              : "bg-gradient-to-r from-rose-50 via-rose-25 to-transparent border-rose-200 hover:border-rose-300",
         ].join(" ")}
       >
         <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
@@ -334,8 +373,8 @@ const StatusCards = () => {
                 ready
                   ? "text-emerald-700"
                   : scheduled
-                  ? "text-amber-700"
-                  : "text-rose-700",
+                    ? "text-amber-700"
+                    : "text-rose-700",
               ].join(" ")}
             >
               {fmtDateTime(r.startTime)}
@@ -438,9 +477,9 @@ const StatusCards = () => {
                 <span className="text-sm text-purple-600 mb-1">
                   {next?.startTime
                     ? new Date(next.startTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
                     : ""}
                 </span>
               </div>

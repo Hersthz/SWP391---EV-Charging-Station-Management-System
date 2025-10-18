@@ -7,6 +7,7 @@ import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.repository.PaymentTransactionRepository;
+import com.pham.basis.evcharging.repository.ReservationRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.WalletRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserRepository userRepo;
     private final WalletRepository walletRepo;
     private final VNPayConfig vnpayConfig;
+    private final ReservationRepository reservationRepo;
 
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
 
@@ -448,6 +450,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void handleReservationPaymentSuccess(PaymentTransaction tx) {
         // TODO: Update reservation status to CONFIRMED
+        reservationRepo.updateStatusById(tx.getReferenceId(),"SCHEDULED");
         log.info("Reservation payment successful - Reference: {}", tx.getReferenceId());
     }
 
