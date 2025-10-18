@@ -1,6 +1,8 @@
 package com.pham.basis.evcharging.repository;
 
 import com.pham.basis.evcharging.model.PaymentTransaction;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +28,6 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             @Param("amount") BigDecimal amount
     );
 
-
+    Page<PaymentTransaction> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     Optional<PaymentTransaction> findByReferenceId(Long ReferenceId);
 }

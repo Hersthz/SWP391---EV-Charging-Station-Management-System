@@ -5,30 +5,27 @@ import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
 import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
-import com.pham.basis.evcharging.dto.response.UserResponse;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.RoleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private RoleRepository roleRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final WalletService walletService;
 
     @Override
     public User createUser(UserCreationRequest request) {
@@ -72,15 +69,13 @@ public class UserServiceImpl implements UserService {
             u.setRole(defaultRole);
             u.setCreated_at(LocalDateTime.now());
             userRepository.save(u);
+            if(emailVerified) walletService.createWallet(u.getId());
         } else {
             boolean changed = false;
-            if (!Objects.equals(user.getFull_name(), full_name)) {
-                user.setFull_name(full_name);
-                changed = true;
-            }
             if (emailVerified && !Boolean.TRUE.equals(user.getIs_verified())) {
                 user.setIs_verified(true);
                 changed = true;
+                walletService.createWallet(user.getId());
             }
             if (changed) userRepository.save(user);
         }
