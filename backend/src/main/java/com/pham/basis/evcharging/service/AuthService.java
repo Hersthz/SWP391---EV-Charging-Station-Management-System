@@ -3,6 +3,8 @@ package com.pham.basis.evcharging.service;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.UserResponse;
 import com.pham.basis.evcharging.model.User;
+import com.pham.basis.evcharging.model.Wallet;
+import com.pham.basis.evcharging.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -11,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,7 +21,8 @@ public class AuthService {
     private final UserService userService;
     private final VerificationTokenService tokenService;
     private final EmailService emailService;
-    private final Environment env;
+    private final WalletService walletService;
+    private final WalletRepository walletRepository;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -43,6 +47,11 @@ public class AuthService {
             return ResponseEntity.ok(Map.of("message", "Already verified"));
 
         user.setIs_verified(true);
+        Optional<Wallet> wallet = walletRepository.findByUserId(user.getId());
+        if (!wallet.isPresent()) {
+            walletService.createWallet(user.getId());
+        }
+
         userService.save(user);
         tokenService.removeTokenByUser(user);
         return ResponseEntity.ok(Map.of("message", "Email verified"));

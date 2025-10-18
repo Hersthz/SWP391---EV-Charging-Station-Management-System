@@ -2,10 +2,12 @@ package com.pham.basis.evcharging.controller;
 
 
 import com.pham.basis.evcharging.config.VNPayConfig;
+import com.pham.basis.evcharging.dto.request.GetPaymentRequest;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,9 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -62,7 +67,6 @@ public class PaymentController {
 
     @GetMapping("/vnpay-ipn")
     public ResponseEntity<String> handleIpn(HttpServletRequest request) {
-        System.out.println("chay dc roi");
         return ResponseEntity.ok(paymentService.handleIpn(request));
     }
 
@@ -95,6 +99,19 @@ public class PaymentController {
                 .queryParam("amount", result.getAmount())
                 .queryParam("transactionNo", result.getTransactionNo())
                 .toUriString();
+    }
+
+    @GetMapping("/getPaymentU")
+    public ResponseEntity<Page<PaymentTransaction>> getPaymentU(GetPaymentRequest request) {
+        Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize());
+        Page<PaymentTransaction> page= paymentService.getPaymentTransactionByUserId(request.getUserid(), pageable);
+        return ResponseEntity.ok(page);
+    }
+    @GetMapping("/getPayment")
+    public ResponseEntity<Page<PaymentTransaction>> getPayment(GetPaymentRequest request) {
+        Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize());
+        Page<PaymentTransaction> page= paymentService.getAllPaymentTransaction(pageable);
+        return ResponseEntity.ok(page);
     }
 
 }
