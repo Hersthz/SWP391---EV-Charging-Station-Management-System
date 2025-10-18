@@ -24,6 +24,8 @@ import Booking from "./pages/BookingPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminAddStation from "./components/admin/AdminAddStation";
 import WalletPaymentPage from "./pages/WalletPaymentPage";
+import ReservationDeposit from "./pages/ReservationDeposit"
+import DepositSS from "./pages/DepositSS";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +58,8 @@ const App = () => (
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/insights" element={<AdminInsights />} />
           <Route path="/admin/add-station" element={<AdminAddStation />} />
+          <Route path="/reservation/deposit" element={<ReservationDeposit />} />
+          <Route path="/depositss" element={<DepositSS />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

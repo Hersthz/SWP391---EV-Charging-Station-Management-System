@@ -84,9 +84,9 @@ const AdminAddStation = () => {
       pillars: prev.pillars.map((p, i) =>
         i === pillarIndex
           ? {
-              ...p,
-              connectors: p.connectors.filter((_, ci) => ci !== connectorIndex),
-            }
+            ...p,
+            connectors: p.connectors.filter((_, ci) => ci !== connectorIndex),
+          }
           : p
       ),
     }));
@@ -103,11 +103,11 @@ const AdminAddStation = () => {
       pillars: prev.pillars.map((p, i) =>
         i === pillarIndex
           ? {
-              ...p,
-              connectors: p.connectors.map((c, ci) =>
-                ci === connectorIndex ? { connectorType: type } : c
-              ),
-            }
+            ...p,
+            connectors: p.connectors.map((c, ci) =>
+              ci === connectorIndex ? { connectorType: type } : c
+            ),
+          }
           : p
       ),
     }));
@@ -120,13 +120,13 @@ const AdminAddStation = () => {
     setError(null);
 
     try {
-    
+
       const response = await api.post("/charging-stations/addStation", stationData, {
       });
 
       console.log("Station created:", response.data);
       setSuccess(true);
-      
+
       // Redirect after 2s
       setTimeout(() => {
         navigate("/admin/stations");
@@ -303,7 +303,7 @@ const AdminAddStation = () => {
                           updatePillar(pIndex, "code", e.target.value)
                         }
                         className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="P1"
+                        placeholder="AC-DC"
                       />
                     </div>
                     <div>
