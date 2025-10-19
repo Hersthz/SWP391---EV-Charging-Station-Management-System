@@ -365,6 +365,11 @@ export default function BookingPage() {
   const [insufficient, setInsufficient] = useState<Insufficient | null>(null);
   const [serverHoldFee, setServerHoldFee] = useState<number | null>(null);
 
+  // --- ADD: estimate state ---
+  type EstimateState = { minutes: number; advice?: string } | null;
+  const [estimate, setEstimate] = useState<EstimateState>(null);
+  const [estimating, setEstimating] = useState(false);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -621,9 +626,9 @@ export default function BookingPage() {
       const endStr   = toLocalDateTimeString(bookingDate, endTime);
 
       if (!startStr || !endStr) {
-      toast({ title: "Thiếu thời gian", description: "Ngày/giờ không hợp lệ.", variant: "destructive" });
-      setSubmitting(false);
-      return;
+        toast({ title: "Thiếu thời gian", description: "Ngày/giờ không hợp lệ.", variant: "destructive" });
+        setSubmitting(false);
+        return;
       }
 
       const payload = {
@@ -631,7 +636,7 @@ export default function BookingPage() {
         stationId: station.id,
         pillarId: Number(selectedPillarId),
         connectorId: Number(selectedConnectorIdNum),
-        startTime: startStr, 
+        startTime: startStr,
         endTime: endStr,
       };
 
@@ -649,7 +654,65 @@ export default function BookingPage() {
     }
   };
 
-  
+  // --- helper lấy vehicle + SoC ---
+  async function resolveVehicleContext() {
+    try {
+      const me = await api.get("/auth/me", { withCredentials: true });
+      const vehicleId =
+        me.data?.vehicleId ??
+        Number(localStorage.getItem("vehicle_id"));
+
+      // Nếu BE yêu cầu 0..1, chia 100 ở payload.
+      const socNow = Number(localStorage.getItem("soc_now") ?? "50");     // %
+      const socTarget = Number(localStorage.getItem("soc_target") ?? "80"); // %
+
+      if (!vehicleId || Number.isNaN(socNow) || Number.isNaN(socTarget)) return null;
+      return { vehicleId, socNow, socTarget };
+    } catch {
+      return null;
+    }
+  }
+
+  // --- gọi estimate khi chọn Pillar + Connector ---
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!selectedPillarId || !selectedConnectorIdNum || !station?.id) {
+        setEstimate(null);
+        return;
+      }
+
+      const vctx = await resolveVehicleContext();
+      if (!vctx) {
+        setEstimate(null);
+        return;
+      }
+
+      setEstimating(true);
+      setEstimate(null);
+      try {
+        const payload = {
+          vehicleId: vctx.vehicleId,
+          stationId: Number(station.id),
+          pillarId: Number(selectedPillarId),
+          connectorId: Number(selectedConnectorIdNum),
+          socNow: vctx.socNow/100,
+          socTarget: vctx.socTarget/100,
+        };
+        const { data } = await api.post("/estimate/estimate-kw", payload, { withCredentials: true });
+        if (!cancelled && typeof data?.estimatedMinutes === "number") {
+          setEstimate({ minutes: data.estimatedMinutes, advice: data.advice });
+        }
+      } catch {
+        if (!cancelled) setEstimate(null);
+      } finally {
+        if (!cancelled) setEstimating(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [station?.id, selectedPillarId, selectedConnectorIdNum]);
 
   // UI helpers
   const renderPaymentSwitch = () => (
@@ -770,6 +833,7 @@ export default function BookingPage() {
               />
             </div>
 
+            {/* Duration */}
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-4 h-4 text-info" />
@@ -779,6 +843,30 @@ export default function BookingPage() {
                 {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
               </Badge>
             </div>
+
+            {/* === ALWAYS SHOW Estimated charge line === */}
+            <div className="mt-2 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Estimated charge</div>
+              <div className="text-sm">
+                {!selectedPillarId || !selectedConnectorIdNum ? (
+                  <span className="text-slate-400">Chọn trụ & đầu nối để ước tính</span>
+                ) : estimating ? (
+                  <span className="text-primary">Estimating…</span>
+                ) : estimate?.minutes != null ? (
+                  <span className="font-medium">{`~ ${estimate.minutes} min`}</span>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </div>
+            </div>
+
+            {/* (optional) cảnh báo nếu thời lượng đặt < ước tính sạc */}
+            {estimate?.minutes != null && durationMinutes > 0 && durationMinutes < estimate.minutes && (
+              <div className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="w-4 h-4" />
+                Estimated charge (~{estimate.minutes} min) exceeds your slot ({durationMinutes} min).
+              </div>
+            )}
 
             <div className="mt-3 bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-xl flex items-center justify-between">
               <div className="text-sm">
