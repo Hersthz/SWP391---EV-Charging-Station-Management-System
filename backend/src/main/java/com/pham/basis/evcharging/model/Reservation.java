@@ -53,7 +53,7 @@ public class Reservation {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
-//    // --- Liên kết 1-1 với ChargingSession ---
-//    @OneToOne(mappedBy = "reservation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private ChargingSession chargingSession;
+    // --- Liên kết 1-1 với ChargingSession ---
+    @OneToOne(mappedBy = "reservation")
+    private ChargingSession chargingSession;
 }

@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -14,14 +15,11 @@ import java.io.InputStream;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class SeedStations implements CommandLineRunner {
 
     private final ChargingStationRepository stationRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public SeedStations(ChargingStationRepository stationRepository) {
-        this.stationRepository = stationRepository;
-    }
+    private final ObjectMapper objectMapper;
 
     @Override
     public void run(String... args) {

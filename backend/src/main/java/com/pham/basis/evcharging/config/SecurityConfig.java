@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth ->auth
                         .requestMatchers("/book/**").permitAll()
                         .requestMatchers("/chat/**").permitAll()
+                        .requestMatchers("/api/upload/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/test/**").permitAll()
                         .requestMatchers("/estimate/**").permitAll()
