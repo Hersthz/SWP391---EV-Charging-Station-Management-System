@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.exception.GlobalExceptionHandler.*;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -68,19 +69,7 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation saved = reservationRepository.save(reservation);
 
         //trả về theo response
-        return ReservationResponse.builder()
-                .reservationId(saved.getId())
-                .stationId(saved.getStation().getId())
-                .stationName(saved.getStation().getName())
-                .pillarId(saved.getPillar().getId())
-                .connectorId(saved.getConnector().getId())
-                .status(saved.getStatus())
-                .holdFee(saved.getHoldFee())
-                .startTime(saved.getStartTime())
-                .endTime(saved.getEndTime())
-                .createdAt(saved.getCreatedAt())
-                .expiredAt(saved.getExpiredAt())
-                .build();
+        return toResponse(saved);
     }
 
     @Override
@@ -151,6 +140,32 @@ public class ReservationServiceImpl implements ReservationService {
                     conflict.getStartTime(),
                     conflict.getEndTime()
             ));
+        }
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void autoUpdatePillarStatus() {
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Reservation> reservations = reservationRepository.findByStatusAndStartTimeBefore("SCHEDULED",now);
+
+        for (Reservation r : reservations) {
+            r.setStatus("CHARGING");
+            reservationRepository.save(r);
+
+            ChargerPillar p = r.getPillar();
+            p.setStatus("OCCUPIED");
+            chargerPillarRepository.save(p);
+        }
+
+        List<Reservation> ended = reservationRepository.findByStatusAndEndTimeBefore("CHARGING", now);
+        for (Reservation r : ended) {
+            r.setStatus("COMPLETED");
+            reservationRepository.save(r);
+
+            ChargerPillar pillar = r.getPillar();
+            pillar.setStatus("AVAILABLE");
+            chargerPillarRepository.save(pillar);
         }
     }
 }

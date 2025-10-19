@@ -1,6 +1,5 @@
 package com.pham.basis.evcharging.controller;
 
-import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.service.WalletService;
 import lombok.RequiredArgsConstructor;
