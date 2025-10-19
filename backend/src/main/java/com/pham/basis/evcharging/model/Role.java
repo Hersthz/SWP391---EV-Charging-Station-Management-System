@@ -27,6 +27,5 @@
         private String description;
 
         @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
-        @JsonIgnore
         private List<User> users = new ArrayList<>();
     }

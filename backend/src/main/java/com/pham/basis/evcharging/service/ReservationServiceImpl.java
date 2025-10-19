@@ -8,6 +8,7 @@ import com.pham.basis.evcharging.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -143,12 +144,11 @@ public class ReservationServiceImpl implements ReservationService {
         }
     }
 
+    @Transactional
     @Scheduled(fixedRate = 60000)
     public void autoUpdatePillarStatus() {
         LocalDateTime now = LocalDateTime.now();
-
         List<Reservation> reservations = reservationRepository.findByStatusAndStartTimeBefore("SCHEDULED",now);
-
         for (Reservation r : reservations) {
             r.setStatus("CHARGING");
             reservationRepository.save(r);
