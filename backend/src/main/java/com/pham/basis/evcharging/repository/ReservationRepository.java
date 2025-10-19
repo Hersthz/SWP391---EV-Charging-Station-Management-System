@@ -30,5 +30,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Transactional
     @Query("UPDATE Reservation r SET r.status = :status WHERE r.id = :id")
     int updateStatusById(@Param("id") Long id, @Param("status") String status);
+
+    List<Reservation> findByStatusAndStartTimeBefore(String status, LocalDateTime time);
+    List<Reservation> findByStatusAndEndTimeBefore(String status, LocalDateTime time);
 }
 

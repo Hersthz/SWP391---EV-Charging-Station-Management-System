@@ -5,6 +5,7 @@ import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
+import com.pham.basis.evcharging.model.Reservation;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.repository.PaymentTransactionRepository;
 import com.pham.basis.evcharging.repository.ReservationRepository;
@@ -296,26 +297,6 @@ public class PaymentServiceImpl implements PaymentService {
         String vnp_ExpireDate = formatter.format(cld.getTime());
         vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
 
-//        // Billing information (if available in your PaymentCreateRequest)
-//        if (req.getBillingMobile() != null && !req.getBillingMobile().isEmpty()) {
-//            vnp_Params.put("vnp_Bill_Mobile", req.getBillingMobile());
-//        }
-//        if (req.getBillingEmail() != null && !req.getBillingEmail().isEmpty()) {
-//            vnp_Params.put("vnp_Bill_Email", req.getBillingEmail());
-//        }
-//        if (req.getBillingFullName() != null && !req.getBillingFullName().isEmpty()) {
-//            String fullName = req.getBillingFullName().trim();
-//            int idx = fullName.indexOf(' ');
-//            if (idx > 0) {
-//                String firstName = fullName.substring(0, idx);
-//                String lastName = fullName.substring(idx + 1);
-//                vnp_Params.put("vnp_Bill_FirstName", firstName);
-//                vnp_Params.put("vnp_Bill_LastName", lastName);
-//            } else {
-//                vnp_Params.put("vnp_Bill_FirstName", fullName);
-//                vnp_Params.put("vnp_Bill_LastName", "");
-//            }
-//        }
         // Build data
         String queryUrl = VNPayConfig.buildQuery(vnp_Params);
         String vnp_SecureHash = VNPayConfig.hmacSHA512(vnpayConfig.getVnpHashSecret(), queryUrl);
@@ -348,7 +329,6 @@ public class PaymentServiceImpl implements PaymentService {
 
     private PaymentResponse buildPaymentResponse(PaymentTransaction tx, String paymentUrl) {
         BigDecimal amount = tx.getAmount();
-
         return PaymentResponse.builder()
                 .txnRef(tx.getTxnRef())
                 .paymentUrl(paymentUrl)
@@ -392,6 +372,7 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentTransaction tx = opt.get();
 
         try {
+            //kiem tra amount đúng không
             long vnpAmountReceived = Long.parseLong(vnpAmountStr);
             long expectedAmount = tx.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
             if (vnpAmountReceived != expectedAmount) {
@@ -404,13 +385,13 @@ public class PaymentServiceImpl implements PaymentService {
             return "INVALID_AMOUNT";
         }
 
-        // Idempotent update
+        // kiểm tra đã sử lý trước đó chưa
         if ("SUCCESS".equalsIgnoreCase(tx.getStatus())) {
             log.info("IPN already processed for txnRef={}", txnRef);
             return "OK";
         }
 
-        // Update status based on response code
+        // Update status
         String newStatus = "00".equals(vnpResponseCode) ? "SUCCESS" : "FAILED";
         tx.setStatus(newStatus);
         tx.setVnpTransactionNo(params.get("vnp_TransactionNo"));

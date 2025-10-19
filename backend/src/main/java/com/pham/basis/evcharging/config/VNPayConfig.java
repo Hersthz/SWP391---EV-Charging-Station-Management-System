@@ -100,14 +100,4 @@ public class VNPayConfig {
         return expectedHash.equalsIgnoreCase(receivedHash);
     }
 
-    public static String hashAllFields(Map<String, String> params, String secretKey) {
-        try {
-            String query = buildQuery(params);
-            log.debug("Hashing query: {}", query);
-            return hmacSHA512(secretKey, query);
-        } catch (Exception e) {
-            log.error("Error hashing fields", e);
-            throw new RuntimeException("Failed to hash fields", e);
-        }
-    }
 }
