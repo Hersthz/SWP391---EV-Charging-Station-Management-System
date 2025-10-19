@@ -1,23 +1,19 @@
 // src/pages/WalletPaymentPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger, } from "../components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "../components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, } from "../components/ui/dialog";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { useToast } from "../hooks/use-toast";
 import {
-  ArrowLeft, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, CreditCard, Download, FileText, Filter, History, Shield,
-  Sparkles,
-  TrendingUp,
-  Wallet,
-  Zap,
+  ArrowLeft, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, CreditCard, FileText, Filter, History, Shield,
+  Sparkles, TrendingUp, Wallet, Zap
 } from "lucide-react";
 import api from "../api/axios";
 import { ChatBot } from "./ChatBot";
@@ -56,9 +52,13 @@ const statusBadge = (status: string) => {
   }
 };
 
-/* ================= Page ================= */
+// Backend URL chỉ dùng cho returnUrl khi tạo VNPay
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8080";
+
 export default function WalletPaymentPage() {
   const { toast } = useToast();
+
+  const [uid, setUid] = useState<number | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
 
@@ -68,15 +68,32 @@ export default function WalletPaymentPage() {
   const [topUpAmount, setTopUpAmount] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
+  const [topupLoading, setTopupLoading] = useState(false);
 
-  // Try fetching balance/transactions if backend provides them later.
+  // 1) Lấy userId qua /auth/me (JWT ở HttpOnly cookie)
+  const loadUserId = useCallback(async () => {
+    const { data } = await api.get("/auth/me");
+    const id = data?.id ?? data?.data?.id ?? data?.user?.id ?? data?.profile?.id;
+    if (id == null) throw new Error("Cannot fetch current user");
+    return Number(id);
+  }, []);
+
+  // 2) Lấy số dư ví bằng /wallet/{userId} (đúng với backend hiện tại)
+  const loadBalance = useCallback(async (userId: number) => {
+    const { data } = await api.get(`/wallet/${userId}`);
+    const bal = Number(data?.balance ?? 0);
+    return Number.isFinite(bal) ? bal : 0;
+  }, []);
+
+  // Khởi tạo: lấy uid, rồi lấy balance
   useEffect(() => {
     (async () => {
-      setLoadingBalance(true);
       try {
-        // const { data } = await api.get("/api/wallet/me");
-        // setBalance(Number(data?.balance ?? 0));
-        setBalance(null);
+        setLoadingBalance(true);
+        const id = await loadUserId();
+        setUid(id);
+        const bal = await loadBalance(id);
+        setBalance(bal);
       } catch {
         setBalance(null);
       } finally {
@@ -87,41 +104,42 @@ export default function WalletPaymentPage() {
     (async () => {
       setLoadingTx(true);
       try {
-        // const { data } = await api.get("/api/payment/transactions");
-        // setTransactions(Array.isArray(data) ? data : (data?.data ?? []));
-        setTransactions([]);
-      } catch {
+        // Chưa có API lịch sử -> để trống
         setTransactions([]);
       } finally {
         setLoadingTx(false);
       }
     })();
-  }, []);
+  }, [loadUserId, loadBalance]);
 
-  // Real top-up flow via VNPAY
+  // 3) Tạo payment VNPay để top-up ví 
   const createVnpayTopUp = async (amount: number) => {
+    if (uid == null) throw new Error("Missing user id");
     const payload = {
       amount,
-      type: "WALLET",              // top-up wallet
-      method: "VNPAY",             // gateway
-      returnUrl: "https://fd6503c381f0.ngrok-free.app/api/payment/payment-return",
+      type: "WALLET",
+      method: "VNPAY",
+      referenceId: uid, 
+      returnUrl: `${BACKEND_URL}/api/payment/payment-return`,
       locale: "en" as const,
       description: `Top-up ${amount} VND`,
     };
-    const res = await api.post("/api/payment/create", payload);
-    const paymentUrl =
-      res?.data?.data?.paymentUrl ??
-      res?.data?.paymentUrl ??
-      res?.data?.data?.url ??
-      res?.data?.url;
-    if (!paymentUrl) {
-      throw new Error("paymentUrl is missing from backend response");
+
+    const { data } = await api.post("/api/payment/create", payload);
+    const code = data?.code ?? data?.statusCode;
+    if (code && code !== "00") {
+      throw new Error(data?.message || "Cannot create payment");
     }
-    window.location.href = paymentUrl;
+    const paymentUrl =
+      data?.data?.paymentUrl ?? data?.paymentUrl ?? data?.data?.url ?? data?.url;
+
+    if (!paymentUrl) throw new Error("paymentUrl is missing from backend response");
+    window.location.href = paymentUrl; // redirect tới VNPay
   };
 
   const handleTopUp = async (amount: number) => {
     try {
+      if (topupLoading) return;
       if (!Number.isFinite(amount) || amount < 10000) {
         toast({
           title: "Invalid amount",
@@ -130,14 +148,17 @@ export default function WalletPaymentPage() {
         });
         return;
       }
+      setTopupLoading(true);
       toast({ title: "Creating payment", description: `${amount.toLocaleString("vi-VN")}₫` });
       await createVnpayTopUp(amount);
+      // Redirect sang VNPay nên không reset loading ở đây
     } catch (e: any) {
       toast({
         title: "Top-up failed",
         description: e?.response?.data?.message || e?.message || "Please try again.",
         variant: "destructive",
       });
+      setTopupLoading(false);
     }
   };
 
@@ -158,7 +179,6 @@ export default function WalletPaymentPage() {
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
       if (filterType !== "all" && t.type !== (filterType as any)) return false;
-      // Add date filtering (today/week/month) when backend provides timestamps.
       return true;
     });
   }, [transactions, filterType, filterDate]);
@@ -220,17 +240,16 @@ export default function WalletPaymentPage() {
             </CardHeader>
             <CardContent>
               <div className="text-5xl font-extrabold bg-gradient-to-r from-sky-600 to-emerald-500 bg-clip-text text-transparent">
-                {loadingBalance
-                  ? "—"
-                  : balance === null
-                    ? "—"
-                    : `${balance.toLocaleString("vi-VN")}₫`}
+                {loadingBalance ? "—" : balance === null ? "—" : `${balance.toLocaleString("vi-VN")}₫`}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-3">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button className="gap-2 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
+                    <Button
+                      className="gap-2 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
+                      disabled={topupLoading}
+                    >
                       <Zap className="h-4 w-4" />
                       Top up
                     </Button>
@@ -249,6 +268,7 @@ export default function WalletPaymentPage() {
                             variant="outline"
                             onClick={() => handleTopUp(amt)}
                             className="h-20 flex-col gap-2 hover:bg-sky-50"
+                            disabled={topupLoading}
                           >
                             <Zap className="h-5 w-5 text-sky-600" />
                             <span className="font-bold">{(amt / 1000).toFixed(0)}K</span>
@@ -263,12 +283,14 @@ export default function WalletPaymentPage() {
                           placeholder="Min: 10,000"
                           value={topUpAmount}
                           onChange={(e) => setTopUpAmount(e.target.value)}
+                          disabled={topupLoading}
                         />
                       </div>
 
                       <Button
                         onClick={handleCustomTopUp}
                         className="w-full gap-2 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
+                        disabled={topupLoading}
                       >
                         <ArrowUpCircle className="h-4 w-4" />
                         Proceed to payment
@@ -396,7 +418,8 @@ export default function WalletPaymentPage() {
                   </div>
                 ) : transactions.length === 0 ? (
                   <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground text-center">
-                    No transaction API available yet.<br />
+                    No transaction API available yet.
+                    <br />
                     Once provided (e.g. <code>/api/payment/transactions</code>), your history will appear here.
                   </div>
                 ) : (
@@ -413,7 +436,12 @@ export default function WalletPaymentPage() {
                               <p className="font-medium">{t.description}</p>
                               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                 <span>{t.date}</span>
-                                {t.ref ? (<><span>•</span><span className="font-mono">{t.ref}</span></>) : null}
+                                {t.ref ? (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono">{t.ref}</span>
+                                  </>
+                                ) : null}
                               </div>
                             </div>
                           </div>
