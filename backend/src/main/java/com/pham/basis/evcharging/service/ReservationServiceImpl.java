@@ -150,7 +150,7 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDateTime now = LocalDateTime.now();
         List<Reservation> reservations = reservationRepository.findByStatusAndStartTimeBefore("SCHEDULED",now);
         for (Reservation r : reservations) {
-            r.setStatus("CHARGING");
+            r.setStatus("VERIFY");
             reservationRepository.save(r);
 
             ChargerPillar p = r.getPillar();

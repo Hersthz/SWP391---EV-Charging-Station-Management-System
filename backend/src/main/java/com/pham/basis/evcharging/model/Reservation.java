@@ -36,7 +36,7 @@ public class Reservation {
     private Connector connector;
 
     @Column(length = 20, nullable = false)
-    private String status; // PENDING, CONFIRMED, EXPIRED...
+    private String status; // PENDING,SCHEDULE,CONFIRMED,CHARGING,EXPIRED...
 
     @Column(name = "hold_fee", precision = 10, scale = 2)
     private BigDecimal holdFee;
