@@ -67,7 +67,7 @@ const QuickActions = () => {
                   {item.desc}
                 </p>
               </div>
-
+            
               <Button
                 size="sm"
                 className="w-full rounded-lg font-medium

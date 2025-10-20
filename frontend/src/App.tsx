@@ -26,6 +26,7 @@ import AdminAddStation from "./components/admin/AdminAddStation";
 import WalletPaymentPage from "./pages/WalletPaymentPage";
 import ReservationDeposit from "./pages/ReservationDeposit"
 import DepositSS from "./pages/DepositSS";
+import KycPage from "./pages/KycPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/admin/add-station" element={<AdminAddStation />} />
           <Route path="/reservation/deposit" element={<ReservationDeposit />} />
           <Route path="/depositss" element={<DepositSS />} />
+          <Route path="/kyc" element={<KycPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

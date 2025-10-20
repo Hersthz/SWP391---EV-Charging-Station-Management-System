@@ -498,6 +498,20 @@ public class PaymentServiceImpl implements PaymentService {
         String transNo = request.getParameter("vnp_TransactionNo");
         String amountStr = request.getParameter("vnp_Amount");
 
+        // ---- NEW: cập nhật payment + gọi business như IPN ----
+        txRepo.findByTxnRef(txnRef).ifPresent(tx -> {
+            if (!"SUCCESS".equalsIgnoreCase(tx.getStatus())) { // idempotent
+                String newStatus = "00".equals(responseCode) ? "SUCCESS" : "FAILED";
+                tx.setStatus(newStatus);
+                tx.setVnpTransactionNo(transNo);
+                tx.setUpdatedAt(LocalDateTime.now());
+                txRepo.save(tx);
+                if ("SUCCESS".equals(newStatus)) {
+                    handlePaymentSuccess(tx); // => Reservation -> SCHEDULED
+                }
+            }
+        });
+
         BigDecimal amount = null;
         try {
             if (amountStr != null && !amountStr.isEmpty()) {

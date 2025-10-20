@@ -20,10 +20,10 @@ public class KycSubmission {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "front_image_url", nullable = false, length = 255)
+    @Column(name = "front_image_url", nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String frontImageUrl;
 
-    @Column(name = "back_image_url", nullable = false, length = 255)
+    @Column(name = "back_image_url", nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String backImageUrl;
 
     @Column(nullable = false, length = 50)

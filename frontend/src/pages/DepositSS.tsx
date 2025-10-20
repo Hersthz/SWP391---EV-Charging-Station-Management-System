@@ -72,8 +72,6 @@ export default function DepositSS() {
 
   const ok = result.status === "SUCCESS";
 
-  // ❌ Bỏ auto-redirect về deposit khi FAILED để không mất context
-
   useEffect(() => {
     if (result.status === "SUCCESS") {
       const t = setTimeout(() => nav("/dashboard", { replace: true }), 30000);

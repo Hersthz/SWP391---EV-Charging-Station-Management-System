@@ -6,6 +6,9 @@ import {
   Zap,
   Clock,
   CreditCard,
+  Shield,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
@@ -19,6 +22,8 @@ import { useToast } from "../../hooks/use-toast";
 const USE_MOCK = false;
 
 /** ===== Types ===== */
+type KycStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+
 type ReservationStatus =
   | "CONFIRMED"
   | "SCHEDULED"
@@ -46,18 +51,18 @@ interface MyReservationsResponse {
   nextBooking?: Partial<ReservationItem>;
 }
 
-/** ===== Backend DTO (đang có ở BE) ===== */
+/** ===== Backend DTO ===== */
 interface ReservationResponseBE {
   reservationId: number;
   stationId: number;
   stationName: string;
   pillarId: number;
-  pillarCode?: string;          // khuyến khích BE thêm; nếu chưa có sẽ fallback từ pillarId
+  pillarCode?: string;
   connectorId: number;
-  connectorType?: string;       // khuyến khích BE thêm; nếu chưa có sẽ fallback
-  status: string;               // PENDING | PAID | CANCELLED | EXPIRED | ...
+  connectorType?: string;
+  status: string; // PENDING | PAID | CANCELLED | EXPIRED | ...
   holdFee?: number;
-  startTime: string;            // ISO
+  startTime: string;
   endTime?: string;
   createdAt?: string;
   expiredAt?: string;
@@ -140,25 +145,16 @@ const fmtVnd = (n: number) =>
 function mapStatus(dbStatus: string, startTime?: string): ReservationStatus {
   const s = (dbStatus || "").toUpperCase().trim();
 
-  // Trường hợp rõ ràng
   if (s === "CANCELLED") return "CANCELLED";
   if (s === "EXPIRED") return "EXPIRED";
-
-  // Nếu backend trả SCHEDULED (hoặc từ ngữ tương đương)
-  if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED") {
-    return "SCHEDULED";
-  }
-
-  // Pending (có thể BE dùng "PENDING" hoặc "PENDING_PAYMENT")
+  if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED") return "SCHEDULED";
   if (s === "PENDING" || s === "PENDING_PAYMENT") return "PENDING_PAYMENT";
 
-  // Paid/Confirmed: nếu startTime vẫn ở tương lai => SCHEDULED, ngược lại CONFIRMED
   if (s === "PAID" || s === "CONFIRMED") {
     const future = startTime ? new Date(startTime).getTime() > Date.now() : false;
     return future ? "SCHEDULED" : "CONFIRMED";
   }
 
-  // Fallback: log để debug và trả về Pending (an toàn)
   console.warn("Unknown backend status:", dbStatus);
   return "PENDING_PAYMENT";
 }
@@ -167,8 +163,6 @@ function mapStatus(dbStatus: string, startTime?: string): ReservationStatus {
 function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
   return rows.map((d) => {
     const normalized = (d.status || "").toUpperCase().trim();
-
-    // Nếu backend đã đưa object payment, ưu tiên dùng nó
     const bePayment = (d as any).payment;
 
     return {
@@ -181,7 +175,6 @@ function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
       status: mapStatus(d.status, d.startTime),
       holdFee: d.holdFee ?? 0,
       payment: {
-        // nếu BE có payment.paid thì dùng, còn không dùng status === PAID
         paid:
           (typeof bePayment?.paid === "boolean" && bePayment.paid) ||
           normalized === "PAID" ||
@@ -207,6 +200,79 @@ function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefine
   };
 }
 
+/** ===== Local UI component: KYC button ===== */
+function KycActionButton({
+  status,
+  onClick,
+}: {
+  status: KycStatus | undefined;
+  onClick: () => void;
+}) {
+  if (status === "APPROVED") {
+    return (
+      <button
+        className="
+          inline-flex items-center gap-2 rounded-full
+          bg-emerald-50 text-emerald-700 border border-emerald-200
+          px-4 py-2 text-sm font-medium
+          shadow-sm hover:bg-emerald-100
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400
+          transition-all
+        "
+        disabled
+        title="KYC verified"
+        aria-label="KYC verified"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        Verified
+      </button>
+    );
+  }
+
+  if (status === "PENDING") {
+    return (
+      <button
+        className="
+          inline-flex items-center gap-2 rounded-full
+          bg-amber-50 text-amber-700 border border-amber-200
+          px-4 py-2 text-sm font-medium
+          shadow-sm
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
+          transition-all cursor-wait
+        "
+        disabled
+        title="KYC is being reviewed"
+        aria-label="KYC pending"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Reviewing…
+      </button>
+    );
+  }
+
+  // NONE / REJECTED / undefined
+  return (
+    <button
+      onClick={onClick}
+      className="
+        inline-flex items-center gap-2 rounded-full
+        bg-gradient-to-r from-blue-600 to-indigo-600
+        text-white px-4 py-2 text-sm font-semibold
+        shadow-md shadow-blue-200
+        hover:shadow-lg hover:shadow-blue-300 hover:translate-y-[-1px]
+        active:translate-y-0
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400
+        transition-all
+      "
+      title="Verify your identity for this reservation"
+      aria-label="Verify identity"
+    >
+      <Shield className="h-4 w-4" />
+      Verify
+    </button>
+  );
+}
+
 /** ===== Component ===== */
 const StatusCards = () => {
   const batteryPct = 85;
@@ -218,6 +284,7 @@ const StatusCards = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Load reservations
   useEffect(() => {
     let mounted = true;
 
@@ -230,7 +297,6 @@ const StatusCards = () => {
           return;
         }
 
-        // Lấy userId hiện tại
         const me = await api.get("/auth/me", { withCredentials: true });
         const userId =
           typeof me.data?.user_id === "number"
@@ -241,7 +307,6 @@ const StatusCards = () => {
 
         if (!userId) throw new Error("Cannot determine current user id.");
 
-        // Gọi API backend có sẵn: GET /user/{userId}/reservations
         const { data } = await api.get<ReservationResponseBE[]>(
           `/user/${userId}/reservations`,
           { withCredentials: true }
@@ -253,7 +318,6 @@ const StatusCards = () => {
         setItems(feItems);
         setNext(pickNext(feItems));
       } catch (e: any) {
-        // Fallback to mocks nếu có lỗi
         setItems(MOCK_RESERVATIONS.items);
         setNext(MOCK_RESERVATIONS.nextBooking);
         toast({
@@ -320,13 +384,17 @@ const StatusCards = () => {
         reservationId: r.reservationId,
         amount,
         stationName: r.stationName,
-        portLabel: r.pillarCode,        // ví dụ "P18"
-        connectorLabel: r.connectorType, // ví dụ "Connector 22"
+        portLabel: r.pillarCode,
+        connectorLabel: r.connectorType,
         startTime: r.startTime,
         description: `Deposit for reservation #${r.reservationId}`,
-        // method: "VNPAY" | "WALLET" // nếu muốn preselect
       },
     });
+  };
+
+  const openKycFor = (reservationId: number) => {
+    // điều hướng sang trang xác thực KYC của từng booking
+    navigate(`/kyc?reservationId=${reservationId}`);
   };
 
   /** Row renderer */
@@ -334,6 +402,9 @@ const StatusCards = () => {
     const ready = r.status === "CONFIRMED";
     const scheduled = r.status === "SCHEDULED";
     const pending = r.status === "PENDING_PAYMENT";
+
+    // vì chưa có endpoint KYC per-reservation => luôn coi như cần KYC
+    const kyc: KycStatus | undefined = undefined;
 
     return (
       <div
@@ -343,8 +414,8 @@ const StatusCards = () => {
           ready
             ? "bg-gradient-to-r from-emerald-50 via-emerald-25 to-transparent border-emerald-200 hover:border-emerald-300"
             : scheduled
-              ? "bg-gradient-to-r from-amber-50 via-amber-25 to-transparent border-amber-200 hover:border-amber-300"
-              : "bg-gradient-to-r from-rose-50 via-rose-25 to-transparent border-rose-200 hover:border-rose-300",
+            ? "bg-gradient-to-r from-amber-50 via-amber-25 to-transparent border-amber-200 hover:border-amber-300"
+            : "bg-gradient-to-r from-rose-50 via-rose-25 to-transparent border-rose-200 hover:border-rose-300",
         ].join(" ")}
       >
         <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
@@ -366,6 +437,11 @@ const StatusCards = () => {
             <div className="flex flex-wrap gap-2 mb-1">
               <Badge variant="outline" className="text-xs">{`Port ${r.pillarCode}`}</Badge>
               <Badge variant="outline" className="text-xs">{r.connectorType}</Badge>
+
+              {/* KYC badge (mặc định Required khi chưa có endpoint) */}
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+                KYC Required
+              </Badge>
             </div>
             <p
               className={[
@@ -373,8 +449,8 @@ const StatusCards = () => {
                 ready
                   ? "text-emerald-700"
                   : scheduled
-                    ? "text-amber-700"
-                    : "text-rose-700",
+                  ? "text-amber-700"
+                  : "text-rose-700",
               ].join(" ")}
             >
               {fmtDateTime(r.startTime)}
@@ -385,6 +461,9 @@ const StatusCards = () => {
         </div>
 
         <div className="text-right flex flex-col gap-2">
+          {/* KYC action always on top */}
+          <KycActionButton status={kyc} onClick={() => openKycFor(r.reservationId)} />
+
           {ready && (
             <>
               <Badge className="bg-emerald-500 text-white border-0">Ready</Badge>
@@ -477,9 +556,9 @@ const StatusCards = () => {
                 <span className="text-sm text-purple-600 mb-1">
                   {next?.startTime
                     ? new Date(next.startTime).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                     : ""}
                 </span>
               </div>
