@@ -22,7 +22,6 @@ import { useToast } from "../../hooks/use-toast";
 const USE_MOCK = false;
 
 /** ===== Types ===== */
-type KycStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 
 type ReservationStatus =
   | "CONFIRMED"
@@ -200,79 +199,6 @@ function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefine
   };
 }
 
-/** ===== Local UI component: KYC button ===== */
-function KycActionButton({
-  status,
-  onClick,
-}: {
-  status: KycStatus | undefined;
-  onClick: () => void;
-}) {
-  if (status === "APPROVED") {
-    return (
-      <button
-        className="
-          inline-flex items-center gap-2 rounded-full
-          bg-emerald-50 text-emerald-700 border border-emerald-200
-          px-4 py-2 text-sm font-medium
-          shadow-sm hover:bg-emerald-100
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400
-          transition-all
-        "
-        disabled
-        title="KYC verified"
-        aria-label="KYC verified"
-      >
-        <CheckCircle2 className="h-4 w-4" />
-        Verified
-      </button>
-    );
-  }
-
-  if (status === "PENDING") {
-    return (
-      <button
-        className="
-          inline-flex items-center gap-2 rounded-full
-          bg-amber-50 text-amber-700 border border-amber-200
-          px-4 py-2 text-sm font-medium
-          shadow-sm
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
-          transition-all cursor-wait
-        "
-        disabled
-        title="KYC is being reviewed"
-        aria-label="KYC pending"
-      >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Reviewing…
-      </button>
-    );
-  }
-
-  // NONE / REJECTED / undefined
-  return (
-    <button
-      onClick={onClick}
-      className="
-        inline-flex items-center gap-2 rounded-full
-        bg-gradient-to-r from-blue-600 to-indigo-600
-        text-white px-4 py-2 text-sm font-semibold
-        shadow-md shadow-blue-200
-        hover:shadow-lg hover:shadow-blue-300 hover:translate-y-[-1px]
-        active:translate-y-0
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400
-        transition-all
-      "
-      title="Verify your identity for this reservation"
-      aria-label="Verify identity"
-    >
-      <Shield className="h-4 w-4" />
-      Verify
-    </button>
-  );
-}
-
 /** ===== Component ===== */
 const StatusCards = () => {
   const batteryPct = 85;
@@ -392,19 +318,11 @@ const StatusCards = () => {
     });
   };
 
-  const openKycFor = (reservationId: number) => {
-    // điều hướng sang trang xác thực KYC của từng booking
-    navigate(`/kyc?reservationId=${reservationId}`);
-  };
-
   /** Row renderer */
   const renderReservation = (r: ReservationItem) => {
     const ready = r.status === "CONFIRMED";
     const scheduled = r.status === "SCHEDULED";
     const pending = r.status === "PENDING_PAYMENT";
-
-    // vì chưa có endpoint KYC per-reservation => luôn coi như cần KYC
-    const kyc: KycStatus | undefined = undefined;
 
     return (
       <div
@@ -437,11 +355,6 @@ const StatusCards = () => {
             <div className="flex flex-wrap gap-2 mb-1">
               <Badge variant="outline" className="text-xs">{`Port ${r.pillarCode}`}</Badge>
               <Badge variant="outline" className="text-xs">{r.connectorType}</Badge>
-
-              {/* KYC badge (mặc định Required khi chưa có endpoint) */}
-              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
-                KYC Required
-              </Badge>
             </div>
             <p
               className={[
@@ -461,9 +374,6 @@ const StatusCards = () => {
         </div>
 
         <div className="text-right flex flex-col gap-2">
-          {/* KYC action always on top */}
-          <KycActionButton status={kyc} onClick={() => openKycFor(r.reservationId)} />
-
           {ready && (
             <>
               <Badge className="bg-emerald-500 text-white border-0">Ready</Badge>

@@ -37,14 +37,30 @@ type KycSubmission = {
 
 const SS_KEY = "kycSubmissionInit";
 
-/* ===== Helper: upload file -> URL (chỉ sửa CHỖ NÀY) ===== */
+/* ===== Helper: upload file -> URL (GỌI /api/upload) ===== */
 async function uploadToStorage(file: File): Promise<string> {
-  return await new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
+  const fd = new FormData();
+  fd.append("file", file);
+  // optional: folder=kyc
+  fd.append("folder", "kyc");
+
+  const res = await api.post<ApiResponse<string>>("/api/upload", fd, {
+    withCredentials: true,
+    headers: { "Content-Type": "multipart/form-data" },
   });
+
+  // Backend trả ApiResponse<String> với url nằm ở data
+  const anyRes: any = res?.data;
+  const url =
+    anyRes?.data ||
+    anyRes?.url ||
+    anyRes?.secureUrl ||
+    anyRes?.secure_url;
+
+  if (!url || typeof url !== "string") {
+    throw new Error(anyRes?.message || "Upload failed: no URL returned");
+  }
+  return String(url);
 }
 
 /* ---------------------------

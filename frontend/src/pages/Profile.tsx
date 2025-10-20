@@ -879,6 +879,27 @@ const Profile = () => {
                     Log out from all other devices
                   </Button>
                 </div>
+
+                {/* ===== KYC Card ===== */}
+                <Card className="border border-sky-100 bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-sky-600" />
+                      Identity Verification (KYC)
+                    </CardTitle>
+                    <CardDescription>Verify once to unlock bookings & payments</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between">
+                    {/* TODO: khi có /kyc/me -> hiển thị status thật */}
+                    <div className="text-sm text-muted-foreground">
+                      Status: <span className="font-medium">Unknown / Pending</span>
+                    </div>
+                    <Button onClick={() => navigate("/kyc")} className="bg-sky-600 hover:bg-sky-700 text-white">
+                      Verify now
+                    </Button>
+                  </CardContent>
+                </Card>
+                {/* ===== hết KYC Card ===== */}
               </CardContent>
             </Card>
           </TabsContent>
