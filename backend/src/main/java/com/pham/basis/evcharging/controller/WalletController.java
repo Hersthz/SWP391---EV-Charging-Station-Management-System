@@ -1,5 +1,6 @@
 package com.pham.basis.evcharging.controller;
 
+import com.pham.basis.evcharging.dto.response.WalletResponse;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.service.WalletService;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,8 @@ public class WalletController {
     private final WalletService walletService;
 
     @GetMapping("/{userId}")
-    public ResponseEntity<Wallet> getWallet(@PathVariable Long userId) {
-        Wallet wallet = walletService.getWalletbyUserId(userId);
+    public ResponseEntity<WalletResponse> getWallet(@PathVariable Long userId) {
+        WalletResponse wallet = walletService.getWalletByUserId(userId);
         return ResponseEntity.ok(wallet);
     }
 }
