@@ -408,25 +408,12 @@ export default function KycPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Link to="/dashboard">
+            <Link to="/profile">
               <Button className="w-full h-11 rounded-xl" variant="outline">
-                Go to Dashboard
+                Back to Profile
               </Button>
             </Link>
 
-            <Link to="/booking">
-              <Button className="w-full h-11 rounded-xl" variant="outline" disabled={!ok}>
-                Book a Slot
-              </Button>
-            </Link>
-
-            <Button
-              className="w-full h-11 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
-              disabled
-              title="Waiting for admin review (no status API yet)"
-            >
-              Refresh Status
-            </Button>
           </div>
         </CardContent>
       </Card>
