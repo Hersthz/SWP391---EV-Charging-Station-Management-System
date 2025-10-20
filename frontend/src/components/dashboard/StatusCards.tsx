@@ -6,14 +6,15 @@ import {
   Zap,
   Clock,
   CreditCard,
-  Shield,
-  CheckCircle2,
-  Loader2,
+  QrCode,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
@@ -140,23 +141,31 @@ const fmtDateTime = (iso?: string) =>
 const fmtVnd = (n: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
+/** Arrived yet? */
+const isArrivableNow = (startIso: string) => {
+  const start = new Date(startIso).getTime();
+  return Date.now() >= start;
+};
+
 /** Map status DB -> FE */
-function mapStatus(dbStatus: string, startTime?: string): ReservationStatus {
+function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   const s = (dbStatus || "").toUpperCase().trim();
 
   if (s === "CANCELLED") return "CANCELLED";
   if (s === "EXPIRED") return "EXPIRED";
+  if (s === "VERIFY") return "SCHEDULED"; // 
   if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED") return "SCHEDULED";
   if (s === "PENDING" || s === "PENDING_PAYMENT") return "PENDING_PAYMENT";
-
   if (s === "PAID" || s === "CONFIRMED") {
     const future = startTime ? new Date(startTime).getTime() > Date.now() : false;
     return future ? "SCHEDULED" : "CONFIRMED";
   }
-
-  console.warn("Unknown backend status:", dbStatus);
-  return "PENDING_PAYMENT";
+  if (startTime) {
+    return new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "CONFIRMED";
+  }
+  return "SCHEDULED";
 }
+
 
 /** Map BE -> FE item */
 function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
@@ -207,6 +216,17 @@ const StatusCards = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
+  const [currentUserId, setCurrentUserId] = useState<number | undefined>();
+
+  // QR dialog state
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrExpiresAt, setQrExpiresAt] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  const [qrStation, setQrStation] = useState<string>("");
+  const [lastResId, setLastResId] = useState<number | null>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -220,6 +240,7 @@ const StatusCards = () => {
           if (!mounted) return;
           setItems(MOCK_RESERVATIONS.items);
           setNext(MOCK_RESERVATIONS.nextBooking);
+          setCurrentUserId(1);
           return;
         }
 
@@ -232,6 +253,7 @@ const StatusCards = () => {
               : undefined;
 
         if (!userId) throw new Error("Cannot determine current user id.");
+        setCurrentUserId(userId);
 
         const { data } = await api.get<ReservationResponseBE[]>(
           `/user/${userId}/reservations`,
@@ -246,6 +268,7 @@ const StatusCards = () => {
       } catch (e: any) {
         setItems(MOCK_RESERVATIONS.items);
         setNext(MOCK_RESERVATIONS.nextBooking);
+        setCurrentUserId(1);
         toast({
           title: "Showing mock data",
           description: e?.response?.data?.message || e?.message || "Could not reach backend.",
@@ -260,6 +283,13 @@ const StatusCards = () => {
       mounted = false;
     };
   }, [toast]);
+
+  // countdown for QR token
+  useEffect(() => {
+    if (!qrOpen || secondsLeft <= 0) return;
+    const t = setInterval(() => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [qrOpen, secondsLeft]);
 
   const activeCount = useMemo(
     () =>
@@ -316,6 +346,66 @@ const StatusCards = () => {
         description: `Deposit for reservation #${r.reservationId}`,
       },
     });
+  };
+
+  /** Create one-time token & open QR dialog */
+  const openQrFor = async (r: ReservationItem) => {
+    if (USE_MOCK) {
+      const token = "MOCK-" + r.reservationId;
+      const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      const qr = `https://your-fe.com/checkin?token=${token}`;
+      setQrToken(token);
+      setQrExpiresAt(expires);
+      setQrUrl(qr);
+      setSecondsLeft(5 * 60);
+      setQrStation(`${r.stationName} • ${r.pillarCode}`);
+      setLastResId(r.reservationId);
+      setQrOpen(true);
+      return;
+    }
+
+    try {
+      if (!currentUserId) throw new Error("Cannot determine current user id.");
+
+      const { data } = await api.post("/api/token/create",
+        { userId: currentUserId, reservationId: r.reservationId }, 
+        { withCredentials: true }
+      );
+      const payload = data?.data ?? data;
+      const token = String(payload?.token || "");
+      let url = payload?.qrUrl || "";
+      if (!url || url.includes("your-fe.com")) {
+        url = `${window.location.origin}/checkin?token=${token}`;
+      }
+      const exp = String(payload?.expiresAt || "");
+
+      if (!token || !url || !exp) throw new Error("Invalid token response.");
+
+      setQrToken(token);
+      setQrUrl(url);
+      setQrExpiresAt(exp);
+      setSecondsLeft(Math.max(0, Math.floor((new Date(exp).getTime() - Date.now()) / 1000)));
+      setQrStation(`${r.stationName} • ${r.pillarCode}`);
+      setLastResId(r.reservationId);
+      setQrOpen(true);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || "Could not create check-in token.";
+      toast({ title: "Action failed", description: msg, variant: "destructive" });
+    }
+  };
+
+  const copyToken = async () => {
+    try {
+      await navigator.clipboard.writeText(qrToken || "");
+      toast({ title: "Copied", description: "Token copied to clipboard." });
+    } catch {
+      toast({ title: "Copy failed", description: "Cannot copy token.", variant: "destructive" });
+    }
+  };
+
+  const regenerate = async () => {
+    const r = items.find((x) => x.reservationId === lastResId);
+    if (r) await openQrFor(r);
   };
 
   /** Row renderer */
@@ -392,14 +482,26 @@ const StatusCards = () => {
               <Badge className="bg-amber-100 text-amber-700 border-amber-200">
                 Scheduled
               </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-200 text-amber-700"
-                disabled
-              >
-                <Clock className="w-4 h-4 mr-1" /> Not yet
-              </Button>
+
+              {isArrivableNow(r.startTime) ? (
+                <Button
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                  onClick={() => openQrFor(r)}
+                  title="Generate QR to check-in"
+                >
+                  <QrCode className="w-4 h-4 mr-1" /> Arrived
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 text-amber-700"
+                  disabled
+                >
+                  <Clock className="w-4 h-4 mr-1" /> Not yet
+                </Button>
+              )}
             </>
           )}
 
@@ -521,6 +623,61 @@ const StatusCards = () => {
           </Card>
         </div>
       </div>
+
+      {/* QR Dialog */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="w-5 h-5" />
+              Check-in QR
+            </DialogTitle>
+            <DialogDescription>
+              Show this QR at the station to check in. Expires in{" "}
+              <span className="font-semibold">
+                {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-3">
+            {qrUrl ? (
+              <a href={qrUrl} target="_blank" rel="noreferrer">
+                <img
+                  alt="Check-in QR"
+                  className="rounded-lg border p-2 cursor-pointer"
+                  width={240}
+                  height={240}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}`}
+                  title="Open check-in page"
+                />
+              </a>
+            ) : null}
+
+            <div className="text-sm text-center text-muted-foreground">
+              {qrStation}
+            </div>
+
+            <div className="w-full text-xs break-all rounded-lg bg-muted p-2">
+              <div className="text-muted-foreground">Token</div>
+              <div className="font-mono">{qrToken}</div>
+            </div>
+
+            <div className="flex w-full justify-between gap-2">
+              <Button variant="outline" className="flex-1" onClick={copyToken}>
+                <Copy className="w-4 h-4 mr-1" /> Copy
+              </Button>
+              <Button className="flex-1" onClick={regenerate}>
+                <RefreshCw className="w-4 h-4 mr-1" /> Regenerate
+              </Button>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

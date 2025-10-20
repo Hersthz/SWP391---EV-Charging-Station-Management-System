@@ -27,6 +27,8 @@ import WalletPaymentPage from "./pages/WalletPaymentPage";
 import ReservationDeposit from "./pages/ReservationDeposit"
 import DepositSS from "./pages/DepositSS";
 import KycPage from "./pages/KycPage";
+import Checkin from "./pages/Checkin";
+
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,7 @@ const App = () => (
           <Route path="/reservation/deposit" element={<ReservationDeposit />} />
           <Route path="/depositss" element={<DepositSS />} />
           <Route path="/kyc" element={<KycPage />} />
+          <Route path="/checkin" element={<Checkin />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
