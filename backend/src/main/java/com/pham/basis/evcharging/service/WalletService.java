@@ -57,4 +57,14 @@ public class WalletService {
                 .updatedAt(wallet.getUpdatedAt())
                 .build();
     }
+
+    public boolean hasSufficientBalance(Long userId, BigDecimal estimateAmount) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Wallet wallet = walletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User does not have a wallet"));
+
+        return wallet.getBalance().compareTo(estimateAmount) >= 0;
+    }
 }

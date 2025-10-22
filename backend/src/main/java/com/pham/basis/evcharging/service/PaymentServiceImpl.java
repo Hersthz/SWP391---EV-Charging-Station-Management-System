@@ -5,7 +5,6 @@ import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
-import com.pham.basis.evcharging.model.Reservation;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.repository.PaymentTransactionRepository;
 import com.pham.basis.evcharging.repository.ReservationRepository;
@@ -47,7 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
     // Payment types
     public static final String TYPE_RESERVATION = "RESERVATION";
     public static final String TYPE_WALLET = "WALLET";
-    public static final String TYPE_SERVICE = "SERVICE";
+    public static final String TYPE_SESSION = "CHARGING-SESSION";
     public static final String TYPE_MEMBERSHIP = "MEMBERSHIP";
 
     // Payment methods
@@ -186,9 +185,9 @@ public class PaymentServiceImpl implements PaymentService {
                     "ReferenceId is required for RESERVATION payments");
         }
 
-        if (TYPE_SERVICE.equals(req.getType()) && req.getReferenceId() == null) {
+        if (TYPE_SESSION.equals(req.getType()) && req.getReferenceId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "ReferenceId is required for SERVICE payments");
+                    "ReferenceId is required for SESSION payments");
         }
 
         if (TYPE_MEMBERSHIP.equals(req.getType()) && req.getReferenceId() == null) {
@@ -199,7 +198,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void validatePaymentType(String type) {
-        Set<String> validTypes = Set.of(TYPE_RESERVATION, TYPE_WALLET, TYPE_SERVICE, TYPE_MEMBERSHIP);
+        Set<String> validTypes = Set.of(TYPE_RESERVATION, TYPE_WALLET, TYPE_SESSION, TYPE_MEMBERSHIP);
         if (type == null || !validTypes.contains(type)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Invalid payment type. Valid types: " + validTypes);
@@ -316,7 +315,7 @@ public class PaymentServiceImpl implements PaymentService {
                 return "Thanh toán đặt chỗ #" + req.getReferenceId();
             case TYPE_WALLET:
                 return "Nạp tiền ví";
-            case TYPE_SERVICE:
+            case TYPE_SESSION:
                 return "Thanh toán dịch vụ #" + req.getReferenceId();
             case TYPE_MEMBERSHIP:
                 return "Gia hạn thành viên #" + req.getReferenceId();
@@ -416,7 +415,7 @@ public class PaymentServiceImpl implements PaymentService {
                 case TYPE_WALLET:
                     handleWalletTopUpSuccess(tx);
                     break;
-                case TYPE_SERVICE:
+                case TYPE_SESSION:
                     handleServicePaymentSuccess(tx);
                     break;
                 case TYPE_MEMBERSHIP:
@@ -473,22 +472,12 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public PaymentResultResponse vnpReturn(HttpServletRequest request) {
-        // Use extractParameters to get params consistently
         Map<String, String> fields = extractParameters(request);
-
-        // Secure hash provided by VNPay
         String vnp_SecureHash = request.getParameter("vnp_SecureHash");
 
-        // Remove hash fields before building query
-        fields.remove("vnp_SecureHashType");
-        fields.remove("vnp_SecureHash");
-
-        // Build query using VNPayConfig.buildQuery (same method used for creating URL)
         if (!vnpayConfig.verifySignature(fields, vnp_SecureHash)) {
-            log.warn("vnpReturn: invalid signature");
             return PaymentResultResponse.builder()
                     .status("INVALID_SIGNATURE")
-                    .orderId(fields.get("vnp_TxnRef"))
                     .message("Chữ ký không hợp lệ")
                     .build();
         }
@@ -496,50 +485,17 @@ public class PaymentServiceImpl implements PaymentService {
         String responseCode = request.getParameter("vnp_ResponseCode");
         String txnRef = request.getParameter("vnp_TxnRef");
         String transNo = request.getParameter("vnp_TransactionNo");
-        String amountStr = request.getParameter("vnp_Amount");
 
-        // ---- NEW: cập nhật payment + gọi business như IPN ----
-        txRepo.findByTxnRef(txnRef).ifPresent(tx -> {
-            if (!"SUCCESS".equalsIgnoreCase(tx.getStatus())) { // idempotent
-                String newStatus = "00".equals(responseCode) ? "SUCCESS" : "FAILED";
-                tx.setStatus(newStatus);
-                tx.setVnpTransactionNo(transNo);
-                tx.setUpdatedAt(LocalDateTime.now());
-                txRepo.save(tx);
-                if ("SUCCESS".equals(newStatus)) {
-                    handlePaymentSuccess(tx); // => Reservation -> SCHEDULED
-                }
-            }
-        });
-
-        BigDecimal amount = null;
-        try {
-            if (amountStr != null && !amountStr.isEmpty()) {
-                long vnpAmountLong = Long.parseLong(amountStr);
-                amount = BigDecimal.valueOf(vnpAmountLong).divide(BigDecimal.valueOf(100));
-            }
-        } catch (NumberFormatException ex) {
-            log.warn("vnpReturn: invalid amount format {}", amountStr);
-        }
-
-        if ("00".equals(responseCode)) {
-            return PaymentResultResponse.builder()
-                    .status("SUCCESS")
-                    .orderId(txnRef)
-                    .message("Giao dịch thành công")
-                    .amount(amount)
-                    .transactionNo(transNo)
-                    .build();
-        } else {
-            return PaymentResultResponse.builder()
-                    .status("FAILED")
-                    .orderId(txnRef)
-                    .message("Giao dịch không thành công (mã: " + responseCode + ")")
-                    .amount(amount)
-                    .transactionNo(transNo)
-                    .build();
-        }
+        return PaymentResultResponse.builder()
+                .status("00".equals(responseCode) ? "SUCCESS" : "FAILED")
+                .orderId(txnRef)
+                .transactionNo(transNo)
+                .message("00".equals(responseCode)
+                        ? "Giao dịch thành công"
+                        : "Giao dịch không thành công (mã: " + responseCode + ")")
+                .build();
     }
+
 
     @Override
     public Page<PaymentTransaction> getPaymentTransactionByUserId(Long userId, Pageable pageable) {
