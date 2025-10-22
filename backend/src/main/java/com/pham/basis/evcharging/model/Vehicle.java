@@ -22,6 +22,8 @@ public class Vehicle {
     private String make;
     private String model;
 
+    private Double socNow;
+
     @Column(name = "battery_capacity_kwh", nullable = false)
     private Double batteryCapacityKwh;
 

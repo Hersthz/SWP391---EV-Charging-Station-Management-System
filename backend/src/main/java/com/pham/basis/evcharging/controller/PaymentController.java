@@ -107,6 +107,7 @@ public class PaymentController {
         Page<PaymentTransaction> page= paymentService.getPaymentTransactionByUserId(request.getUserid(), pageable);
         return ResponseEntity.ok(page);
     }
+
     @GetMapping("/getPayment")
     public ResponseEntity<Page<PaymentTransaction>> getPayment(GetPaymentRequest request) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize());

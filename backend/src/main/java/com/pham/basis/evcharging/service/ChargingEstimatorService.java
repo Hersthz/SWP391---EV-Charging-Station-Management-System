@@ -29,18 +29,17 @@ public class ChargingEstimatorService {
 
     private static final double DEFAULT_EFFICIENCY = 0.90;
 
-
     public EstimateResponse estimate(EstimateRequest req) {
-        // load vehicle
+        // Load vehicle
         Vehicle v = vehicleRepo.findById(req.getVehicleId())
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + req.getVehicleId()));
 
-        // load connector
+        // Load connector
         Connector c = connectorRepo.findById(req.getConnectorId())
                 .orElseThrow(() -> new IllegalArgumentException("Connector not found: " + req.getConnectorId()));
 
-        // determine pillar: prefer explicit pillarId if provided, otherwise use connector.pillar
-        ChargerPillar pillar = null;
+        // Determine pillar: prefer explicit pillarId if provided, otherwise use connector.pillar
+        ChargerPillar pillar;
         if (req.getPillarId() != null) {
             pillar = pillarRepo.findById(req.getPillarId())
                     .orElseThrow(() -> new IllegalArgumentException("Pillar not found: " + req.getPillarId()));
@@ -51,35 +50,38 @@ public class ChargingEstimatorService {
             }
         }
 
-        // clamp soc
+        // Clamp SOC values
         double s0 = clamp(req.getSocNow() == null ? 0.0 : req.getSocNow(), 0.0, 1.0);
         double s1 = clamp(req.getSocTarget() == null ? 1.0 : req.getSocTarget(), 0.0, 1.0);
 
         if (s1 <= s0) {
-            // avoid zero-length: bump target by 5 percentage points up to 1.0
+            // Avoid zero-length: bump target by 5 percentage points up to 1.0
             s1 = Math.min(1.0, s0 + 0.05);
         }
 
-        // efficiency fallback
+        // Efficiency fallback
         double eff = v.getEfficiency() == null ? DEFAULT_EFFICIENCY : v.getEfficiency();
 
-        // energy needed into the battery (kWh)
+        // Energy calculations
         double batteryKwh = v.getBatteryCapacityKwh();
         if (batteryKwh <= 0) throw new IllegalArgumentException("Vehicle battery capacity invalid");
-        double energyKwh = batteryKwh * (s1 - s0);
 
-        // decide AC or DC from connector type
+        double energyToBatteryKwh = batteryKwh * (s1 - s0);
+        double energyFromStationKwh = energyToBatteryKwh / eff;
+        double estimatedCost = energyFromStationKwh * pillar.getPricePerKwh();
+
+        // Determine AC or DC from connector type
         boolean isAc = isAcType(c.getType());
 
-        // vehicle limit (AC or DC)
+        // Vehicle limit (AC or DC)
         double vehicleLimitKw = isAc ? safeDouble(v.getAcMaxKw()) : safeDouble(v.getDcMaxKw());
         if (vehicleLimitKw <= 0) throw new IllegalArgumentException("Vehicle limit (AC/DC) invalid or zero");
 
-        // pillar power (we keep power at pillar as agreed)
+        // Pillar power
         Double pillarPowerObj = pillar.getPower();
         double pillarPowerKw = pillarPowerObj == null ? Double.POSITIVE_INFINITY : pillarPowerObj;
 
-        // peak before efficiency
+        // Peak power calculation with efficiency
         double peakBeforeEff = Math.min(vehicleLimitKw, pillarPowerKw);
         double pPeak = peakBeforeEff * eff;
 
@@ -87,6 +89,7 @@ public class ChargingEstimatorService {
             throw new IllegalArgumentException("Peak power is zero or unavailable");
         }
 
+        // Average power calculation
         double pAvg;
         if (isAc) {
             // AC: flat power
@@ -97,23 +100,32 @@ public class ChargingEstimatorService {
             pAvg = pPeak * weightedMultiplier;
         }
 
-        // avoid division by zero
-        double hours = energyKwh / Math.max(1e-6, pAvg);
+        // Time calculation
+        double hours = energyToBatteryKwh / Math.max(1e-6, pAvg);
         int minutes = (int) Math.ceil(hours * 60.0);
 
-        // advice: add 10% buffer
+        // Advice with enhanced information
         int buffer = (int) Math.ceil(minutes * 0.10);
-        String advice = String.format("Ước tính %d phút. Gợi ý đặt %d phút (thêm %d phút dự phòng).",
-                minutes, minutes + buffer, buffer);
+        String advice = String.format(
+                "Ước tính %d phút. Gợi ý đặt %d phút (thêm %d phút dự phòng).",
+                minutes, minutes + buffer, buffer
+        );
 
-        // rounding energy to 2 decimals for neatness
-        double energyRounded = round(energyKwh, 2);
+        // Round values for neat display
+        double energyToBatteryRounded = round(energyToBatteryKwh, 2);
+        double energyFromStationRounded = round(energyFromStationKwh, 2);
+        double estimatedCostRounded = round(estimatedCost, 2);
 
-        return new EstimateResponse(energyRounded, minutes, advice);
+        return EstimateResponse.builder()
+                .estimatedCost(estimatedCostRounded)
+                .estimatedMinutes(minutes)
+                .advice(advice)
+                .energyFromStationKwh(energyFromStationRounded)
+                .energyKwh(energyToBatteryRounded)
+                .build();
     }
 
-    // Helpers
-
+    //------------------Helper Methods-----------------//
     private static double clamp(double v, double lo, double hi) {
         return Math.max(lo, Math.min(hi, v));
     }

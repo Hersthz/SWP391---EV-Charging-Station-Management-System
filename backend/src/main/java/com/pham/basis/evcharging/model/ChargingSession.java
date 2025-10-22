@@ -35,12 +35,9 @@ public class ChargingSession {
     @JoinColumn(name = "driver_user_id", nullable = false)
     private User driver;
 
-    // ------
-    @Column(name = "started_by_id")
-    private Long startedById; // người kích hoạt user staff(offline)
-
-    @Column(name = "vehicle_label", length = 50)
-    private String vehicleLabel;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id", nullable = false)
+    private Vehicle vehicle;
 
     // --- Thời gian ---
     @Column(name = "start_time", nullable = false)
@@ -66,7 +63,13 @@ public class ChargingSession {
     private BigDecimal chargedAmount; // tổng tiền
 
     @Column(name = "rate_per_kwh", precision = 10, scale = 2)
-    private BigDecimal ratePerKwh; // đơn giá tại thời điểm sạc (optional)
+    private BigDecimal ratePerKwh; // đơn giá tại thời điểm sạc
+
+    @Column(name = "payment_method", nullable = false, length = 20)
+    private String paymentMethod;
+
+    @Column(name = "target_soc")
+    private Double targetSoc;
 
     // ------
     @PrePersist

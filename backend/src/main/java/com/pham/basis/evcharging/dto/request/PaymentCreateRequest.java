@@ -2,12 +2,14 @@ package com.pham.basis.evcharging.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 @Data
 @AllArgsConstructor
+@Builder
 public class PaymentCreateRequest {
 
     @NotNull(message = "amount không được để trống")
@@ -24,4 +26,5 @@ public class PaymentCreateRequest {
     private Long referenceId;
     @NotBlank(message = "method không được để trống")
     private String method;
+
 }
