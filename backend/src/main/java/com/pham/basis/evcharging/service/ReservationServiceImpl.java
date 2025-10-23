@@ -49,7 +49,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = request.getEndTime().plusMinutes(15);
+        LocalDateTime expiredAt = request.getEndTime().plusMinutes(15);
 
         //tinhs holdFee 300d/p
         long minutes = ChronoUnit.MINUTES.between(request.getStartTime(), request.getEndTime());
@@ -66,7 +66,7 @@ public class ReservationServiceImpl implements ReservationService {
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
                 .createdAt(now)
-                .expiredAt(endTime)
+                .expiredAt(expiredAt)
                 .build();
         Reservation saved = reservationRepository.save(reservation);
 
