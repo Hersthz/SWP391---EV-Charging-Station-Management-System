@@ -27,20 +27,19 @@ public class Subscription {
 
     // Không dùng enum: ràng buộc String bằng length/validator
     @Column(name = "status", nullable = false, length = 20)
-    private String status; // ví dụ: ACTIVE, CANCELED, EXPIRED, TRIAL
+    private String status; // ACTIVE, CANCELED, EXPIRED, TRIAL
 
     @NotNull
-    @Column(name = "start_date", nullable = false)
+    @Column(name = "start_date", nullable = false, columnDefinition = "datetime2")
     private LocalDateTime startDate;
 
-    @Column(name = "end_date")
+    @Column(name = "end_date", columnDefinition = "datetime2")
     private LocalDateTime endDate;
 
     @NotNull
-    @Column(name = "created_at", nullable = false, columnDefinition = "timestamp with time zone")
+    @Column(name = "created_at", nullable = false, columnDefinition = "datetime2")
     private LocalDateTime createdAt;
 
     @Column(name = "price_at_purchase", nullable = false)
     private double priceAtPurchase;
-
 }

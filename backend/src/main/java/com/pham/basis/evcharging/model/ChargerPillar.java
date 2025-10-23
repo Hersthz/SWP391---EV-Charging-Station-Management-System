@@ -34,7 +34,6 @@ public class ChargerPillar {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "station_id", nullable = false)
-    @JsonIgnore
     private ChargingStation station;
 
     @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)
