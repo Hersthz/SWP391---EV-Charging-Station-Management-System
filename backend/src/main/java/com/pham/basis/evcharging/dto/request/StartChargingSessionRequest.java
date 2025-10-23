@@ -17,6 +17,7 @@ public class StartChargingSessionRequest {
     @NotNull
     private Long vehicleId;
 
+    @NotNull
     private Double targetSoc;
 
     @NotNull
