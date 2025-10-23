@@ -71,6 +71,8 @@ public class ChargingSession {
     @Column(name = "target_soc")
     private Double targetSoc;
 
+    @Column(name = "initial_soc")
+    private Double initialSoc;
     // ------
     @PrePersist
     public void onCreate() {
