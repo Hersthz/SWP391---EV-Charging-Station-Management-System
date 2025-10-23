@@ -1,21 +1,27 @@
 package com.pham.basis.evcharging.service;
 
+import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
+import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
 import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
 import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
+import com.pham.basis.evcharging.repository.SubscriptionPlanRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -26,6 +32,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
+    private final SubscriptionPlanRepository planRepository;
 
     @Override
     public User createUser(UserCreationRequest request) {
@@ -180,4 +187,47 @@ public class UserServiceImpl implements UserService {
             }
         }
     }
-}
+
+        @Override
+        public CreateStaffResponse adminAddStaff(CreateStaffRequest req) {
+
+            final String email    = req.getEmail().toLowerCase().trim();
+            final String username = req.getUsername().toLowerCase().trim();
+            final String phone    = req.getPhone().trim();
+
+            if (userRepository.existsByEmail(email))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+            if (userRepository.existsByPhone(phone))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
+            if (userRepository.existsByUsername(username))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists"); // 409 [web:20][web:3]
+
+            Role role = roleRepository.findById(req.getRoleId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId")); // 400 [web:20]
+
+            // Password: dùng input, nếu trống đặt "1" (dev); production nên generate ngẫu nhiên
+            final String rawPwd = Optional.ofNullable(req.getPassword())
+                    .map(String::trim)
+                    .filter(p -> !p.isBlank())
+                    .orElse("1"); // CHỈ nên dùng ở dev [web:14][web:17]
+
+            User u = new User();
+            u.setFull_name(req.getFull_name().trim());
+            u.setUsername(username);
+            u.setEmail(email);
+            u.setPhone(phone);
+            u.setRole(role);
+
+            User saved = userRepository.save(u);           // JPA save [web:20]
+            CreateStaffResponse res = new CreateStaffResponse();
+            res.setUser_id(saved.getId());
+            res.setFull_name(saved.getFull_name());
+            res.setUsername(saved.getUsername());
+            res.setEmail(saved.getEmail());
+            res.setPhone(saved.getPhone());
+            res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
+            return res;
+        }
+    }
+
+
