@@ -43,6 +43,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
         //validate time
         validateTime(request);
+
         //kiểm tra chồng reservation
         checkForOverlappingReservations(request);
 
@@ -50,7 +51,7 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime endTime = request.getEndTime().plusMinutes(15);
 
-        //tinhs holdFee 500d/p
+        //tinhs holdFee 300d/p
         long minutes = ChronoUnit.MINUTES.between(request.getStartTime(), request.getEndTime());
         BigDecimal holdFee = BigDecimal.valueOf(minutes).multiply(BigDecimal.valueOf(300));
 
@@ -84,6 +85,15 @@ public class ReservationServiceImpl implements ReservationService {
         return reservations.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public ReservationResponse updateStatus(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new BadRequestException("Reservation not found"));
+        reservation.setStatus("PLUGGED");
+        Reservation saved = reservationRepository.save(reservation);
+        return toResponse(saved);
     }
 
     private ReservationResponse toResponse(Reservation saved) {
@@ -150,7 +160,7 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDateTime now = LocalDateTime.now();
         List<Reservation> reservations = reservationRepository.findByStatusAndStartTimeBefore("SCHEDULED",now);
         for (Reservation r : reservations) {
-            r.setStatus("VERIFY");
+            r.setStatus("VERIFYING");
             reservationRepository.save(r);
 
             ChargerPillar p = r.getPillar();
@@ -168,4 +178,6 @@ public class ReservationServiceImpl implements ReservationService {
             chargerPillarRepository.save(pillar);
         }
     }
+
+
 }

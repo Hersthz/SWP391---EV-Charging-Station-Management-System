@@ -102,7 +102,7 @@ public class OneTimeTokenServiceImpl implements OneTimeTokenService {
             throw new BadRequestException("Token is not bound to a reservation");
         }
 
-        reservation.setStatus("CHARGING");
+        reservation.setStatus("VERIFIED");
         reservationRepo.save(reservation);
 
         Map<String, Object> data = new HashMap<>();

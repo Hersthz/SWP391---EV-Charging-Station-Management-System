@@ -19,7 +19,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("SELECT r FROM Reservation r WHERE " +
             "r.pillar.id = :pillarId AND " +
-            "r.status IN ('PENDING', 'CONFIRMED') AND " +
+            "r.status IN ('PENDING', 'SCHEDULED') AND " +
             "(:startTime < r.endTime AND :endTime > r.startTime)")
     List<Reservation> findOverlappingReservations(
             @Param("pillarId") Long pillarId,
