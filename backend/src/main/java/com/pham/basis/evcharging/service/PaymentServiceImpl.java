@@ -473,7 +473,8 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentResultResponse vnpReturn(HttpServletRequest request) {
         Map<String, String> fields = extractParameters(request);
-        String vnp_SecureHash = request.getParameter("vnp_SecureHash");
+        String vnp_SecureHash = fields.remove("vnp_SecureHash");
+        fields.remove("vnp_SecureHashType");
 
         if (!vnpayConfig.verifySignature(fields, vnp_SecureHash)) {
             return PaymentResultResponse.builder()

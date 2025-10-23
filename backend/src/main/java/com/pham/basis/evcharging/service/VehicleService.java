@@ -5,5 +5,5 @@ import com.pham.basis.evcharging.model.Vehicle;
 import java.util.List;
 
 public interface VehicleService {
-    public List<Vehicle> getVehiclesByUserId(long userId);
+    List<Vehicle> getVehiclesByUserId(Long userId);
 }

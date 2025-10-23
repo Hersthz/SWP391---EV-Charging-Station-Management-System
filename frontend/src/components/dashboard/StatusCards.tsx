@@ -24,19 +24,47 @@ const USE_MOCK = false;
 
 /** ===== Types ===== */
 
+type Vehicle = {
+  id: number;
+  userId?: number;
+  make?: string;
+  model?: string;
+  batteryCapacityKwh?: number;
+  acMaxKw?: number;
+  dcMaxKw?: number;
+  efficiency?: number;
+  socNow?: number;
+  socTarget?: number;
+};
+
+// EstimateResp dùng trong popup
+type EstimateResp = {
+  energyKwh: number;              // năng lượng vào pin xe (kWh)
+  energyFromStationKwh: number;   // năng lượng lấy từ trụ (kWh)
+  estimatedCost: number;          // VND
+  estimatedMinutes: number;       // phút
+  advice?: string;
+};
+
 type ReservationStatus =
   | "CONFIRMED"
   | "SCHEDULED"
   | "PENDING_PAYMENT"
   | "CANCELLED"
-  | "EXPIRED";
+  | "EXPIRED"
+  | "VERIFYING"
+  | "VERIFIED"
+  | "PLUGGED"
+  | "CHARGING";
 
 interface ReservationItem {
   reservationId: number;
   stationId: number;
   stationName: string;
+  pillarId: number;
   pillarCode: string;      // e.g. "P4"
-  connectorType: string;   // e.g. "DC Ultra 350kW"
+  connectorType: string;
+  connectorId?: number;
   startTime: string;       // ISO
   status: ReservationStatus;
   holdFee?: number;        // deposit/hold fee
@@ -66,6 +94,7 @@ interface ReservationResponseBE {
   endTime?: string;
   createdAt?: string;
   expiredAt?: string;
+  payment?: { paid?: boolean; depositTransactionId?: string };
 }
 
 /** ===== Mock data ===== */
@@ -75,10 +104,11 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       reservationId: 10101,
       stationId: 3,
       stationName: "Downtown Station #3",
+      pillarId: 4,
       pillarCode: "P4",
       connectorType: "DC Ultra 350kW",
       startTime: new Date().toISOString(),
-      status: "CONFIRMED",
+      status: "VERIFYING",
       holdFee: 50000,
       payment: { depositTransactionId: "DP-2024091101", paid: true },
     },
@@ -86,6 +116,7 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       reservationId: 10102,
       stationId: 2,
       stationName: "Mall Station #2",
+      pillarId: 2,
       pillarCode: "P2",
       connectorType: "AC Fast 22kW",
       startTime: new Date(
@@ -104,6 +135,7 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       reservationId: 10103,
       stationId: 7,
       stationName: "Highway Station #7",
+      pillarId: 1,
       pillarCode: "P1",
       connectorType: "DC Fast 150kW",
       startTime: new Date(
@@ -147,47 +179,69 @@ const isArrivableNow = (startIso: string) => {
   return Date.now() >= start;
 };
 
+/** Chuẩn hoá vehicle từ API về kiểu FE */
+function mapApiVehicle(v: any): Vehicle {
+  return {
+    id: v?.id ?? v?.vehicleId,
+    userId: v?.userId ?? v?.user_id,
+    make: v?.make,
+    model: v?.model,
+    batteryCapacityKwh: v?.batteryCapacityKwh ?? v?.battery_capacity_kwh,
+    acMaxKw: v?.acMaxKw ?? v?.ac_max_kw,
+    dcMaxKw: v?.dcMaxKw ?? v?.dc_max_kw,
+    efficiency: v?.efficiency,
+    socNow: v?.socNow ?? v?.soc_now,
+  };
+}
+
 /** Map status DB -> FE */
 function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   const s = (dbStatus || "").toUpperCase().trim();
 
   if (s === "CANCELLED") return "CANCELLED";
   if (s === "EXPIRED") return "EXPIRED";
-  if (s === "VERIFY") return "SCHEDULED"; // 
-  if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED") return "SCHEDULED";
   if (s === "PENDING" || s === "PENDING_PAYMENT") return "PENDING_PAYMENT";
-  if (s === "PAID" || s === "CONFIRMED") {
+
+  // hỗ trợ VERIFYING flow
+  if (s === "VERIFY" || s === "VERIFYING") return "VERIFYING";
+  if (s === "VERIFIED") return "VERIFIED";
+  if (s === "PLUGGED") return "PLUGGED";
+
+  // nếu tới giờ thì VERIFYING, chưa tới thì SCHEDULED
+  if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
     const future = startTime ? new Date(startTime).getTime() > Date.now() : false;
-    return future ? "SCHEDULED" : "CONFIRMED";
+    return future ? "SCHEDULED" : "VERIFYING";
   }
+  if (s === "CHARGING") return "CHARGING";
+  // fallback theo thời gian
   if (startTime) {
-    return new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "CONFIRMED";
+    return new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
   }
   return "SCHEDULED";
 }
-
 
 /** Map BE -> FE item */
 function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
   return rows.map((d) => {
     const normalized = (d.status || "").toUpperCase().trim();
-    const bePayment = (d as any).payment;
 
     return {
       reservationId: d.reservationId,
       stationId: d.stationId,
       stationName: d.stationName,
+      pillarId: d.pillarId,
       pillarCode: d.pillarCode ?? `P${d.pillarId}`,
       connectorType: d.connectorType ?? `Connector ${d.connectorId}`,
+      connectorId: d.connectorId,
       startTime: d.startTime,
       status: mapStatus(d.status, d.startTime),
       holdFee: d.holdFee ?? 0,
       payment: {
         paid:
-          (typeof bePayment?.paid === "boolean" && bePayment.paid) ||
+          (typeof d.payment?.paid === "boolean" && d.payment.paid) ||
           normalized === "PAID" ||
           normalized === "PAID_CONFIRMED",
-        depositTransactionId: bePayment?.depositTransactionId || undefined,
+        depositTransactionId: d.payment?.depositTransactionId || undefined,
       },
     };
   });
@@ -217,6 +271,7 @@ const StatusCards = () => {
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
   const [currentUserId, setCurrentUserId] = useState<number | undefined>();
+  const [kycVerified, setKycVerified] = useState<boolean>(false); // NEW: KYC flag
 
   // QR dialog state
   const [qrOpen, setQrOpen] = useState(false);
@@ -227,8 +282,30 @@ const StatusCards = () => {
   const [qrStation, setQrStation] = useState<string>("");
   const [lastResId, setLastResId] = useState<number | null>(null);
 
+  // NEW: Payment dialog state
+  const [pmOpen, setPmOpen] = useState(false);
+  const [pmResId, setPmResId] = useState<number | null>(null);
+  const [payFlow, setPayFlow] = useState<"prepaid" | "postpaid">("prepaid");
+  const [payChannel, setPayChannel] = useState<"wallet" | "vnpay">("wallet");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
+  const [targetSoc, setTargetSoc] = useState<number>(Number(localStorage.getItem("soc_target") ?? "80"));
+  const [est, setEst] = useState<EstimateResp | null>(null);
+  const [estimating, setEstimating] = useState<boolean>(false);
+
+  // NEW: current SOC (lấy từ xe hoặc localStorage fallback)
+  const [currentSoc, setCurrentSoc] = useState<number>(Number(localStorage.getItem("soc_now") ?? "50"));
+
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Save target SOC & current SOC to localStorage
+  useEffect(() => {
+    localStorage.setItem("soc_target", String(targetSoc));
+  }, [targetSoc]);
+  useEffect(() => {
+    localStorage.setItem("soc_now", String(currentSoc));
+  }, [currentSoc]);
 
   // Load reservations
   useEffect(() => {
@@ -238,9 +315,10 @@ const StatusCards = () => {
       try {
         if (USE_MOCK) {
           if (!mounted) return;
-          setItems(MOCK_RESERVATIONS.items);
+          setItems(mapBEToFE(MOCK_RESERVATIONS.items as any));
           setNext(MOCK_RESERVATIONS.nextBooking);
           setCurrentUserId(1);
+          setKycVerified(true);
           return;
         }
 
@@ -255,6 +333,9 @@ const StatusCards = () => {
         if (!userId) throw new Error("Cannot determine current user id.");
         setCurrentUserId(userId);
 
+        // NEW: đọc cờ KYC (hỗ trợ 2 key phổ biến)
+        setKycVerified(!!(me.data?.kycVerified ?? me.data?.kyc_verified));
+
         const { data } = await api.get<ReservationResponseBE[]>(
           `/user/${userId}/reservations`,
           { withCredentials: true }
@@ -266,9 +347,10 @@ const StatusCards = () => {
         setItems(feItems);
         setNext(pickNext(feItems));
       } catch (e: any) {
-        setItems(MOCK_RESERVATIONS.items);
+        setItems(mapBEToFE((MOCK_RESERVATIONS.items as any) ?? []));
         setNext(MOCK_RESERVATIONS.nextBooking);
         setCurrentUserId(1);
+        setKycVerified(true);
         toast({
           title: "Showing mock data",
           description: e?.response?.data?.message || e?.message || "Could not reach backend.",
@@ -297,34 +379,45 @@ const StatusCards = () => {
         (i) =>
           i.status === "CONFIRMED" ||
           i.status === "SCHEDULED" ||
-          i.status === "PENDING_PAYMENT"
+          i.status === "PENDING_PAYMENT" ||
+          i.status === "VERIFYING" ||
+          i.status === "VERIFIED" ||
+          i.status === "PLUGGED" ||
+          i.status === "CHARGING"
       ).length,
     [items]
   );
 
-  const onStartCharging = async (r: ReservationItem) => {
+  // ====== Actions ======
+
+  const onStartChargingAPI = async (reservationId: number) => {
     try {
+      const r = items.find(x => x.reservationId === reservationId);
+      if (!r) throw new Error("Reservation not found.");
+      if (!currentUserId) throw new Error("Cannot determine current user id.");
+      if (!vehicleId) throw new Error("Please choose a vehicle.");
+
       if (USE_MOCK) {
-        toast({
-          title: "Charging session started ",
-          description: `${r.stationName} • ${r.pillarCode}`,
-        });
-        navigate(`/booking?start=true&reservationId=${r.reservationId}&sessionId=MOCK-SESS-1`);
+        toast({ title: "Charging session started ", description: `Reservation #${reservationId}` });
+        navigate(`/charging?start=true&reservationId=${reservationId}&sessionId=MOCK-SESS-1`);
         return;
       }
 
-      const { data } = await api.post(
-        "/charging-sessions/start",
-        { reservationId: r.reservationId },
-        { withCredentials: true }
-      );
-      toast({
-        title: "Charging session started",
-        description: `${r.stationName} • ${r.pillarCode}`,
-      });
-      navigate(
-        `/booking?start=true&reservationId=${r.reservationId}&sessionId=${data.sessionId}`
-      );
+      const payload = {
+        reservationId: r.reservationId,
+        pillarId: r.pillarId,
+        driverId: currentUserId,
+        vehicleId: vehicleId,
+        targetSoc: targetSoc,
+        paymentMethod: payChannel === "wallet" ? "WALLET" : "VNPAY",
+      };
+
+      const { data } = await api.post("/session/create", payload);
+
+      const sid = data?.sessionId ?? data?.id;
+      if (!sid) throw new Error("Invalid start response (missing sessionId).");
+      toast({ title: "Charging session started" });
+      navigate(`/charging?sessionId=${encodeURIComponent(sid)}&reservationId=${reservationId}`);
     } catch (e: any) {
       const msg = e?.response?.data?.message || "Cannot start the session.";
       toast({ title: "Action failed", description: msg, variant: "destructive" });
@@ -353,7 +446,7 @@ const StatusCards = () => {
     if (USE_MOCK) {
       const token = "MOCK-" + r.reservationId;
       const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-      const qr = `https://your-fe.com/checkin?token=${token}`;
+      const qr = `${window.location.origin}/checkin?token=${token}`;
       setQrToken(token);
       setQrExpiresAt(expires);
       setQrUrl(qr);
@@ -368,7 +461,7 @@ const StatusCards = () => {
       if (!currentUserId) throw new Error("Cannot determine current user id.");
 
       const { data } = await api.post("/api/token/create",
-        { userId: currentUserId, reservationId: r.reservationId }, 
+        { userId: currentUserId, reservationId: r.reservationId },
         { withCredentials: true }
       );
       const payload = data?.data ?? data;
@@ -394,6 +487,83 @@ const StatusCards = () => {
     }
   };
 
+  // Đánh dấu PLUGGED (sau khi đã VERIFIED)
+  const markPlugged = async (r: ReservationItem) => {
+    try {
+      if (USE_MOCK) {
+        setItems((xs) => xs.map(x => x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x));
+        toast({ title: "Plugged in", description: `${r.stationName} • ${r.pillarCode}` });
+        return;
+      }
+      await api.post(`/book/${r.reservationId}`, {}, { withCredentials: true });
+      setItems((xs) => xs.map(x => x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x));
+      toast({ title: "Plugged in" });
+    } catch (e: any) {
+      toast({ title: "Action failed", description: e?.response?.data?.message || "Cannot mark plugged.", variant: "destructive" });
+    }
+  };
+
+  //  mở popup Start Charging để chọn payment
+  const openPayment = (r: ReservationItem) => {
+    setPmResId(r.reservationId);
+    // nếu chưa KYC → luôn là prepaid, postpaid bị disable
+    setPayFlow(kycVerified ? "postpaid" : "prepaid");
+    setPayChannel("wallet");
+    // load vehicles của user để chọn
+    if (currentUserId) {
+      api.get(`/vehicle/user/${currentUserId}`, { withCredentials: true })
+        .then((res) => {
+          const raw = res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
+          const list: Vehicle[] = Array.isArray(raw) ? raw.map(mapApiVehicle) : [];
+          setVehicles(list);
+          // nếu chỉ có 1 xe: tự chọn + gán SOC Now từ xe
+          if (list.length === 1) {
+            setVehicleId(list[0].id);
+            if (typeof list[0].socNow === "number") setCurrentSoc(list[0].socNow);
+          }
+        })
+        .catch(() => setVehicles([]));
+    }
+    // default target từ localStorage
+    setTargetSoc(Number(localStorage.getItem("soc_target") ?? "80"));
+    setEst(null);
+    setPmOpen(true);
+  };
+
+  // fetch estimate (có thể override SOC Now để chính xác khi vừa chọn xe)
+  async function fetchEstimateFor(
+    r?: ReservationItem,
+    vehId?: number,
+    target?: number,
+    socNowOverride?: number
+  ) {
+    if (!r || !vehId || !r.pillarId || !r.connectorId) { setEst(null); return; }
+    setEstimating(true);
+    try {
+      const socToUse = typeof socNowOverride === "number" ? socNowOverride : currentSoc;
+      const payload = {
+        vehicleId: vehId,
+        stationId: r.stationId,
+        pillarId: r.pillarId,
+        connectorId: r.connectorId,
+        socNow: isFinite(socToUse) ? socToUse / 100 : undefined,
+        socTarget: isFinite(target ?? 0) ? (target! / 100) : undefined,
+      };
+      const { data } = await api.post("/estimate/estimate-kw", payload, { withCredentials: true });
+      if (typeof data?.estimatedMinutes === "number") {
+        setEst({
+          energyKwh: data.energyKwh ?? 0,
+          energyFromStationKwh: data.energyFromStationKwh ?? 0,
+          estimatedCost: data.estimatedCost ?? 0,
+          estimatedMinutes: data.estimatedMinutes ?? 0,
+          advice: data.advice,
+        });
+      } else setEst(null);
+    } catch { setEst(null); }
+    finally { setEstimating(false); }
+  }
+
+  // countdown helpers
   const copyToken = async () => {
     try {
       await navigator.clipboard.writeText(qrToken || "");
@@ -414,48 +584,76 @@ const StatusCards = () => {
     const scheduled = r.status === "SCHEDULED";
     const pending = r.status === "PENDING_PAYMENT";
 
+    // chọn bg theo trạng thái
+    const bgClass =
+      pending
+        ? "bg-rose-50/60 border-rose-200"
+        : r.status === "VERIFYING" || scheduled
+        ? "bg-amber-50/60 border-amber-200"
+        : r.status === "VERIFIED"
+        ? "bg-teal-50/60 border-teal-200"
+        : r.status === "PLUGGED"
+        ? "bg-sky-50/60 border-sky-200"
+        : r.status === "CHARGING"
+        ? "bg-emerald-50/60 border-emerald-200"
+        : ready
+        ? "bg-emerald-50/60 border-emerald-200"
+        : "bg-emerald-50/60 border-emerald-200";
+
+    const toneClass =
+      pending
+        ? "text-rose-700"
+        : r.status === "VERIFYING" || scheduled
+        ? "text-amber-700"
+        : r.status === "VERIFIED"
+        ? "text-teal-700"
+        : r.status === "PLUGGED"
+        ? "text-sky-700"
+        : r.status === "CHARGING"
+        ? "text-emerald-700"
+        : ready
+        ? "text-emerald-700"
+        : "text-emerald-700";
+
     return (
       <div
         key={r.reservationId}
         className={[
-          "group relative overflow-hidden flex items-center justify-between p-4 sm:p-5 rounded-xl border-2 transition-all",
-          ready
-            ? "bg-gradient-to-r from-emerald-50 via-emerald-25 to-transparent border-emerald-200 hover:border-emerald-300"
-            : scheduled
-            ? "bg-gradient-to-r from-amber-50 via-amber-25 to-transparent border-amber-200 hover:border-amber-300"
-            : "bg-gradient-to-r from-rose-50 via-rose-25 to-transparent border-rose-200 hover:border-rose-300",
+          "group relative overflow-hidden flex items-center justify-between rounded-2xl border",
+          "p-4 sm:p-5 transition-all duration-200",
+          "hover:shadow-lg hover:-translate-y-[1px]",
+          bgClass,
         ].join(" ")}
+        style={{ minHeight: 92 }}
       >
-        <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
+        {/* left info */}
+        <div className="flex items-center space-x-4 flex-1 min-w-0">
           <div
             className={[
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow",
-              ready ? "bg-emerald-500" : scheduled ? "bg-amber-500" : "bg-rose-500",
+              "size-12 rounded-2xl flex items-center justify-center shadow-inner text-white",
+              pending ? "bg-rose-500"
+              : r.status === "VERIFYING" || scheduled ? "bg-amber-500"
+              : r.status === "VERIFIED" ? "bg-teal-500"
+              : r.status === "PLUGGED" ? "bg-sky-500"
+              : r.status === "CHARGING" ? "bg-emerald-600"
+              : ready ? "bg-emerald-500"
+              : "bg-emerald-500",
             ].join(" ")}
           >
-            {pending ? (
-              <CreditCard className="w-6 h-6 text-white" />
-            ) : (
-              <Calendar className="w-6 h-6 text-white" />
-            )}
+            {pending ? <CreditCard className="size-6" /> : <Calendar className="size-6" />}
           </div>
 
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold">{r.stationName}</h4>
-            <div className="flex flex-wrap gap-2 mb-1">
-              <Badge variant="outline" className="text-xs">{`Port ${r.pillarCode}`}</Badge>
-              <Badge variant="outline" className="text-xs">{r.connectorType}</Badge>
+            <h4 className="font-semibold truncate text-base">{r.stationName}</h4>
+            <div className="flex flex-wrap gap-2 my-1">
+              <Badge variant="outline" className="text-xs rounded-full border-dashed">
+                {`Port ${r.pillarCode}`}
+              </Badge>
+              <Badge variant="outline" className="text-xs rounded-full border-dashed">
+                {r.connectorType}
+              </Badge>
             </div>
-            <p
-              className={[
-                "text-xs sm:text-sm font-medium",
-                ready
-                  ? "text-emerald-700"
-                  : scheduled
-                  ? "text-amber-700"
-                  : "text-rose-700",
-              ].join(" ")}
-            >
+            <p className={["text-xs sm:text-[13px] font-medium", toneClass].join(" ")}>
               {fmtDateTime(r.startTime)}
               {ready && r.holdFee ? ` • Deposit ${fmtVnd(r.holdFee)}` : null}
               {pending ? " • Waiting for payment" : null}
@@ -463,30 +661,33 @@ const StatusCards = () => {
           </div>
         </div>
 
-        <div className="text-right flex flex-col gap-2">
+        {/* actions */}
+        <div className="text-right flex flex-col gap-2 shrink-0">
+          {/* READY */}
           {ready && (
             <>
-              <Badge className="bg-emerald-500 text-white border-0">Ready</Badge>
+              <Badge className="bg-emerald-600 text-white border-0 rounded-full">Ready</Badge>
               <Button
                 size="sm"
-                className="bg-emerald-500 hover:bg-emerald-600"
-                onClick={() => onStartCharging(r)}
+                className="rounded-full px-4 bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => navigate(`/charging?reservationId=${r.reservationId}`)}
               >
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
               </Button>
             </>
           )}
 
+          {/* SCHEDULED */}
           {scheduled && (
             <>
-              <Badge className="bg-amber-100 text-amber-700 border-amber-200">
+              <Badge className="rounded-full bg-amber-100 text-amber-700 border-amber-200">
                 Scheduled
               </Badge>
 
               {isArrivableNow(r.startTime) ? (
                 <Button
                   size="sm"
-                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                  className="rounded-full px-4 bg-amber-500 hover:bg-amber-600 text-white"
                   onClick={() => openQrFor(r)}
                   title="Generate QR to check-in"
                 >
@@ -496,7 +697,7 @@ const StatusCards = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-amber-200 text-amber-700"
+                  className="rounded-full px-4 border-amber-200 text-amber-700"
                   disabled
                 >
                   <Clock className="w-4 h-4 mr-1" /> Not yet
@@ -505,14 +706,58 @@ const StatusCards = () => {
             </>
           )}
 
+          {/* VERIFYING → Verify  */}
+          {r.status === "VERIFYING" && (
+            <>
+              <Badge className="rounded-full bg-amber-600 text-white border-0">Verifying</Badge>
+              <Button
+                size="sm"
+                className="rounded-full px-4 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => openQrFor(r)}
+                title="Generate QR to check-in"
+              >
+                <QrCode className="w-4 h-4 mr-1" /> Verify
+              </Button>
+            </>
+          )}
+
+          {/* VERIFIED → Plug */}
+          {r.status === "VERIFIED" && (
+            <>
+              <Badge className="rounded-full bg-teal-600 text-white border-0">Verified</Badge>
+              <Button
+                size="sm"
+                className="rounded-full px-4 bg-teal-600 hover:bg-teal-700 text-white"
+                onClick={() => markPlugged(r)}
+              >
+                Plug
+              </Button>
+            </>
+          )}
+
+          {/* PLUGGED → Start Charging (mở popup chọn thanh toán) */}
+          {r.status === "PLUGGED" && (
+            <>
+              <Badge className="rounded-full bg-sky-600 text-white border-0">Plugged</Badge>
+              <Button
+                size="sm"
+                className="rounded-full px-4 bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => openPayment(r)}
+              >
+                <Zap className="w-4 h-4 mr-1" /> Start Charging
+              </Button>
+            </>
+          )}
+
+          {/* PENDING_PAYMENT */}
           {pending && (
             <>
-              <Badge className="bg-rose-500 text-white border-0 animate-pulse">
+              <Badge className="rounded-full bg-rose-500 text-white border-0 animate-pulse">
                 Payment required
               </Badge>
               <Button
                 size="sm"
-                className="bg-rose-500 hover:bg-rose-600"
+                className="rounded-full px-4 bg-rose-500 hover:bg-rose-600"
                 onClick={() => onPayNow(r)}
               >
                 <CreditCard className="w-4 h-4 mr-1" /> Pay now
@@ -525,91 +770,100 @@ const StatusCards = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Today’s Overview</h2>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-semibold tracking-tight">Today’s Overview</h2>
 
-      {/* 2 small cards on left + wide reservations on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* LEFT SIDE */}
-        <div className="space-y-4 lg:col-span-1">
-          {/* Battery Status */}
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-medium text-green-700 flex items-center gap-2">
-                <Battery className="w-5 h-5" />
-                Current Battery Level
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-end gap-2">
-                <span className="text-3xl font-bold text-green-800">{batteryPct}%</span>
-                <span className="text-sm text-green-600 mb-1">{batteryRangeKm} km</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT: Battery + Next booking */}
+        <div className="space-y-6 lg:col-span-1">
+          {/* Battery card */}
+          <Card className="overflow-hidden border-0 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 opacity-90">
+                  <Battery className="w-5 h-5" />
+                  <span className="text-sm font-medium">Current Battery Level</span>
+                </div>
+                <span className="text-xs/5 bg-white/15 px-2 py-1 rounded-full">Live</span>
               </div>
-              <Progress value={batteryPct} className="h-2 bg-green-100" />
-              <p className="text-sm text-green-600">Enough for a long trip</p>
+
+              <div className="mt-4 flex items-end gap-2">
+                <span className="text-4xl font-extrabold drop-shadow">{batteryPct}%</span>
+                <span className="text-sm opacity-90 mb-1">{batteryRangeKm} km</span>
+              </div>
+
+              <div className="mt-3">
+                <div className="h-2 w-full rounded-full bg-white/30 overflow-hidden">
+                  <div className="h-2 rounded-full bg-white" style={{ width: `${batteryPct}%` }} />
+                </div>
+                <p className="text-xs mt-2 opacity-90">Enough for a long trip</p>
+              </div>
             </CardContent>
           </Card>
 
           {/* Next Booking */}
-          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-medium text-purple-700 flex items-center gap-2">
+          <Card className="rounded-2xl border-2 border-primary/15">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 text-primary">
                 <Calendar className="w-5 h-5" />
-                Next Booking
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-end gap-2">
-                <span className="text-xl font-bold text-purple-800">
-                  {next?.startTime
-                    ? new Date(next.startTime).toLocaleDateString()
-                    : "No upcoming booking"}
-                </span>
-                <span className="text-sm text-purple-600 mb-1">
-                  {next?.startTime
-                    ? new Date(next.startTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : ""}
-                </span>
+                <span className="font-semibold">Next Booking</span>
               </div>
-              {next?.stationName && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm text-purple-600">{next.stationName}</span>
+
+              {next?.startTime ? (
+                <div className="mt-4 space-y-2">
+                  <div className="text-2xl font-bold">
+                    {new Date(next.startTime).toLocaleDateString()}
+                    <span className="text-base text-muted-foreground ml-2">
+                      {new Date(next.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+
+                  {next.stationName && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>{next.stationName}</span>
+                    </div>
+                  )}
+
+                  {next.pillarCode && (
+                    <div className="mt-2 inline-flex items-center gap-2">
+                      <Badge variant="secondary" className="rounded-full">
+                        {`Port ${next.pillarCode}`}
+                      </Badge>
+                      <Badge variant="secondary" className="rounded-full">
+                        {next.connectorType}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
-              )}
-              {next?.pillarCode && (
-                <Badge
-                  variant="secondary"
-                  className="bg-purple-100 text-purple-700 border-purple-300"
-                >
-                  {`Port ${next.pillarCode} • ${next.connectorType}`}
-                </Badge>
+              ) : (
+                <div className="mt-4 text-sm text-muted-foreground">No upcoming booking</div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* RIGHT SIDE: My Reservations */}
+        {/* RIGHT: Reservations list – max 4 items + scroll */}
         <div className="lg:col-span-2">
-          <Card className="shadow-card hover:shadow-electric transition-all duration-300 border-2 border-transparent hover:border-primary/20">
-            <CardHeader className="pb-4 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
-              <CardTitle className="flex items-center text-lg justify-between">
-                <div className="flex items-center">
-                  <div className="p-2 rounded-lg bg-primary/10 mr-2">
+          <Card className="rounded-2xl border-2 border-primary/15">
+            <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent rounded-t-2xl">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
                     <Calendar className="w-5 h-5 text-primary" />
                   </div>
-                  <span>My Reservations</span>
-                  <Badge variant="outline" className="ml-2 border-primary/30 text-primary">
+                  <span className="text-lg">My Reservations</span>
+                  <Badge variant="outline" className="ml-2 border-primary/30 text-primary rounded-full">
                     Core
                   </Badge>
                 </div>
-                {!loading && <Badge variant="secondary">{activeCount} active</Badge>}
+                {!loading && (
+                  <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+
+            <CardContent className="pt-4">
               {loading ? (
                 <div className="p-6 text-sm text-muted-foreground">Loading…</div>
               ) : items.length === 0 ? (
@@ -617,7 +871,11 @@ const StatusCards = () => {
                   You have no reservations yet.
                 </div>
               ) : (
-                <div className="space-y-3">{items.map(renderReservation)}</div>
+                <div
+                  className="space-y-3 max-h-[430px] overflow-y-auto pr-1 nice-scroll"
+                >
+                  {items.map(renderReservation)}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -674,6 +932,146 @@ const StatusCards = () => {
 
             <div className="text-xs text-muted-foreground">
               Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog khi Start Charging */}
+      <Dialog open={pmOpen} onOpenChange={setPmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Select Payment Method
+            </DialogTitle>
+            <DialogDescription>
+              {kycVerified
+                ? "You can choose Prepaid or Postpaid."
+                : "You are not KYC verified. Postpaid option is disabled."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            {/* Hình thức: Trả trước / Trả sau */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Method</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant={payFlow === "prepaid" ? "default" : "outline"} className="rounded-xl" onClick={() => setPayFlow("prepaid")}>Prepaid</Button>
+                <Button variant={payFlow === "postpaid" ? "default" : "outline"} className="rounded-xl disabled:opacity-60" disabled={!kycVerified} onClick={() => setPayFlow("postpaid")}>Postpaid</Button>
+              </div>
+              {!kycVerified && <div className="text-xs text-muted-foreground mt-1"> Postpaid requires KYC verified</div>}
+            </div>
+
+            {/* Kênh thanh toán */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Payment</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant={payChannel === "wallet" ? "default" : "outline"} className="rounded-xl" onClick={() => setPayChannel("wallet")}>Wallet</Button>
+                <Button variant={payChannel === "vnpay" ? "default" : "outline"} className="rounded-xl" onClick={() => setPayChannel("vnpay")}>VNPay</Button>
+              </div>
+            </div>
+
+            {/* Vehicle */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Charging Vehicle</div>
+              <select
+                className="w-full h-10 border rounded-lg px-3"
+                value={vehicleId ?? ""}
+                onChange={(e) => {
+                  const v = Number(e.target.value) || null;
+                  setVehicleId(v);
+                  // gán SOC theo xe vừa chọn
+                  const picked = vehicles.find(x => x.id === v);
+                  const soc = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc;
+                  setCurrentSoc(soc);
+                  const r = items.find(x => x.reservationId === pmResId!);
+                  if (r) fetchEstimateFor(r, v!, targetSoc, soc); // dùng soc override để chính xác
+                }}
+              >
+                <option value="" disabled>Choose vehicle</option>
+                {vehicles.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.make || ""} {v.model || ""} (#{v.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Current SOC (read-only) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Current SOC</div>
+                <div className="text-sm font-semibold">{currentSoc}%</div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={currentSoc}
+                disabled
+                readOnly
+                className="w-full opacity-70 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Target SOC */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">SOC Target</div>
+                <div className="text-sm font-semibold">{targetSoc}%</div>
+              </div>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                step={5}
+                value={targetSoc}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setTargetSoc(v);
+                  const r = items.find(x => x.reservationId === pmResId!);
+                  if (r && vehicleId) fetchEstimateFor(r, vehicleId, v);
+                }}
+                className="w-full"
+              />
+            </div>
+
+            {/* Estimate */}
+            <div className="rounded-xl border p-3 bg-muted/40">
+              {(!vehicleId || !pmResId) ? (
+                <div className="text-sm text-muted-foreground">Select vehicle & SOC to estimate.</div>
+              ) : estimating ? (
+                <div className="text-sm text-primary">Estimating…</div>
+              ) : est ? (
+                <div className="text-sm space-y-1">
+                  <div>Time ~ <b>{est.estimatedMinutes} minutes</b></div>
+                  <div>Energy ~ <b>{est.energyKwh.toFixed(1)} kWh</b> • From ~ <b>{est.energyFromStationKwh.toFixed(1)} kWh</b></div>
+                  <div>Cost ~ <b>{new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND"}).format(est.estimatedCost)}</b></div>
+                  {est.advice && <div className="text-xs text-amber-600">{est.advice}</div>}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">Cannot estimate.</div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setPmOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (!pmResId) return;
+                  if (payFlow === "postpaid" && !kycVerified) {
+                    toast({ title: "KYC required", description: "Bạn cần KYC để dùng Trả sau.", variant: "destructive" });
+                    return;
+                  }
+                  setPmOpen(false);
+                  onStartChargingAPI(pmResId);
+                }}
+                disabled={!vehicleId}
+              >
+                <Zap className="w-4 h-4 mr-1" /> Start
+              </Button>
             </div>
           </div>
         </DialogContent>

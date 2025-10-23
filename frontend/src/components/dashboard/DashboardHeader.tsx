@@ -23,47 +23,47 @@ const DashboardHeader = () => {
       localStorage.clear();
       toast.success("Signed out successfully!");
       navigate("/");
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Logout failed!");
     }
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-      <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-primary-foreground" />
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-white/70 backdrop-blur-xl pointer-events-none">
+      <div className="pointer-events-auto container mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Brand */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-emerald-500 shadow-lg flex items-center justify-center">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
           </div>
-          <span className="text-xl font-bold">ChargeHub</span>
+          <span className="text-lg font-bold tracking-tight">ChargeHub</span>
         </div>
 
-        {/* Right icons */}
-        <div className="flex items-center space-x-4">
-          {/* Notifications */}
+        {/* Actions */}
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            className="relative hover:bg-primary/10"
+            className="relative hover:bg-primary/10 rounded-lg"
             onClick={() => setShowNotifications(true)}
             aria-label="Open notifications"
           >
             <Bell className="w-5 h-5" />
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground">
+            <Badge className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 bg-primary text-primary-foreground text-[10px]">
               3
             </Badge>
           </Button>
-
-          {/* User menu */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open user menu">
+              <Button variant="ghost" size="icon" className="rounded-lg" aria-label="Open user menu">
                 <User className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+
+            <DropdownMenuContent align="end" className="w-44 shadow-lg">
               <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User className="w-4 h-4 mr-2" />
                 Profile
@@ -72,7 +72,7 @@ const DashboardHeader = () => {
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </DropdownMenuItem>
@@ -81,7 +81,6 @@ const DashboardHeader = () => {
         </div>
       </div>
 
-      {/* Notifications modal */}
       <NotificationModal
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}

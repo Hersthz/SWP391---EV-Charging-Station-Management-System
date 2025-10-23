@@ -28,7 +28,7 @@ import ReservationDeposit from "./pages/ReservationDeposit"
 import DepositSS from "./pages/DepositSS";
 import KycPage from "./pages/KycPage";
 import Checkin from "./pages/Checkin";
-
+import ChargingSessionPage from "./pages/ChargingSessionPage";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +65,7 @@ const App = () => (
           <Route path="/depositss" element={<DepositSS />} />
           <Route path="/kyc" element={<KycPage />} />
           <Route path="/checkin" element={<Checkin />} />
+          <Route path="/charging" element={<ChargingSessionPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
