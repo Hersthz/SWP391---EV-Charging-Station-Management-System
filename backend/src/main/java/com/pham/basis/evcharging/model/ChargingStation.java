@@ -33,7 +33,6 @@ public class ChargingStation {
     private String status; // Active, Inactive, Maintenance
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private List<ChargerPillar> pillars = new ArrayList<>();
 
     @OneToOne(fetch = FetchType.LAZY)

@@ -3,9 +3,7 @@ package com.pham.basis.evcharging.controller;
 import com.pham.basis.evcharging.config.VNPayConfig;
 import com.pham.basis.evcharging.dto.request.AdjustTargetSocRequest;
 import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
-import com.pham.basis.evcharging.dto.response.AdjustTargetSocResponse;
-import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
-import com.pham.basis.evcharging.dto.response.PaymentResponse;
+import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.model.ChargingSession;
 import com.pham.basis.evcharging.service.ChargingSessionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,16 +22,30 @@ public class ChargingSessionController {
     private final ChargingSessionService chargingSessionService;
 
     @PostMapping("/create")
-    public ChargingSession startChargingSession(@RequestBody @Valid StartChargingSessionRequest request) {
-        return chargingSessionService.startChargingSession(request);
+    public ApiResponse<ChargingSessionResponse> startChargingSession(
+            @RequestBody @Valid StartChargingSessionRequest request) {
+
+        ChargingSession session = chargingSessionService.startChargingSession(request);
+
+        return ApiResponse.<ChargingSessionResponse>builder()
+                .code("200")
+                .message("Charging session created successfully")
+                .data(buildResponse(session))
+                .build();
     }
 
     @PatchMapping("/{id}/update")
-    public ChargingSession updateChargingSession(
+    public ApiResponse<ChargingSessionResponse> updateChargingSession(
             @PathVariable Long id,
-            @RequestParam BigDecimal energyCount
-    ) {
-        return chargingSessionService.updateChargingSession(id, energyCount);
+            @RequestParam BigDecimal energyCount) {
+
+        ChargingSession session = chargingSessionService.updateChargingSession(id, energyCount);
+
+        return ApiResponse.<ChargingSessionResponse>builder()
+                .code("200")
+                .message("Charging session updated successfully")
+                .data(buildResponse(session))
+                .build();
     }
 
     @PostMapping("/{id}/stop")
@@ -62,5 +74,21 @@ public class ChargingSessionController {
             @RequestBody @Valid AdjustTargetSocRequest request
     ) {
         return chargingSessionService.adjustTargetSocForSession(id, request.getTargetSoc());
+    }
+
+    private ChargingSessionResponse buildResponse(ChargingSession s) {
+        return ChargingSessionResponse.builder()
+                .id(s.getId())
+                .stationId(s.getStation() != null ? s.getStation().getId() : null)
+                .pillarId(s.getPillar() != null ? s.getPillar().getId() : null)
+                .driverUserId(s.getDriver() != null ? s.getDriver().getId() : null)
+                .vehicleId(s.getVehicle() != null ? s.getVehicle().getId() : null)
+                .status(s.getStatus())
+                .energyCount(s.getEnergyCount())
+                .chargedAmount(s.getChargedAmount())
+                .ratePerKwh(s.getRatePerKwh())
+                .startTime(s.getStartTime())
+                .endTime(s.getEndTime())
+                .build();
     }
 }
