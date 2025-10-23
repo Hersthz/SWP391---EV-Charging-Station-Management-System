@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import net.minidev.json.annotate.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,7 @@ public class ChargerPillar {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "station_id", nullable = false)
+    @JsonIgnore
     private ChargingStation station;
 
     @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)

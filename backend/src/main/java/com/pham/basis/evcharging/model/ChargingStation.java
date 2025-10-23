@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import net.minidev.json.annotate.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ public class ChargingStation {
     private String status; // Active, Inactive, Maintenance
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<ChargerPillar> pillars = new ArrayList<>();
 
     @OneToOne(fetch = FetchType.LAZY)

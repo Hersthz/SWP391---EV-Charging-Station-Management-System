@@ -1,3 +1,4 @@
+// src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
@@ -19,6 +20,7 @@ const Dashboard = () => {
     role: string;
     full_name: string;
   }
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -43,27 +45,38 @@ const Dashboard = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <DashboardHeader />
+    <div className="relative min-h-screen overflow-hidden bg-slate-100">
+      <div
+        className="pointer-events-none absolute inset-0
+        bg-[radial-gradient(100%_80%_at_0%_0%,rgba(24,73,153,0.12),transparent_55%),radial-gradient(95%_75%_at_100%_0%,rgba(37,99,235,0.12),transparent_60%),radial-gradient(120%_100%_at_50%_100%,rgba(14,165,233,0.10),transparent_65%)]"
+      />
+      <div
+        className="pointer-events-none absolute inset-0
+        bg-[radial-gradient(80%_60%_at_50%_0%,transparent_40%,rgba(30,58,138,0.08)_90%)]"
+      />
 
-      <main className="container mx-auto px-4 pt-20 pb-8 space-y-6">
-        <WelcomeSection />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <QuickActions />
-            <StatusCards />
-            <RecentSessions />
-          </div>
+      <div className="relative">
+        <DashboardHeader />
 
-          <div className="space-y-6">
-            <ProfileSection />
-            <VehicleSection />
-            <StatsSection />
-            <ChatBot />
+        <main className="container mx-auto px-4 pt-20 pb-8 space-y-6">
+          <WelcomeSection />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <QuickActions />
+              <StatusCards />
+              <RecentSessions />
+            </div>
+
+            <div className="space-y-6">
+              <ProfileSection />
+              <VehicleSection />
+              <StatsSection />
+              <ChatBot />
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

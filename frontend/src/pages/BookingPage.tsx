@@ -13,6 +13,7 @@ import {
   CreditCard,
   AlertTriangle,
   Calendar as CalendarIcon,
+  Car, 
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -95,6 +96,15 @@ type Insufficient = {
   estimated_final_cost?: number;
 };
 
+// === Vehicle selection ===
+type Vehicle = {
+  id: number;
+  name?: string;
+  brand?: string;
+  model?: string;
+  socNow?: number; // %
+};
+
 const CONNECTOR_ID_MAP: Record<string, string> = {
   CCS: "ccs",
   CCS2: "ccs2",
@@ -170,11 +180,9 @@ const TimePicker = ({
 }: TimePickerProps) => {
   const [open, setOpen] = useState(false);
 
-  // Min hiệu lực: ưu tiên minHM (ràng buộc logic), nếu không thì nếu là hôm nay -> chặn quá khứ
   const todayMin = isToday(date) ? nowHM(step) : null;
   const effectiveMin = minHM ?? todayMin;
 
-  // Tách giờ/phút của min để áp rule cùng-giờ-thì-phút-≥-min
   const [minH, minM] = effectiveMin ? effectiveMin.split(":").map(Number) : [undefined, undefined];
 
   const hours = Array.from({ length: 24 }, (_, i) => pad(i));
@@ -191,7 +199,7 @@ const TimePicker = ({
     let H = Number(h);
     let M = Number(m);
     if (effectiveMin && minH !== undefined && minM !== undefined && H === minH && M < minM) {
-      M = minM; // cùng giờ -> nâng phút lên min
+      M = minM;
     }
     let v = `${pad(H)}:${pad(M)}`;
     v = clampByMinMax(v);
@@ -217,7 +225,7 @@ const TimePicker = ({
   const hourDisabled = (h: string) => {
     if (!effectiveMin) return false;
     const H = Number(h);
-    return H < Number(minH); // giờ nhỏ hơn min -> disable, =min thì ok (phút sẽ được lọc ở list phút)
+    return H < Number(minH);
   };
 
   const minuteDisabled = (m: string, hPicked?: string) => {
@@ -227,7 +235,7 @@ const TimePicker = ({
     if (minH === undefined || minM === undefined) return false;
     if (H < minH) return true;
     if (H > minH) return false;
-    return M < minM; // cùng giờ -> phút < minM thì disable
+    return M < minM;
   };
 
   return (
@@ -243,7 +251,6 @@ const TimePicker = ({
 
       {open && (
         <div className="absolute z-40 mt-2 w-[320px] rounded-xl border bg-white shadow-xl p-3">
-          {/* Presets */}
           <div className="mb-2 flex gap-2">
             {suggest.map((s) => (
               <button
@@ -258,7 +265,6 @@ const TimePicker = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Hours */}
             <div className="max-h-48 overflow-auto rounded-lg border">
               {hours.map((h) => {
                 const disabled = hourDisabled(h);
@@ -280,7 +286,6 @@ const TimePicker = ({
               })}
             </div>
 
-            {/* Minutes */}
             <div className="max-h-48 overflow-auto rounded-lg border">
               {minutes.map((m) => {
                 const disabled = minuteDisabled(m);
@@ -332,8 +337,8 @@ function toUtcISOString(d: Date | null): string | null {
 
 function toLocalDateTimeString(dateStr?: string, timeStr?: string): string | null {
   if (!dateStr || !timeStr) return null;
-  const hhmmss = timeStr.length === 5 ? `${timeStr}:00` : timeStr; // đảm bảo có giây
-  return `${dateStr}T${hhmmss}`; // KHÔNG có 'Z'
+  const hhmmss = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+  return `${dateStr}T${hhmmss}`;
 }
 /* =========================
    Page
@@ -365,8 +370,16 @@ export default function BookingPage() {
   const [insufficient, setInsufficient] = useState<Insufficient | null>(null);
   const [serverHoldFee, setServerHoldFee] = useState<number | null>(null);
 
-  // --- ADD: estimate state ---
-  type EstimateState = { minutes: number; advice?: string } | null;
+  // ---  estimate types & state  ---
+  type EstimateResp = {
+    energyKwh: number;
+    energyFromStationKwh: number;
+    estimatedCost: number;
+    estimatedMinutes: number;
+    advice?: string;
+  };
+  type EstimateState = EstimateResp | null;
+
   const [estimate, setEstimate] = useState<EstimateState>(null);
   const [estimating, setEstimating] = useState(false);
 
@@ -466,6 +479,42 @@ export default function BookingPage() {
     const raw = c?.name ?? c?.type ?? c?.connectorType ?? String(c?.id ?? "");
     return raw.trim();
   }
+
+  // === NEW: Vehicle selection state & fetch ===
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState<boolean>(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
+    Number(localStorage.getItem("vehicle_id")) || null
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingVehicles(true);
+        const me = await api.get("/auth/me");
+        const userId = me.data?.user_id ?? me.data?.id;
+        if (!userId) throw new Error("No userId");
+        
+        const res = await api.get(`/vehicle/${userId}`);
+        const list: Vehicle[] = res.data?.data ?? [];
+        if (!cancelled) {
+          setVehicles(list);
+          // nếu chưa có chọn, tự set chiếc đầu tiên
+          if (!selectedVehicleId && list[0]?.id) {
+            setSelectedVehicleId(list[0].id);
+            localStorage.setItem("vehicle_id", String(list[0].id));
+          }
+        }
+      } catch {
+        // bỏ qua lỗi, user vẫn có thể đặt (estimate sẽ không có vehicleId)
+      } finally {
+        if (!cancelled) setLoadingVehicles(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Pillars UI
   type PillarUI = {
@@ -638,6 +687,7 @@ export default function BookingPage() {
         connectorId: Number(selectedConnectorIdNum),
         startTime: startStr,
         endTime: endStr,
+        // NOTE: ĐẶT CHỖ hiện tại BE không yêu cầu vehicleId -> không gửi.
       };
 
       const { data } = await api.post("/book/booking", payload);
@@ -654,15 +704,15 @@ export default function BookingPage() {
     }
   };
 
-  // --- helper lấy vehicle + SoC ---
+  // --- helper lấy vehicle + SoC  ---
   async function resolveVehicleContext() {
     try {
-      const me = await api.get("/auth/me", { withCredentials: true });
+      // Ưu tiên chiếc user vừa chọn (đã lưu localStorage)
       const vehicleId =
-        me.data?.vehicleId ??
+        selectedVehicleId ??
         Number(localStorage.getItem("vehicle_id"));
 
-      // Nếu BE yêu cầu 0..1, chia 100 ở payload.
+      // FE lưu %; nếu BE cần 0..1 thì sẽ chia 100 khi gửi payload
       const socNow = Number(localStorage.getItem("soc_now") ?? "50");     // %
       const socTarget = Number(localStorage.getItem("soc_target") ?? "80"); // %
 
@@ -683,26 +733,31 @@ export default function BookingPage() {
         return;
       }
 
-      const vctx = await resolveVehicleContext();
-      if (!vctx) {
-        setEstimate(null);
-        return;
-      }
-
+      const vctx = await resolveVehicleContext(); // có thì gửi, không có thì bỏ
       setEstimating(true);
       setEstimate(null);
       try {
-        const payload = {
-          vehicleId: vctx.vehicleId,
+        const payload: any = {
+          vehicleId: vctx?.vehicleId,
           stationId: Number(station.id),
           pillarId: Number(selectedPillarId),
           connectorId: Number(selectedConnectorIdNum),
-          socNow: vctx.socNow/100,
-          socTarget: vctx.socTarget/100,
         };
+        if (vctx && Number.isFinite(vctx.socNow) && Number.isFinite(vctx.socTarget)) {
+          payload.socNow = vctx.socNow / 100;
+          payload.socTarget = vctx.socTarget / 100;
+        }
+
         const { data } = await api.post("/estimate/estimate-kw", payload, { withCredentials: true });
+
         if (!cancelled && typeof data?.estimatedMinutes === "number") {
-          setEstimate({ minutes: data.estimatedMinutes, advice: data.advice });
+          setEstimate({
+            energyKwh: data.energyKwh ?? 0,
+            energyFromStationKwh: data.energyFromStationKwh ?? 0,
+            estimatedCost: data.estimatedCost ?? 0,
+            estimatedMinutes: data.estimatedMinutes ?? 0,
+            advice: data.advice,
+          });
         }
       } catch {
         if (!cancelled) setEstimate(null);
@@ -712,7 +767,7 @@ export default function BookingPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [station?.id, selectedPillarId, selectedConnectorIdNum]);
+  }, [station?.id, selectedPillarId, selectedConnectorIdNum, selectedVehicleId]); // <- theo xe chọn
 
   // UI helpers
   const renderPaymentSwitch = () => (
@@ -774,6 +829,60 @@ export default function BookingPage() {
         </CardContent>
       </Card>
 
+      {/* === NEW: Vehicle selection (chỉ thêm phần chọn xe) === */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Car className="w-5 h-5" /> Select Vehicle
+          </h3>
+          {loadingVehicles && <span className="text-xs text-muted-foreground">Loading vehicles…</span>}
+        </div>
+
+        {!vehicles.length && !loadingVehicles ? (
+          <div className="text-sm text-muted-foreground">
+            Chưa có xe nào. Bạn có thể thêm trong Profile/Vehicle, hoặc tiếp tục đặt chỗ (ước tính sẽ dùng SoC mặc định).
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {vehicles.map((v) => {
+              const active = selectedVehicleId === v.id;
+              return (
+                <Card
+                  key={v.id}
+                  onClick={() => {
+                    setSelectedVehicleId(v.id);
+                    localStorage.setItem("vehicle_id", String(v.id));
+                    if (typeof v.socNow === "number") {
+                      localStorage.setItem("soc_now", String(v.socNow));
+                    }
+                  }}
+                  className={[
+                    "cursor-pointer transition-colors rounded-xl",
+                    active
+                      ? "border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md"
+                      : "hover:border-primary/40",
+                  ].join(" ")}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold">
+                        {v.name || [v.brand, v.model].filter(Boolean).join(" ") || `Vehicle #${v.id}`}
+                      </div>
+                    </div>
+                    {typeof v.socNow === "number" && (
+                      <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
+                        <Battery className="w-4 h-4" /> SoC hiện tại ~ <b>{v.socNow}%</b>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {/* === END NEW: Vehicle selection === */}
+
       {/* Reservation Time (Date + Start + End with TimePicker) */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -829,7 +938,7 @@ export default function BookingPage() {
                 }}
                 date={bookingDate}
                 step={5}
-                minHM={startTime || null} // rule: End >= Start; nếu cùng giờ thì phút >= phút Start
+                minHM={startTime || null}
               />
             </div>
 
@@ -844,7 +953,7 @@ export default function BookingPage() {
               </Badge>
             </div>
 
-            {/* === ALWAYS SHOW Estimated charge line === */}
+            {/* === Estimated charge (minutes) === */}
             <div className="mt-2 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">Estimated charge</div>
               <div className="text-sm">
@@ -852,19 +961,39 @@ export default function BookingPage() {
                   <span className="text-slate-400">Chọn trụ & đầu nối để ước tính</span>
                 ) : estimating ? (
                   <span className="text-primary">Estimating…</span>
-                ) : estimate?.minutes != null ? (
-                  <span className="font-medium">{`~ ${estimate.minutes} min`}</span>
+                ) : estimate?.estimatedMinutes != null ? (
+                  <span className="font-medium">{`~ ${estimate.estimatedMinutes} min`}</span>
                 ) : (
                   <span className="text-slate-400">—</span>
                 )}
               </div>
             </div>
 
-            {/* (optional) cảnh báo nếu thời lượng đặt < ước tính sạc */}
-            {estimate?.minutes != null && durationMinutes > 0 && durationMinutes < estimate.minutes && (
+            {/*  info: kWh + cost + advice */}
+            {estimate && !estimating && (
+              <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+                <span>
+                  Energy ~ <b>{estimate.energyKwh.toFixed(1)} kWh</b>
+                </span>
+                <span>•</span>
+                <span>
+                  From station ~ <b>{estimate.energyFromStationKwh.toFixed(1)} kWh</b>
+                </span>
+                <span>•</span>
+                <span>
+                  Est. cost ~ <b>{formatVND(estimate.estimatedCost)}</b>
+                </span>
+              </div>
+            )}
+            {estimate?.advice && (
+              <div className="mt-1 text-xs text-amber-600">{estimate.advice}</div>
+            )}
+
+            {/* cảnh báo nếu slot < estimate */}
+            {estimate?.estimatedMinutes != null && durationMinutes > 0 && durationMinutes < estimate.estimatedMinutes && (
               <div className="mt-1 text-xs text-amber-600 flex items-center gap-1">
                 <AlertTriangle className="w-4 h-4" />
-                Estimated charge (~{estimate.minutes} min) exceeds your slot ({durationMinutes} min).
+                Estimated charge (~{estimate.estimatedMinutes} min) exceeds your slot ({durationMinutes} min).
               </div>
             )}
 
@@ -1029,6 +1158,8 @@ export default function BookingPage() {
 
   const renderSummaryStep = () => {
     const holdToShow = serverHoldFee ?? estimatedHold;
+    // === NEW: vehicle selected for display ===
+    const vehicleChosen = vehicles.find(v => v.id === selectedVehicleId);
     return (
       <div className="space-y-8">
         <div className="text-center">
@@ -1054,13 +1185,19 @@ export default function BookingPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center p-4 bg-gradient-to-r from-success/10 to-success/5 rounded-xl">
-                  <Battery className="w-5 h-5 text-success mr-3" />
+                {/* === NEW: show selected vehicle in summary === */}
+                <div className="flex items-center p-4 bg-gradient-to-r from-emerald-100/40 to-emerald-50 rounded-xl">
+                  <Car className="w-5 h-5 text-emerald-600 mr-3" />
                   <div>
-                    <div className="text-sm text-muted-foreground">Connector</div>
-                    <div className="font-bold text-lg">{selectedConnectorLabel}</div>
+                    <div className="text-sm text-muted-foreground">Vehicle</div>
+                    <div className="font-bold text-lg">
+                      {vehicleChosen
+                        ? (vehicleChosen.name || [vehicleChosen.brand, vehicleChosen.model].filter(Boolean).join(" ") || `Vehicle #${vehicleChosen.id}`)
+                        : "—"}
+                    </div>                
                   </div>
                 </div>
+                {/* === END NEW === */}
               </div>
 
               <div className="space-y-4">

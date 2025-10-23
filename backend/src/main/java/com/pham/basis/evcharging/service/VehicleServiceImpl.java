@@ -1,13 +1,22 @@
 package com.pham.basis.evcharging.service;
 
 import com.pham.basis.evcharging.model.Vehicle;
+import com.pham.basis.evcharging.repository.VehicleRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
 @Service
-public class VehicleServiceImpl implements  VehicleService {
+@RequiredArgsConstructor
+public class VehicleServiceImpl implements VehicleService {
+
+    private final VehicleRepository vehicleRepository;
+
     @Override
-    public List<Vehicle> getVehiclesByUserId(long userId) {
-        return getVehiclesByUserId(userId);
+    @Transactional(readOnly = true)
+    public List<Vehicle> getVehiclesByUserId(Long userId) {
+        return vehicleRepository.findByUserId(userId);
     }
 }
