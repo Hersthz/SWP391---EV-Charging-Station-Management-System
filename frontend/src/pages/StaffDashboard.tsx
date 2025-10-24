@@ -60,7 +60,6 @@ const StaffDashboard = () => {
         const me = meRes.data;
         const userId = me?.user_id ?? me?.id ?? me?.userId ?? Number(localStorage.getItem("userId"));
         if (!userId) throw new Error("Không tìm thấy userId từ /auth/me");
-
         const res = await api.get<any>(`/station-managers/${userId}`, { signal: controller.signal });
         const data = res.data;
 
