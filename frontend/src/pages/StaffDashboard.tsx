@@ -60,8 +60,6 @@ const StaffDashboard = () => {
         const me = meRes.data;
         const userId = me?.user_id ?? me?.id ?? me?.userId ?? Number(localStorage.getItem("userId"));
         if (!userId) throw new Error("Không tìm thấy userId từ /auth/me");
-        const res = await api.get<any>(`/station-managers/${userId}`, { signal: controller.signal });
-        const data = res.data;
 
         // backend có thể trả 1 object (trạm) hoặc mảng [{station: {...}}] hoặc [{...}]
         let s: any = null;
@@ -74,6 +72,23 @@ const StaffDashboard = () => {
           s = first.station ?? first.stationDto ?? first;
         } else {
           s = data.station ?? data.stationDto ?? data;
+        }
+
+// Lấy thông tin station-manager từ userId
+        const res = await api.get(`/station-managers/${userId}`, { signal: controller.signal });
+        const raw = res.data;
+
+        // backend có thể trả 1 object, hoặc mảng [{ station: {...} }]
+        let s: any = null;
+        if (Array.isArray(raw)) {
+          if (raw.length === 0) {
+            setStation(null);
+            return;
+          }
+          const first = raw[0];
+          s = first.station ?? first.stationDto ?? first;
+        } else {
+          s = raw.station ?? raw.stationDto ?? raw;
         }
 
         if (!s) {
@@ -89,12 +104,15 @@ const StaffDashboard = () => {
           latitude: s.latitude,
           longitude: s.longitude,
           status: s.status,
-          availablePillars: s.availablePillars ?? s.availablePillars,
-          totalPillars: s.totalPillars ?? s.totalPillars ?? (Array.isArray(s.pillars) ? s.pillars.length : undefined),
-          minPrice: s.minPrice ?? s.min_price ?? s.minPrice,
-          maxPrice: s.maxPrice ?? s.max_price ?? s.maxPrice,
-          minPower: s.minPower ?? s.min_power ?? s.minPower,
-          maxPower: s.maxPower ?? s.max_power ?? s.maxPower,
+          availablePillars: s.availablePillars,
+          totalPillars:
+            s.totalPillars ??
+            s.total_pillars ??
+            (Array.isArray(s.pillars) ? s.pillars.length : undefined),
+          minPrice: s.minPrice ?? s.min_price,
+          maxPrice: s.maxPrice ?? s.max_price,
+          minPower: s.minPower ?? s.min_power,
+          maxPower: s.maxPower ?? s.max_power,
           pillars: Array.isArray(s.pillars) ? s.pillars : undefined,
           reviews: Array.isArray(s.reviews) ? s.reviews : undefined,
         };
@@ -128,7 +146,9 @@ const StaffDashboard = () => {
   if (error) {
     return (
       <StaffLayout title="Staff Dashboard">
-        <div className="p-6 text-sm text-destructive">Failed to load station ({error}).</div>
+        <div className="p-6 text-sm text-destructive">
+          Failed to load station ({error}).
+        </div>
       </StaffLayout>
     );
   }
@@ -136,10 +156,13 @@ const StaffDashboard = () => {
   if (!station) {
     return (
       <StaffLayout title="Staff Dashboard">
-        <div className="p-6 text-sm text-muted-foreground">No assigned station.</div>
+        <div className="p-6 text-sm text-muted-foreground">
+          No assigned station.
+        </div>
       </StaffLayout>
     );
   }
+
 
   // số liệu tổng quan từ DTO
   const total = station.totalPillars ?? station.pillars?.length ?? 0;
