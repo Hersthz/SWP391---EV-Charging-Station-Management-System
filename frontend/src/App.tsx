@@ -29,7 +29,7 @@ import DepositSS from "./pages/DepositSS";
 import KycPage from "./pages/KycPage";
 import Checkin from "./pages/Checkin";
 import ChargingSessionPage from "./pages/ChargingSessionPage";
-
+import StaffReport from "./components/staff/StaffReport";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -47,6 +47,7 @@ const App = () => (
           <Route path="/staff/details" element={<StaffStationDetails />} />
           <Route path="/staff/payments" element={<StaffPayments />} />
           <Route path="/staff/incidents" element={<StaffIncidents />} />
+          <Route path="/staff/report" element={<StaffReport />} />
           <Route path="/map" element={<StationMap />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/booking/:id" element={<Booking />} />
