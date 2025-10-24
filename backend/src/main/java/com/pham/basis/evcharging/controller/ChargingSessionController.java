@@ -87,6 +87,8 @@ public class ChargingSessionController {
                 .energyCount(s.getEnergyCount())
                 .chargedAmount(s.getChargedAmount())
                 .ratePerKwh(s.getRatePerKwh())
+                .targetSoc(s.getTargetSoc())
+                .socNow(s.getVehicle().getSocNow())
                 .startTime(s.getStartTime())
                 .endTime(s.getEndTime())
                 .build();

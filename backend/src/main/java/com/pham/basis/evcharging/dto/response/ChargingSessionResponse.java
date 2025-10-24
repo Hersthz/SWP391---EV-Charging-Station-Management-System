@@ -20,5 +20,7 @@ public class ChargingSessionResponse {
     private BigDecimal ratePerKwh;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+    private Double targetSoc;
+    private Double socNow;
 }
 

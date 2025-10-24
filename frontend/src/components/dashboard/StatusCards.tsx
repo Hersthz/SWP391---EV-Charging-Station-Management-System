@@ -181,6 +181,11 @@ const isArrivableNow = (startIso: string) => {
 
 /** Chuẩn hoá vehicle từ API về kiểu FE */
 function mapApiVehicle(v: any): Vehicle {
+  const rawSoc = v?.socNow ?? v?.soc_now;
+  const socPct =
+   typeof rawSoc === "number"
+     ? (rawSoc <= 1 ? Math.round(rawSoc * 100) : Math.round(rawSoc))
+     : undefined;
   return {
     id: v?.id ?? v?.vehicleId,
     userId: v?.userId ?? v?.user_id,
@@ -190,7 +195,7 @@ function mapApiVehicle(v: any): Vehicle {
     acMaxKw: v?.acMaxKw ?? v?.ac_max_kw,
     dcMaxKw: v?.dcMaxKw ?? v?.dc_max_kw,
     efficiency: v?.efficiency,
-    socNow: v?.socNow ?? v?.soc_now,
+    socNow: socPct, // luôn là %
   };
 }
 
@@ -282,19 +287,26 @@ const StatusCards = () => {
   const [qrStation, setQrStation] = useState<string>("");
   const [lastResId, setLastResId] = useState<number | null>(null);
 
-  // NEW: Payment dialog state
+  // Payment dialog state
   const [pmOpen, setPmOpen] = useState(false);
   const [pmResId, setPmResId] = useState<number | null>(null);
   const [payFlow, setPayFlow] = useState<"prepaid" | "postpaid">("prepaid");
   const [payChannel, setPayChannel] = useState<"wallet" | "vnpay">("wallet");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleId, setVehicleId] = useState<number | null>(null);
-  const [targetSoc, setTargetSoc] = useState<number>(Number(localStorage.getItem("soc_target") ?? "80"));
   const [est, setEst] = useState<EstimateResp | null>(null);
   const [estimating, setEstimating] = useState<boolean>(false);
 
-  // NEW: current SOC (lấy từ xe hoặc localStorage fallback)
-  const [currentSoc, setCurrentSoc] = useState<number>(Number(localStorage.getItem("soc_now") ?? "50"));
+  // current SOC (lấy từ xe hoặc localStorage fallback)
+  const [currentSoc, setCurrentSoc] = useState<number>(() => {
+    const v = Number(localStorage.getItem("soc_now"));
+    return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50; // mặc định 50%
+  });
+
+  const [targetSoc, setTargetSoc] = useState<number>(() => {
+    const v = Number(localStorage.getItem("soc_target"));
+    return Number.isFinite(v) ? Math.max(10, Math.min(100, v)) : 80; // mặc định 80%
+  });
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -303,9 +315,7 @@ const StatusCards = () => {
   useEffect(() => {
     localStorage.setItem("soc_target", String(targetSoc));
   }, [targetSoc]);
-  useEffect(() => {
-    localStorage.setItem("soc_now", String(currentSoc));
-  }, [currentSoc]);
+  
 
   // Load reservations
   useEffect(() => {
@@ -408,16 +418,30 @@ const StatusCards = () => {
         pillarId: r.pillarId,
         driverId: currentUserId,
         vehicleId: vehicleId,
-        targetSoc: targetSoc,
+        targetSoc: targetSoc / 100,
         paymentMethod: payChannel === "wallet" ? "WALLET" : "VNPAY",
       };
 
       const { data } = await api.post("/session/create", payload);
+      const ret = data?.data ?? data;       // lấy phần data bên trong nếu có
+      const sid = ret?.sessionId ?? ret?.id;
 
-      const sid = data?.sessionId ?? data?.id;
       if (!sid) throw new Error("Invalid start response (missing sessionId).");
       toast({ title: "Charging session started" });
-      navigate(`/charging?sessionId=${encodeURIComponent(sid)}&reservationId=${reservationId}`);
+      // pack meta để trang Session đọc được ngay cả khi BE không trả snapshot
+      const initialSocFrac = (Number(currentSoc) || 0) / 100;
+      const targetSocFrac  = (Number(targetSoc) || 0) / 100;
+      localStorage.setItem(
+        `session_meta_${sid}`,
+        JSON.stringify({ vehicleId, initialSoc: initialSocFrac, targetSoc: targetSocFrac, reservationId })
+      );
+      navigate(
+        `/charging?sessionId=${encodeURIComponent(sid)}`
+        + `&reservationId=${reservationId}`
+        + `&vehicleId=${vehicleId}`
+        + `&initialSoc=${initialSocFrac}`
+        + `&targetSoc=${targetSocFrac}`
+      );
     } catch (e: any) {
       const msg = e?.response?.data?.message || "Cannot start the session.";
       toast({ title: "Action failed", description: msg, variant: "destructive" });
@@ -983,10 +1007,10 @@ const StatusCards = () => {
                   setVehicleId(v);
                   // gán SOC theo xe vừa chọn
                   const picked = vehicles.find(x => x.id === v);
-                  const soc = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc;
-                  setCurrentSoc(soc);
+                  const socPct = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc; // đã là %
+                  setCurrentSoc(socPct);
                   const r = items.find(x => x.reservationId === pmResId!);
-                  if (r) fetchEstimateFor(r, v!, targetSoc, soc); // dùng soc override để chính xác
+                  if (r) fetchEstimateFor(r, v!, targetSoc, socPct);
                 }}
               >
                 <option value="" disabled>Choose vehicle</option>
