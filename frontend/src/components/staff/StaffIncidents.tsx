@@ -21,11 +21,12 @@ import { useToast } from "../../hooks/use-toast";
 import StaffLayout from "./StaffLayout";
 import api from "../../api/axios";
 
+type PillarSimple = { id?: number; code?: string; name?: string };
 type StationDto = {
   id: number;
   name: string;
   address?: string;
-  pillars?: Array<{ id: number; code?: string; name?: string }>;
+  pillars?: PillarSimple[];
 };
 
 const StaffIncidents = () => {
@@ -66,42 +67,76 @@ const StaffIncidents = () => {
         const me = meRes.data;
         console.log("DEBUG /auth/me (StaffIncidents):", me);
 
-        const userId = me.user_id ?? me.id ?? me.userId;
+        let userId = me?.user_id ?? me?.id ?? me?.userId;
         if (!userId) {
           // fallback: try localStorage
           const fromStorage = Number(localStorage.getItem("userId"));
-          if (fromStorage) {
-            // use it
-          } else {
-            toast({ title: "Không xác định user", description: "Không thể lấy userId để tải trạm.", variant: "destructive" });
-            setLoadingStations(false);
-            return;
-          }
+          if (fromStorage) userId = fromStorage;
         }
 
-        const uid = userId ?? Number(localStorage.getItem("userId"));
+        if (!userId) {
+          toast({ title: "Không xác định user", description: "Không thể lấy userId để tải trạm.", variant: "destructive" });
+          setLoadingStations(false);
+          return;
+        }
 
         // call station-managers endpoint
-        const res = await api.get<any[]>(`/station-managers/${uid}`, { withCredentials: true, signal: controller.signal });
-        const list = res.data ?? [];
-        console.log("DEBUG /station-managers result:", list);
+        const res = await api.get<any>(`/station-managers/${userId}`, { withCredentials: true, signal: controller.signal });
+        const payload = res.data;
+        console.log("DEBUG /station-managers result:", payload);
 
-        // extract stations and pillars
         const stationsMap = new Map<number, StationDto>();
         const pillarsMap: Record<number, { id: number; name: string }[]> = {};
 
-        for (const sm of list) {
-          const st = sm.station ?? sm; // backend might return station nested under 'station'
-          if (!st || !st.id) continue;
-          // normalise station dto
-          const stationDto: StationDto = {
-            id: st.id,
-            name: st.name ?? st.stationName ?? "Unnamed",
-            address: st.address ?? "",
-            pillars: Array.isArray(st.pillars) ? st.pillars.map((p: any) => ({ id: p.id, code: p.code, name: p.name })) : [],
+        // helper to normalise a station-like object into StationDto
+        const normalizeStation = (st: any): StationDto | null => {
+          if (!st) return null;
+          // if wrapper contains station object
+          const raw = st.station ?? st.stationDto ?? st;
+          const id = raw.id ?? raw.stationId ?? raw.station_id;
+          if (!id) return null;
+          const rawPillars = Array.isArray(raw.pillars) ? raw.pillars : raw.pillarDtos ?? raw.pillarsDto ?? [];
+          const pillars: PillarSimple[] = Array.isArray(rawPillars)
+            ? rawPillars.map((p: any) => ({
+              id: p.id ?? p.pillarId ?? (p.code ? Number(p.code.replace(/\D/g, "")) : undefined),
+              code: p.code ?? p.codeName ?? undefined,
+              name: p.name ?? p.displayName ?? undefined
+            }))
+            : [];
+          return {
+            id: Number(id),
+            name: raw.name ?? raw.stationName ?? `Station ${id}`,
+            address: raw.address ?? raw.location ?? "",
+            pillars
           };
-          stationsMap.set(stationDto.id, stationDto);
-          pillarsMap[stationDto.id] = stationDto.pillars?.map((p) => ({ id: p.id, name: p.code ?? p.name ?? String(p.id) })) ?? [];
+        };
+
+        if (Array.isArray(payload)) {
+          for (const item of payload) {
+            const st = normalizeStation(item);
+            if (!st) continue;
+            stationsMap.set(st.id, st);
+            pillarsMap[st.id] = st.pillars?.map(p => ({ id: p.id ?? -1, name: p.code ?? p.name ?? String(p.id) })) ?? [];
+          }
+        } else if (payload && typeof payload === "object") {
+          // payload might be a single station object, or an object containing array under a key
+          // Try common keys first
+          if (Array.isArray(payload.stations ?? payload.data ?? payload.items)) {
+            const arr = payload.stations ?? payload.data ?? payload.items;
+            for (const item of arr) {
+              const st = normalizeStation(item);
+              if (!st) continue;
+              stationsMap.set(st.id, st);
+              pillarsMap[st.id] = st.pillars?.map(p => ({ id: p.id ?? -1, name: p.code ?? p.name ?? String(p.id) })) ?? [];
+            }
+          } else {
+            // treat payload as single station-like object
+            const st = normalizeStation(payload);
+            if (st) {
+              stationsMap.set(st.id, st);
+              pillarsMap[st.id] = st.pillars?.map(p => ({ id: p.id ?? -1, name: p.code ?? p.name ?? String(p.id) })) ?? [];
+            }
+          }
         }
 
         const stationsList = Array.from(stationsMap.values());
@@ -113,9 +148,7 @@ const StaffIncidents = () => {
           setForm((f) => ({ ...f, stationId: String(stationsList[0].id), pillarId: "" }));
         }
       } catch (err: any) {
-        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
-          return;
-        }
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
         console.error("StaffIncidents load error:", err);
         toast({ title: "Lỗi tải trạm", description: err?.message || "Không thể tải trạm được.", variant: "destructive" });
       } finally {
@@ -130,8 +163,8 @@ const StaffIncidents = () => {
   const handleReportIncident = async () => {
     const { stationId, pillarId, title, priority, description } = form;
 
-    if (!stationId || !pillarId || !title || !priority || !description) {
-      toast({ title: "Missing information", description: "Please fill in Station, Pillar, Title, Priority and Description.", variant: "destructive" });
+    if (!stationId || !title || !priority || !description) {
+      toast({ title: "Missing information", description: "Please fill in Station, Title, Priority and Description.", variant: "destructive" });
       return;
     }
 
@@ -150,7 +183,7 @@ const StaffIncidents = () => {
       description: description.trim(),
       priority: String(priority).toUpperCase(),
       stationId: Number(stationId),
-      pillarId: Number(pillarId),
+      pillarId: pillarId ? Number(pillarId) : null,
       reportedById: reportedById ?? null
     };
 
@@ -160,7 +193,7 @@ const StaffIncidents = () => {
         withCredentials: true,
         headers: { "Content-Type": "application/json" },
       });
-
+      
       toast({ title: "Incident Reported", description: "Your incident report has been submitted successfully." });
       setForm({ stationId: "", pillarId: "", title: "", priority: "", description: "" });
       setIsReportDialogOpen(false);
@@ -179,8 +212,9 @@ const StaffIncidents = () => {
       Medium: { className: "bg-warning/10 text-warning border-warning/20" },
       Low: { className: "bg-muted/10 text-muted-foreground border-muted/20" }
     };
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || { className: "bg-muted/10 text-muted-foreground border-muted/20" };
-    return <Badge className={config.className}>{priority}</Badge>;
+    const display = priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
+    const config = (priorityConfig as any)[display] || { className: "bg-muted/10 text-muted-foreground border-muted/20" };
+    return <Badge className={config.className}>{display}</Badge>;
   };
 
   const incidentActions = (
@@ -237,7 +271,7 @@ const StaffIncidents = () => {
             <div className="space-y-2">
               <Label htmlFor="pillar">Pillar</Label>
               <Select
-                disabled={!form.stationId}
+                disabled={!form.stationId || (pillarsByStation[Number(form.stationId)] || []).length === 0}
                 value={form.pillarId}
                 onValueChange={(v) => setForm((f) => ({ ...f, pillarId: v }))}
               >
@@ -245,7 +279,9 @@ const StaffIncidents = () => {
                   <SelectValue placeholder={!form.stationId ? "Select station first" : "Select pillar"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(pillarsByStation[Number(form.stationId)] || []).length === 0 ? (
+                  {!form.stationId ? (
+                    <SelectItem value="">Select station first</SelectItem>
+                  ) : (pillarsByStation[Number(form.stationId)] || []).length === 0 ? (
                     <SelectItem value="">No pillars</SelectItem>
                   ) : (
                     (pillarsByStation[Number(form.stationId)] || []).map((p) => (

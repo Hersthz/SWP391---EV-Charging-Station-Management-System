@@ -6,18 +6,21 @@ import lombok.*;
 
 @Entity
 @Table(name = "connectors")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Connector {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String type; // CCS, CHAdeMO, AC
+    @Column(nullable = false, length = 20)
+    private String type; // CCS, CHAdeMO, Type2, AC
 
-    @ManyToOne
-    @JoinColumn(name = "pillar_id")
-    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pillar_id", nullable = false)
     private ChargerPillar pillar;
 }

@@ -61,6 +61,8 @@ const Login = () => {
   };
   const [tab, setTab] = useState<"login" | "register">("login");
 
+  // inside Login component
+  // (nhưng nếu bạn dùng AuthContext, import và lấy setUser từ context và uncomment nơi mình có đánh dấu)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
@@ -113,40 +115,35 @@ const Login = () => {
     }
 
     try {
-      const { data } = await api.post<any>("/auth/login", { username, password });
+      await api.post("/auth/login", { username, password });
 
-      console.log("🔹 login response:", data);
+      let meData = null;
+      try {
+        const meRes = await api.get<any>("/auth/me");
+        meData = meRes.data;
+      } catch (meErr) {
+        console.warn("Could not fetch /auth/me after login", meErr);
+        throw meErr; // sẽ vào catch chung và show error
+      }
 
-      // Normalize fields returned by backend
-      const usernameResp = data.username ?? data.email ?? username;
-      const fullNameResp = data.full_name ?? data.fullName ?? "";
-      const roleRespRaw = data.role ?? data.roleName ?? data.role_name ?? "";
+      // chuẩn hoá role/username/full_name
+      const usernameResp = meData?.username ?? meData?.email ?? username;
+      const fullNameResp = meData?.full_name ?? meData?.fullName ?? "";
+      const roleRespRaw = meData?.role ?? meData?.roleName ?? meData?.role_name ?? "";
       const roleResp = String(roleRespRaw).toUpperCase();
 
-      // Save normalized info
+      // Nếu không dùng context: lưu vào localStorage (fallback)
       if (usernameResp) localStorage.setItem("currentUser", String(usernameResp));
       if (roleResp) localStorage.setItem("role", String(roleResp));
       if (fullNameResp) localStorage.setItem("full_name", String(fullNameResp));
 
       toast.success("Login successful!");
-      setLoginData({ username: usernameResp, password: "" });
 
-      // If role not present in login response, try /auth/me as fallback
-      let finalRole = roleResp;
-      if (!finalRole) {
-        try {
-          const me = await api.get<any>("/auth/me");
-          const r = me.data.role ?? me.data.roleName ?? me.data.role_name ?? "";
-          finalRole = String(r).toUpperCase();
-          if (finalRole) localStorage.setItem("role", finalRole);
-        } catch (err) {
-          console.debug("fallback /auth/me failed", err);
-        }
-      }
-
-      if (finalRole === "ADMIN") navigate("/admin");
-      else if (finalRole === "STAFF") navigate("/staff");
+      // Điều hướng theo role
+      if (roleResp === "ADMIN") navigate("/admin");
+      else if (roleResp === "STAFF") navigate("/staff");
       else navigate("/dashboard");
+
     } catch (err: any) {
       const message = err?.response?.data?.message ?? "Invalid username or password!";
       toast.error(message);
@@ -154,6 +151,7 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
 
 
   const handleRegister = async (e: React.FormEvent) => {

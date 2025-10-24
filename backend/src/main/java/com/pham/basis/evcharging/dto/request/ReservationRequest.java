@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -24,6 +25,9 @@ public class ReservationRequest {
     @NotNull(message = "Connector ID is required")
     private Long connectorId;
 
-    @Min(value = 1, message = "ETA minutes must be at least 1")
-    private Integer arrivalEtaMinutes;
+    @NotNull(message = "StartTime  required")
+    private LocalDateTime startTime;
+
+    @NotNull(message = "EndTime is required")
+    private LocalDateTime endTime;
 }

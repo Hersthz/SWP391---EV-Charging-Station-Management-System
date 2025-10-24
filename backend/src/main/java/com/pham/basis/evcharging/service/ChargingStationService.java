@@ -8,9 +8,13 @@ import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
+
 public interface ChargingStationService {
     Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
     ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude);
     Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
     ChargingStationDetailResponse addStation(StationRequest request);
+    ChargingStationDetailResponse addPillarsWithConnectors(Long stationId, List<StationRequest.PillarRequest> pillarRequests);
+
 }

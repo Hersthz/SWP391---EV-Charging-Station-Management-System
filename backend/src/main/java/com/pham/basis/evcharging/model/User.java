@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -53,7 +54,9 @@ public class User{
     @Column(name = "date_of_birth")
     private LocalDate date_of_birth;
 
-    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<StationManager> managedStations;
+    @OneToOne(mappedBy = "manager")
+    private ChargingStation managedStation;
+
+    @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChargingSession> chargingSessions = new ArrayList<>();
 }

@@ -58,6 +58,7 @@ import {
 
 import { useToast } from "../hooks/use-toast";
 import api from "../api/axios";
+import { ChatBot } from "./ChatBot";
 
 type Vehicle = {
   id: number;
@@ -222,7 +223,7 @@ const Profile = () => {
         vehicle_model: vehicleModel,
         vehicle_year: vehicleYear,
       };
-      const { data } = await api.put("/auth/me", payload);
+      const { data } = await api.post("/user/update-profile", payload);
       localStorage.setItem("full_name", data.full_name);
       localStorage.setItem("email", data.email);
       localStorage.setItem("phone", data.phone);
@@ -878,6 +879,27 @@ const Profile = () => {
                     Log out from all other devices
                   </Button>
                 </div>
+
+                {/* ===== KYC Card ===== */}
+                <Card className="border border-sky-100 bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-sky-600" />
+                      Identity Verification (KYC)
+                    </CardTitle>
+                    <CardDescription>Verify once to unlock bookings & payments</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between">
+                    {/* TODO: khi có /kyc/me -> hiển thị status thật */}
+                    <div className="text-sm text-muted-foreground">
+                      Status: <span className="font-medium">Unknown / Pending</span>
+                    </div>
+                    <Button onClick={() => navigate("/kyc")} className="bg-sky-600 hover:bg-sky-700 text-white">
+                      Verify now
+                    </Button>
+                  </CardContent>
+                </Card>
+                {/* ===== hết KYC Card ===== */}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1026,6 +1048,7 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <ChatBot />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -25,10 +26,13 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    @Value("${jwt.expiration:86400000}")
-    private long jwtExpiration;
+    @Value("${jwt.access-expiry-seconds:900}")
+    private long accessExpiry;
 
-    @Value("${app.cookie.secure:true}")
+    @Value("${jwt.refresh-expiry-seconds:172800}")
+    private long refreshExpiry;
+
+    @Value("${app.cookie.secure:false}")
     private boolean cookieSecure;
 
     @Override
@@ -45,19 +49,20 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         }
 
         String role = user.getRole() != null ? user.getRole().getName() : "USER";
-        String token = jwtUtil.generateToken(user.getUsername(), role);
 
-        ResponseCookie cookie = ResponseCookie.from("JWT", token)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(jwtExpiration / 1000)
-                .sameSite("None")
-                .build();
+        // Tạo access + refresh token (lưu ý: expiry là seconds ở JwtUtil định nghĩa trước)
+        String access = jwtUtil.generateAccessToken(user.getUsername(), role, accessExpiry);
+        String refresh = jwtUtil.generateRefreshToken(user.getUsername(), refreshExpiry);
 
-        response.addHeader("Set-Cookie", cookie.toString());
+        // Tạo cookie theo chuẩn dùng ở AuthController
+        ResponseCookie accessCookie = CookieUtil.createCookie(
+                "JWT", access, accessExpiry, true, cookieSecure, cookieSecure ? "None" : "Lax");
+        ResponseCookie refreshCookie = CookieUtil.createCookie(
+                "REFRESH", refresh, refreshExpiry, true, cookieSecure, cookieSecure ? "None" : "Lax");
 
-        // 🧭 Điều hướng theo role
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
         String redirectUrl = frontendUrl;
         if ("ADMIN".equalsIgnoreCase(role)) {
             redirectUrl += "/admin";

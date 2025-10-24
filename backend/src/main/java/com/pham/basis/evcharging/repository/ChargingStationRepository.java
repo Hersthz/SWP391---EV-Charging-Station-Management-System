@@ -92,4 +92,5 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
     );
 
     Optional<ChargingStation> findChargingStationById(Long id);
+    Optional<ChargingStation> findByManagerId(Long managerId);
 }

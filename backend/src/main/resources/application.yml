@@ -1,17 +1,26 @@
 
 server:
-  port: 8080
-  address: 0.0.0.0
+  port: ${SERVER_PORT:8080}
+  address: ${SERVER_ADDRESS:0.0.0.0}
+
 spring:
   application:
       name: EVCharging
-    # Ten app, hien thi trong log vo dung khi lam microservice
+
+  ai:
+    openai:
+      api-key: AIzaSyB9KEV4pKrbtiNLKDRcShlA10MCyZd-IfU
+      chat:
+        base-url: https://generativelanguage.googleapis.com
+        completions-path: /v1beta/openai/chat/completions
+        options:
+          model: gemini-2.5-flash
 
   datasource:
-      url: "jdbc:sqlserver://localhost:1433;databaseName=EVChargingDB;encrypt=false"
-      username: sa
-      password: 12345
-      driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
       hibernate:
@@ -21,11 +30,12 @@ spring:
         hibernate:
           format_sql: true
           spring.jpa.entityManagerFactoryInterface: jakarta.persistence.EntityManagerFactory
+
   mail:
     host: smtp.gmail.com
     port: 587
-    username: tranpham7689@gmail.com
-    password: abozeytyxgytqsjb
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -34,17 +44,18 @@ spring:
             enable: true
           starttls.required: true
           ssl.trust: smtp.gmail.com
+
   security:
     oauth2:
       client:
         registration:
           google:
-            client-id: 923020885723-s2jqbps9j9rb7vfftbd2adpatvtcvbrq.apps.googleusercontent.com
-            client-secret: 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
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - email
               - profile
-            redirect-uri: "http://localhost:8080/login/oauth2/code/google"
+            redirect-uri: "${BASE_URL}/login/oauth2/code/google"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
@@ -52,8 +63,8 @@ spring:
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
 jwt:
-  secret: O9TclINZGLYWW7TZcm8uAzugCmMZkTzHFsgBS3qfsxk=
-  expiration: 86400000
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
 app:
-  frontend-url: http://localhost:5173
-  base-url: http://localhost:8080
+  frontend-url: ${FRONTEND_URL}
+  base-url: ${BASE_URL}

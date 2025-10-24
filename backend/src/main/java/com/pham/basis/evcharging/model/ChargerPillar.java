@@ -1,39 +1,48 @@
 package com.pham.basis.evcharging.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import net.minidev.json.annotate.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "charger_pillars")
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ChargerPillar {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String code;    // Mã trụ
-    private String status;  // Available, Occupied, Maintenance
-    private Double power;   // kW
-    @Column(name = "price_per_kwh")
-    private Double pricePerKwh; // Giá theo kWh
+    @Column(nullable = false, length = 50)
+    private String code; // AC- | DC-
 
-    @ManyToOne
-    @JoinColumn(name = "station_id")
-    @JsonIgnore
+    @Column(nullable = false, length = 20)
+    private String status; // AVAILABLE | OCCUPIED | MAINTENANCE
+
+    @Column(nullable = false)
+    private Double power;
+
+    @Column(name = "price_per_kwh", nullable = false)
+    private Double pricePerKwh;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "station_id", nullable = false)
     private ChargingStation station;
 
     @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Connector> connectors = new ArrayList<>();
 
-    // Helper: Thêm connector và set cả 2 phía relationship
+    @OneToMany(mappedBy = "pillar", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChargingSession> sessions = new ArrayList<>();
+
+    // Helper: gắn quan hệ 2 chiều
     public void addConnector(Connector connector) {
         connectors.add(connector);
         connector.setPillar(this);

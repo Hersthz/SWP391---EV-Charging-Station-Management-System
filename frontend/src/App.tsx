@@ -24,6 +24,11 @@ import Booking from "./pages/BookingPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminAddStation from "./components/admin/AdminAddStation";
 import WalletPaymentPage from "./pages/WalletPaymentPage";
+import ReservationDeposit from "./pages/ReservationDeposit"
+import DepositSS from "./pages/DepositSS";
+import KycPage from "./pages/KycPage";
+import Checkin from "./pages/Checkin";
+import ChargingSessionPage from "./pages/ChargingSessionPage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +61,11 @@ const App = () => (
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/insights" element={<AdminInsights />} />
           <Route path="/admin/add-station" element={<AdminAddStation />} />
+          <Route path="/reservation/deposit" element={<ReservationDeposit />} />
+          <Route path="/depositss" element={<DepositSS />} />
+          <Route path="/kyc" element={<KycPage />} />
+          <Route path="/checkin" element={<Checkin />} />
+          <Route path="/charging" element={<ChargingSessionPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
