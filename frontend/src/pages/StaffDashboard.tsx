@@ -93,33 +93,39 @@ const StaffDashboard = () => {
         if (me.full_name) localStorage.setItem("full_name", String(me.full_name));
 
         // Gọi lấy station-managers (mảng)
-        const res = await api.get<any[]>(`/station-managers/${userId}`, { signal: controller.signal });
-        const list = res.data ?? [];
-        console.log("🔹 /station-managers result:", list);
+        const res = await api.get(`/station-managers/${userId}`, { signal: controller.signal });
+const raw = res.data;
+const list = Array.isArray(raw) ? raw : (raw?.content ?? raw?.data ?? []);
+console.log("🔹 /station-managers result:", raw);
 
-        if (!Array.isArray(list) || list.length === 0) {
+if (list.length === 0) {
+  // KHÔNG setError ở đây -> để UI rơi vào EmptyState (không phải lỗi)
+  setAssignedStation(null);
+  return;
+}
+        // Lấy station từ phần tử đầu (nếu user quản lý nhiều, bạn có thể map ra list)
+        const first = list[0];
+        const s = first.station; // StationManager object có thuộc tính station
+
+        if (!s) {
+          console.warn("Station data is null in StationManager object");
           setAssignedStation(null);
-          setError(null); // hoặc thông báo: "No stations assigned"
           return;
         }
 
-        // Lấy station từ phần tử đầu (nếu user quản lý nhiều, bạn có thể map ra list)
-        const first = list[0];
-        const s = first.station ?? first.stationDto ?? first;
-
         setAssignedStation({
-          id: s.stationId ?? s.id ?? "unknown",
-          name: s.name ?? s.stationName ?? "Unknown Station",
-          location: s.address ?? s.location ?? "N/A",
+          id: s.id ?? "unknown",
+          name: s.name ?? "Unknown Station",
+          location: s.address ?? "N/A",
           status: String(s.status ?? "offline").toLowerCase() === "online" ? "online" : "offline",
-          lastPing: timeAgo(s.lastPing ?? s.last_ping ?? s.lastSeen),
-          uptime: Number(s.metrics?.uptime ?? s.uptime ?? 0),
-          temperature: Number(s.metrics?.temp ?? s.temperature ?? 0),
-          powerUsage: Number(s.metrics?.powerUsage ?? s.powerUsage ?? 0),
-          totalConnectors: Number(s.connectors?.total ?? s.totalConnectors ?? 0),
-          activeConnectors: Number(s.connectors?.active ?? s.activeConnectors ?? 0),
-          availableConnectors: Number(s.connectors?.available ?? s.availableConnectors ?? 0),
-          maintenanceConnectors: Number(s.connectors?.maintenance ?? s.maintenanceConnectors ?? 0),
+          lastPing: "Just now", // Mock data since backend doesn't have this field
+          uptime: 95, // Mock data - could be calculated from actual data later
+          temperature: 25, // Mock data - could be from IoT sensors later
+          powerUsage: 75, // Mock data - could be calculated from actual usage
+          totalConnectors: s.pillars?.length ?? 4, // Use actual pillars count if available
+          activeConnectors: Math.floor((s.pillars?.length ?? 4) * 0.6), // Mock calculation
+          availableConnectors: Math.floor((s.pillars?.length ?? 4) * 0.3), // Mock calculation
+          maintenanceConnectors: Math.floor((s.pillars?.length ?? 4) * 0.1), // Mock calculation
         });
       } catch (err: any) {
         if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
@@ -223,11 +229,21 @@ const StaffDashboard = () => {
       </StaffLayout>
     );
   }
-  if (error || !assignedStation) {
+  if (error) {
     return (
       <StaffLayout title="Staff Dashboard">
         <div className="p-6 text-sm text-destructive">
-          Failed to load station {error ? `(${error})` : ""}.
+          Failed to load station data: {error}
+        </div>
+      </StaffLayout>
+    );
+  }
+
+  if (!assignedStation) {
+    return (
+      <StaffLayout title="Staff Dashboard">
+        <div className="p-6 text-sm text-muted-foreground">
+          No station assigned to your account. Please contact your administrator.
         </div>
       </StaffLayout>
     );
