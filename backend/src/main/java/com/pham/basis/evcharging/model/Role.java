@@ -5,7 +5,7 @@
     import lombok.AllArgsConstructor;
     import lombok.Data;
     import lombok.NoArgsConstructor;
-
+    import com.fasterxml.jackson.annotation.JsonIgnore;
     import java.util.ArrayList;
     import java.util.List;
 
@@ -26,6 +26,7 @@
         @Column(name = "description")
         private String description;
 
+        @JsonIgnore
         @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
         private List<User> users = new ArrayList<>();
     }

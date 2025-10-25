@@ -295,7 +295,9 @@ const ChargingReceiptPage = () => {
             <CardContent className="p-5 text-center">
               <DollarSign className="w-5 h-5 text-amber-600 mx-auto mb-2" />
               <div className="text-3xl font-extrabold text-amber-700">
-                {loading || !snap ? "—" : fmtMoney(snap.chargedAmount)}
+                {loading || !snap
+                  ? "—"
+                  : `${(snap.chargedAmount || 0).toLocaleString("vi-VN", { maximumFractionDigits: 0 })} đ`}
               </div>
               <div className="text-xs text-amber-700/80 mt-1">Total Cost</div>
             </CardContent>

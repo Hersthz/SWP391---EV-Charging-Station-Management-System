@@ -3,6 +3,7 @@ package com.pham.basis.evcharging.controller;
 
 import com.pham.basis.evcharging.dto.request.KycSubmissionRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
+import com.pham.basis.evcharging.dto.response.KycStatusResponse;
 import com.pham.basis.evcharging.model.KycSubmission;
 import com.pham.basis.evcharging.service.KycService;
 import lombok.RequiredArgsConstructor;
@@ -30,15 +31,12 @@ public class KycController {
         );
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<KycSubmission>> getKyc(@PathVariable Long userId) {
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponse<KycStatusResponse>> getKyc(@PathVariable("userId") Long userId) {
         KycSubmission kyc = kycService.findByUserId(userId);
+        KycStatusResponse body = new KycStatusResponse(kyc.getStatus());
         return ResponseEntity.ok(
-                new ApiResponse<>(
-                        "200",
-                        "KYC found",
-                        kyc
-                )
+                new ApiResponse<>("200", "KYC found", body)
         );
     }
 
@@ -55,7 +53,7 @@ public class KycController {
     }
 
     @PostMapping("/{id}")
-    public ResponseEntity<ApiResponse<KycSubmission>> updateKyc(@PathVariable Long kycId, @RequestParam("status") String status, @RequestParam("reason") String reason) {
+    public ResponseEntity<ApiResponse<KycSubmission>> updateKyc(@PathVariable("id") Long kycId, @RequestParam("status") String status, @RequestParam("reason") String reason) {
         KycSubmission kyc = kycService.updateKyc(kycId, status, reason);
         return ResponseEntity.ok(
                 new ApiResponse<>(
