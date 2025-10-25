@@ -17,7 +17,5 @@ public interface ChargingSessionService {
 
     PaymentResponse createPaymentForSession(Long sessionId, String clientIp);
 
-    public Double getMaxSocTarget(Long sessionId);
-
     public AdjustTargetSocResponse adjustTargetSocForSession(Long sessionId, Double targetSoc);
 }

@@ -42,7 +42,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found"));
 
         validatePaymentMethod(request.getPaymentMethod(), driver, request.getTargetSoc(), vehicle, pillar);
-
+        reservationRepo.updateStatusById(request.getReservationId(),"CHARGING");
         ChargingSession session = ChargingSession.builder()
                 .pillar(pillar)
                 .station(pillar.getStation())
@@ -148,47 +148,18 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         return paymentResponse;
     }
 
-    @Transactional(readOnly = true)
-    public Double getMaxSocTarget(Long sessionId) {
-        ChargingSession session = sessionRepo.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
-
-        Vehicle vehicle = session.getVehicle();
-        ChargerPillar pillar = session.getPillar();
-
-        if (vehicle == null || pillar == null) {
-            throw new IllegalArgumentException("Vehicle or Pillar not found");
-        }
-
-        Double batteryCapacity = vehicle.getBatteryCapacityKwh();
-        Double currentSoc = vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0;
-
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime reservationEnd = session.getReservation() != null
-                ? session.getReservation().getEndTime()
-                : now;
-
-        long remainingMinutes = Math.max(0, java.time.Duration.between(now, reservationEnd).toMinutes());
-
-        double powerPerMinute = pillar.getPower() / 60.0;
-        double maxEnergyCanCharge = remainingMinutes * powerPerMinute;
-
-        double maxSocFraction = currentSoc + maxEnergyCanCharge / batteryCapacity;
-        maxSocFraction = Math.min(1.0, maxSocFraction);
-
-        return maxSocFraction;
-    }
 
     @Transactional
     public AdjustTargetSocResponse adjustTargetSocForSession(Long sessionId, Double targetSoc) {
         ChargingSession session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found"));
-
+        //validate
         if (targetSoc == null) throw new IllegalArgumentException("targetSoc required");
         if (!"ACTIVE".equals(session.getStatus())) {
             throw new IllegalArgumentException("Session is not active");
         }
 
+        //load
         Vehicle vehicle = session.getVehicle();
         ChargerPillar pillar = session.getPillar();
         Reservation reservation = session.getReservation();
@@ -196,20 +167,20 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
         if (vehicle == null || pillar == null || reservation == null)
             throw new IllegalArgumentException("vehicle/pillar/reservation not found for session");
-        //
+        // kiem tra vi
         validatePaymentMethod(session.getPaymentMethod(), driver, targetSoc, vehicle, pillar);
-
+        // tinh enegy va time can thiet
         BigDecimal estimateAmount = calculateEstimateAmount(targetSoc, vehicle, pillar);
         //
         double powerKw = pillar.getPower() != null ? pillar.getPower() : 0.0;
         if (powerKw <= 0) throw new IllegalArgumentException("Invalid pillar power");
         double energyNeededKwh = (targetSoc - (vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0)) * vehicle.getBatteryCapacityKwh();
         long minutesNeeded = (long) Math.ceil((energyNeededKwh / powerKw) * 60.0);
+
         //
         LocalDateTime expectedEnd = LocalDateTime.now().plusMinutes(minutesNeeded);
         LocalDateTime desiredEndWithGrace = expectedEnd.plusMinutes(15);
-
-        //
+        // update if not over reservation time
         if (!expectedEnd.isAfter(reservation.getEndTime())) {
             reservation.setEndTime(expectedEnd);
             reservation.setExpiredAt(desiredEndWithGrace);
