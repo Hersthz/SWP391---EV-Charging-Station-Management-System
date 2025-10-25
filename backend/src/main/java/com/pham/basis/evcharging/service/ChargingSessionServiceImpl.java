@@ -3,6 +3,7 @@ package com.pham.basis.evcharging.service;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
 import com.pham.basis.evcharging.dto.response.AdjustTargetSocResponse;
+import com.pham.basis.evcharging.dto.response.ChargingSessionResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.model.*;
@@ -10,6 +11,10 @@ import com.pham.basis.evcharging.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -222,6 +227,21 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                 .suggestedPillars(suggestions)
                 .message("Overlap found, suggestions returned")
                 .build();
+    }
+
+    @Override
+    public Page<ChargingSession> getAllU(Long userId, Integer size, Integer page) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startTime").descending());
+        return sessionRepo.findByDriverId(userId, pageable);
+    }
+
+    @Override
+    public Page<ChargingSession> getAll(Integer size, Integer page) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return sessionRepo.findAll(pageable);
     }
 
     // ---------- Helper ----------
