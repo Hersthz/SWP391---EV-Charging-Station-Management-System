@@ -44,6 +44,7 @@ public class User{
     @Column(name = "is_verified", nullable = false)
     private Boolean is_verified = false;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
@@ -55,8 +56,10 @@ public class User{
     private LocalDate date_of_birth;
 
     @OneToOne(mappedBy = "manager")
+    @JsonIgnore
     private ChargingStation managedStation;
 
     @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<ChargingSession> chargingSessions = new ArrayList<>();
 }

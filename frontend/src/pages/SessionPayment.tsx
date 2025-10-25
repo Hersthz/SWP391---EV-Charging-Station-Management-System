@@ -119,7 +119,7 @@ export default function SessionPayment() {
         returnUrl,
         locale: "en",
         description: init.description,
-        type: "SESSION",
+        type: "CHARGING-SESSION",
         referenceId: init.sessionId,
         method, // "VNPAY" | "WALLET"
       };

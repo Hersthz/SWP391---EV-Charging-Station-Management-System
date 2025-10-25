@@ -9,9 +9,10 @@ import {
   QrCode,
   Copy,
   RefreshCw,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../components/ui/dialog";
@@ -23,7 +24,6 @@ import { useToast } from "../../hooks/use-toast";
 const USE_MOCK = false;
 
 /** ===== Types ===== */
-
 type Vehicle = {
   id: number;
   userId?: number;
@@ -118,14 +118,7 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       pillarId: 2,
       pillarCode: "P2",
       connectorType: "AC Fast 22kW",
-      startTime: new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        new Date().getDate() + 1,
-        14,
-        0,
-        0
-      ).toISOString(),
+      startTime: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 1, 14, 0, 0).toISOString(),
       status: "SCHEDULED",
       holdFee: 50000,
       payment: { paid: true },
@@ -137,14 +130,7 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       pillarId: 1,
       pillarCode: "P1",
       connectorType: "DC Fast 150kW",
-      startTime: new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        new Date().getDate(),
-        18,
-        0,
-        0
-      ).toISOString(),
+      startTime: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 18, 0, 0).toISOString(),
       status: "PENDING_PAYMENT",
       holdFee: 0,
       payment: { paid: false },
@@ -154,14 +140,7 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
     stationName: "Downtown Station #3",
     pillarCode: "P4",
     connectorType: "DC Ultra 350kW",
-    startTime: new Date(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      new Date().getDate() + 1,
-      14,
-      0,
-      0
-    ).toISOString(),
+    startTime: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 1, 14, 0, 0).toISOString(),
   },
 };
 
@@ -244,7 +223,11 @@ const StatusCards = () => {
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
   const [currentUserId, setCurrentUserId] = useState<number | undefined>();
-  const [kycVerified, setKycVerified] = useState<boolean>(false);
+
+  /** KYC 3 trạng thái */
+  const [kycStatus, setKycStatus] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  /** snapshot KYC tại thời điểm mở popup */
+  const [kycAtOpen, setKycAtOpen] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
 
   // QR dialog state
   const [qrOpen, setQrOpen] = useState(false);
@@ -265,7 +248,7 @@ const StatusCards = () => {
   const [est, setEst] = useState<EstimateResp | null>(null);
   const [estimating, setEstimating] = useState<boolean>(false);
 
-  // SOC (current) – giữ như cũ
+  // SOC (current)
   const [currentSoc, setCurrentSoc] = useState<number>(() => {
     const v = Number(localStorage.getItem("soc_now"));
     return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
@@ -277,7 +260,7 @@ const StatusCards = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Load reservations
+  // Load reservations (+ KYC status)
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -287,7 +270,7 @@ const StatusCards = () => {
           setItems(mapBEToFE(MOCK_RESERVATIONS.items as any));
           setNext(MOCK_RESERVATIONS.nextBooking);
           setCurrentUserId(1);
-          setKycVerified(true);
+          setKycStatus("APPROVED"); // mock: cho phép Postpaid
           return;
         }
 
@@ -300,21 +283,40 @@ const StatusCards = () => {
             : undefined;
         if (!userId) throw new Error("Cannot determine current user id.");
         setCurrentUserId(userId);
-        setKycVerified(!!(me.data?.kycVerified ?? me.data?.kyc_verified));
 
+        // lấy reservation list
         const { data } = await api.get<ReservationResponseBE[]>(`/user/${userId}/reservations`, {
           withCredentials: true,
         });
         if (!mounted) return;
-
         const feItems = mapBEToFE(Array.isArray(data) ? data : []);
         setItems(feItems);
         setNext(pickNext(feItems));
+
+        // lấy KYC status từ /kyc/{userId}
+        try {
+          const kycRes = await api.get(`/kyc/${userId}`, { withCredentials: true });
+          const payload = kycRes?.data ?? {};
+          const kyc =
+            payload?.data ??
+            payload?.result ??
+            payload;
+
+          const raw = String(kyc?.status ?? "").toUpperCase().trim();
+          const norm: "PENDING" | "APPROVED" | "REJECTED" =
+            raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
+
+          console.debug("[KYC] response raw =", payload, "parsed status =", norm);
+          setKycStatus(norm);
+        } catch (err) {
+          console.warn("[KYC] fetch failed", err);
+          setKycStatus("PENDING");
+        }
       } catch (e: any) {
         setItems(mapBEToFE((MOCK_RESERVATIONS.items as any) ?? []));
         setNext(MOCK_RESERVATIONS.nextBooking);
         setCurrentUserId(1);
-        setKycVerified(true);
+        setKycStatus("APPROVED"); // fallback mock
         toast({
           title: "Showing mock data",
           description: e?.response?.data?.message || e?.message || "Could not reach backend.",
@@ -492,10 +494,31 @@ const StatusCards = () => {
   };
 
   // mở popup Start Charging để chọn payment
-  const openPayment = (r: ReservationItem) => {
+  const openPayment = async (r: ReservationItem) => {
     setPmResId(r.reservationId);
-    setPayFlow(kycVerified ? "postpaid" : "prepaid");
-    setPayChannel("wallet");
+
+    // 1) Lấy KYC đồng bộ vào biến cục bộ
+    let effectiveKyc = kycStatus;
+    if (currentUserId) {
+      try {
+        const kycRes = await api.get(`/kyc/${currentUserId}`, { withCredentials: true });
+        const payload = kycRes?.data ?? {};
+        const kyc = payload?.data ?? payload?.result ?? payload;
+        const raw = String(kyc?.status ?? "").toUpperCase().trim();
+        effectiveKyc = raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
+        setKycStatus(effectiveKyc);
+      } catch {
+        // giữ nguyên effectiveKyc như hiện tại
+      }
+    }
+
+    /** ⬇️ NEW: chốt KYC tại thời điểm mở popup để UI đọc ngay */
+    setKycAtOpen(effectiveKyc);
+
+    // 2) Quyết định flow dựa trên biến cục bộ
+    const initialFlow: "prepaid" | "postpaid" = effectiveKyc === "APPROVED" ? "postpaid" : "prepaid";
+    setPayFlow(initialFlow);
+    setPayChannel(initialFlow === "prepaid" ? "wallet" : "vnpay");
 
     if (currentUserId) {
       api
@@ -624,8 +647,6 @@ const StatusCards = () => {
                 ? "bg-sky-500"
                 : r.status === "CHARGING"
                 ? "bg-emerald-600"
-                : ready
-                ? "bg-emerald-500"
                 : "bg-emerald-500",
             ].join(" ")}
           >
@@ -899,61 +920,82 @@ const StatusCards = () => {
               <CreditCard className="w-5 h-5" />
               Select Payment Method
             </DialogTitle>
+            {/* ⬇️ dùng kycAtOpen thay vì kycStatus */}
             <DialogDescription>
-              {kycVerified ? "You can choose Prepaid or Postpaid." : "You are not KYC verified. Postpaid option is disabled."}
+              {kycAtOpen === "APPROVED"
+                ? "Choose payment flow. Channel is auto-selected by flow."
+                : "Your KYC is not approved (PENDING/REJECTED). Only Prepaid is available."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* Method */}
+            {/* Method (segmented) */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Method</div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
+                  //  chọn Prepaid sẽ tự set Wallet
                   variant={payFlow === "prepaid" ? "default" : "outline"}
                   className="rounded-xl"
-                  onClick={() => setPayFlow("prepaid")}
+                  onClick={() => {
+                    setPayFlow("prepaid");
+                    setPayChannel("wallet");
+                  }}
                 >
                   Prepaid
                 </Button>
                 <Button
+                  //  chọn Postpaid sẽ tự set VNPay — disable nếu KYC không APPROVED
                   variant={payFlow === "postpaid" ? "default" : "outline"}
                   className="rounded-xl disabled:opacity-60"
-                  disabled={!kycVerified}
-                  onClick={() => setPayFlow("postpaid")}
+                  disabled={kycAtOpen !== "APPROVED"}  
+                  onClick={() => {
+                    setPayFlow("postpaid");
+                    setPayChannel("vnpay");
+                  }}
                 >
                   Postpaid
                 </Button>
               </div>
-              {!kycVerified && <div className="text-xs text-muted-foreground mt-1">Postpaid requires KYC verified</div>}
+              {kycAtOpen !== "APPROVED" && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Postpaid requires KYC status: APPROVED
+                </div>
+              )}
             </div>
 
-            {/* Payment channel */}
+            {/* Payment channel – hiển thị duy nhất 1 lựa chọn tương ứng flow */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Payment</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={payChannel === "wallet" ? "default" : "outline"}
-                  className="rounded-xl"
-                  onClick={() => setPayChannel("wallet")}
-                >
-                  Wallet
-                </Button>
-                <Button
-                  variant={payChannel === "vnpay" ? "default" : "outline"}
-                  className="rounded-xl"
-                  onClick={() => setPayChannel("vnpay")}
-                >
-                  VNPay
-                </Button>
-              </div>
+
+              {payFlow === "prepaid" ? (
+                <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2">
+                  <span className="inline-flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span className="font-medium">Wallet</span>
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground inline-flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5" /> auto-selected for Prepaid
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2">
+                  <span className="inline-flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    <span className="font-medium">VNPay</span>
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground inline-flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5" /> auto-selected for Postpaid
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Vehicle */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Charging Vehicle</div>
               <select
-                className="w-full h-10 border rounded-lg px-3"
+                className="w-full h-10 border rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 value={vehicleId ?? ""}
                 onChange={(e) => {
                   const v = Number(e.target.value) || null;
@@ -982,10 +1024,19 @@ const StatusCards = () => {
                 <div className="text-sm font-medium">Current SOC</div>
                 <div className="text-sm font-semibold">{currentSoc}%</div>
               </div>
-              <input type="range" min={0} max={100} step={1} value={currentSoc} disabled readOnly className="w-full opacity-70 cursor-not-allowed" />
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={currentSoc}
+                disabled
+                readOnly
+                className="w-full opacity-70 cursor-not-allowed"
+              />
             </div>
 
-            {/* Target SOC – luôn 100%, hiển thị read-only */}
+            {/* Target SOC – luôn 100%, read-only */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">SOC Target</div>
@@ -1025,8 +1076,13 @@ const StatusCards = () => {
               <Button
                 onClick={() => {
                   if (!pmResId) return;
-                  if (payFlow === "postpaid" && !kycVerified) {
-                    toast({ title: "KYC required", description: "Bạn cần KYC để dùng Trả sau.", variant: "destructive" });
+                  // dùng snapshot KYC tại thời điểm mở popup để kiểm tra Postpaid
+                  if (payFlow === "postpaid" && kycAtOpen !== "APPROVED") {
+                    toast({
+                      title: "KYC required",
+                      description: "Bạn cần KYC ở trạng thái APPROVED để dùng Trả sau.",
+                      variant: "destructive",
+                    });
                     return;
                   }
                   setPmOpen(false);
