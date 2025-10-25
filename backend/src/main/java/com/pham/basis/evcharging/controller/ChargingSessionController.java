@@ -9,6 +9,7 @@ import com.pham.basis.evcharging.service.ChargingSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -68,6 +69,37 @@ public class ChargingSessionController {
             @RequestBody @Valid AdjustTargetSocRequest request
     ) {
         return chargingSessionService.adjustTargetSocForSession(id, request.getTargetSoc());
+    }
+
+    @GetMapping("/get-all")
+    public ApiResponse<Page<ChargingSessionResponse>> getAllChargingSession(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+
+        Page<ChargingSession> sessionsPage = chargingSessionService.getAll(size, page);
+        Page<ChargingSessionResponse> responsePage = sessionsPage.map(this::buildResponse);
+
+        return ApiResponse.<Page<ChargingSessionResponse>>builder()
+                .code("200")
+                .message("Charging sessions retrieved successfully")
+                .data(responsePage)
+                .build();
+    }
+
+    @GetMapping("/user/{userId}")
+    public ApiResponse<Page<ChargingSessionResponse>> getUserChargingSessions(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+
+        Page<ChargingSession> sessionsPage = chargingSessionService.getAllU(userId, size, page);
+        Page<ChargingSessionResponse> responsePage = sessionsPage.map(this::buildResponse);
+
+        return ApiResponse.<Page<ChargingSessionResponse>>builder()
+                .code("200")
+                .message("User charging sessions retrieved successfully")
+                .data(responsePage)
+                .build();
     }
 
     private ChargingSessionResponse buildResponse(ChargingSession s) {

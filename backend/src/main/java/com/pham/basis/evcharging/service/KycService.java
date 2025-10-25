@@ -6,8 +6,8 @@ import org.springframework.data.domain.Page;
 
 
 public interface KycService {
-    public KycSubmission submitKyc(KycSubmissionRequest req);
-    public KycSubmission findByUserId(Long userId);
-    public Page<KycSubmission> getAll(Integer page, Integer size);
-    public KycSubmission updateKyc(Long id, String status, String reason);
+    KycSubmission submitKyc(KycSubmissionRequest req);
+    KycSubmission findByUserId(Long userId);
+    Page<KycSubmission> getAll(Integer page, Integer size);
+    KycSubmission updateKyc(Long id, String status, String reason);
 }
