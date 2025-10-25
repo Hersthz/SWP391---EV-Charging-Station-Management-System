@@ -62,12 +62,6 @@ public class ChargingSessionController {
         return chargingSessionService.createPaymentForSession(id, clientIp);
     }
 
-    @GetMapping("/{id}/max-soc")
-    public ResponseEntity<Double> getMaxSoc(@PathVariable Long id) {
-        Double maxSoc = chargingSessionService.getMaxSocTarget(id);
-        return ResponseEntity.ok(maxSoc);
-    }
-
     @PostMapping("/{id}/adjust-soc-target")
     public AdjustTargetSocResponse adjustTargetSoc(
             @PathVariable Long id,

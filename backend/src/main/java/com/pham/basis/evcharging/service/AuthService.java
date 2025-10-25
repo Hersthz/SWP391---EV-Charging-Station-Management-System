@@ -7,7 +7,6 @@ import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -33,10 +32,14 @@ public class AuthService {
         String link = frontendUrl + "/verify?token=" + token;
         emailService.sendVerificationEmail(user.getEmail(), "Verify your email", "Click: " + link);
 
-        return new UserResponse(
-                user.getId(), user.getFull_name(), user.getUsername(),
-                user.getEmail(), user.getPhone(), user.getRole().getName()
-        );
+        return UserResponse.builder()
+                .email(user.getEmail())
+                .full_name(user.getFull_name())
+                .user_id(user.getId())
+                .username(user.getUsername())
+                .phone(user.getPhone())
+                .roleName(user.getRole().getName())
+                .build();
     }
 
     public ResponseEntity<Map<String, String>> verify(String token) {
