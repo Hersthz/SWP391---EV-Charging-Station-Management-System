@@ -33,16 +33,15 @@ type Vehicle = {
   acMaxKw?: number;
   dcMaxKw?: number;
   efficiency?: number;
-  socNow?: number;
+  socNow?: number; // %
   socTarget?: number;
 };
 
-// EstimateResp dùng trong popup
 type EstimateResp = {
-  energyKwh: number;              // năng lượng vào pin xe (kWh)
-  energyFromStationKwh: number;   // năng lượng lấy từ trụ (kWh)
-  estimatedCost: number;          // VND
-  estimatedMinutes: number;       // phút
+  energyKwh: number;
+  energyFromStationKwh: number;
+  estimatedCost: number;
+  estimatedMinutes: number;
   advice?: string;
 };
 
@@ -62,12 +61,12 @@ interface ReservationItem {
   stationId: number;
   stationName: string;
   pillarId: number;
-  pillarCode: string;      // e.g. "P4"
+  pillarCode: string;
   connectorType: string;
   connectorId?: number;
-  startTime: string;       // ISO
+  startTime: string;
   status: ReservationStatus;
-  holdFee?: number;        // deposit/hold fee
+  holdFee?: number;
   payment?: {
     depositTransactionId?: string;
     paid: boolean;
@@ -88,7 +87,7 @@ interface ReservationResponseBE {
   pillarCode?: string;
   connectorId: number;
   connectorType?: string;
-  status: string; // PENDING | PAID | CANCELLED | EXPIRED | ...
+  status: string;
   holdFee?: number;
   startTime: string;
   endTime?: string;
@@ -167,25 +166,13 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
 };
 
 /** ===== Helpers ===== */
-const fmtDateTime = (iso?: string) =>
-  iso ? new Date(iso).toLocaleString() : "";
+const fmtDateTime = (iso?: string) => (iso ? new Date(iso).toLocaleString() : "");
+const fmtVnd = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+const isArrivableNow = (startIso: string) => Date.now() >= new Date(startIso).getTime();
 
-const fmtVnd = (n: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
-
-/** Arrived yet? */
-const isArrivableNow = (startIso: string) => {
-  const start = new Date(startIso).getTime();
-  return Date.now() >= start;
-};
-
-/** Chuẩn hoá vehicle từ API về kiểu FE */
 function mapApiVehicle(v: any): Vehicle {
   const rawSoc = v?.socNow ?? v?.soc_now;
-  const socPct =
-   typeof rawSoc === "number"
-     ? (rawSoc <= 1 ? Math.round(rawSoc * 100) : Math.round(rawSoc))
-     : undefined;
+  const socPct = typeof rawSoc === "number" ? (rawSoc <= 1 ? Math.round(rawSoc * 100) : Math.round(rawSoc)) : undefined;
   return {
     id: v?.id ?? v?.vehicleId,
     userId: v?.userId ?? v?.user_id,
@@ -195,41 +182,28 @@ function mapApiVehicle(v: any): Vehicle {
     acMaxKw: v?.acMaxKw ?? v?.ac_max_kw,
     dcMaxKw: v?.dcMaxKw ?? v?.dc_max_kw,
     efficiency: v?.efficiency,
-    socNow: socPct, // luôn là %
+    socNow: socPct, // %
   };
 }
 
-/** Map status DB -> FE */
 function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   const s = (dbStatus || "").toUpperCase().trim();
-
   if (s === "CANCELLED") return "CANCELLED";
   if (s === "EXPIRED") return "EXPIRED";
   if (s === "PENDING" || s === "PENDING_PAYMENT") return "PENDING_PAYMENT";
-
-  // hỗ trợ VERIFYING flow
   if (s === "VERIFY" || s === "VERIFYING") return "VERIFYING";
   if (s === "VERIFIED") return "VERIFIED";
   if (s === "PLUGGED") return "PLUGGED";
-
-  // nếu tới giờ thì VERIFYING, chưa tới thì SCHEDULED
   if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
-    const future = startTime ? new Date(startTime).getTime() > Date.now() : false;
-    return future ? "SCHEDULED" : "VERIFYING";
+    return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
   }
   if (s === "CHARGING") return "CHARGING";
-  // fallback theo thời gian
-  if (startTime) {
-    return new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
-  }
-  return "SCHEDULED";
+  return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
 }
 
-/** Map BE -> FE item */
 function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
   return rows.map((d) => {
     const normalized = (d.status || "").toUpperCase().trim();
-
     return {
       reservationId: d.reservationId,
       stationId: d.stationId,
@@ -252,19 +226,13 @@ function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
   });
 }
 
-/** Lấy next booking gần nhất trong tương lai */
 function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefined {
   const future = items
     .filter((i) => new Date(i.startTime).getTime() > Date.now())
     .sort((a, b) => +new Date(a.startTime) - +new Date(b.startTime));
   const n = future[0];
   if (!n) return undefined;
-  return {
-    stationName: n.stationName,
-    pillarCode: n.pillarCode,
-    connectorType: n.connectorType,
-    startTime: n.startTime,
-  };
+  return { stationName: n.stationName, pillarCode: n.pillarCode, connectorType: n.connectorType, startTime: n.startTime };
 }
 
 /** ===== Component ===== */
@@ -276,7 +244,7 @@ const StatusCards = () => {
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
   const [currentUserId, setCurrentUserId] = useState<number | undefined>();
-  const [kycVerified, setKycVerified] = useState<boolean>(false); // NEW: KYC flag
+  const [kycVerified, setKycVerified] = useState<boolean>(false);
 
   // QR dialog state
   const [qrOpen, setQrOpen] = useState(false);
@@ -297,30 +265,21 @@ const StatusCards = () => {
   const [est, setEst] = useState<EstimateResp | null>(null);
   const [estimating, setEstimating] = useState<boolean>(false);
 
-  // current SOC (lấy từ xe hoặc localStorage fallback)
+  // SOC (current) – giữ như cũ
   const [currentSoc, setCurrentSoc] = useState<number>(() => {
     const v = Number(localStorage.getItem("soc_now"));
-    return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50; // mặc định 50%
+    return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
   });
 
-  const [targetSoc, setTargetSoc] = useState<number>(() => {
-    const v = Number(localStorage.getItem("soc_target"));
-    return Number.isFinite(v) ? Math.max(10, Math.min(100, v)) : 80; // mặc định 80%
-  });
+  // Target luôn FULL = 100 (không cho chỉnh)
+  const TARGET_SOC_FIXED = 100;
 
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Save target SOC & current SOC to localStorage
-  useEffect(() => {
-    localStorage.setItem("soc_target", String(targetSoc));
-  }, [targetSoc]);
-  
-
   // Load reservations
   useEffect(() => {
     let mounted = true;
-
     const load = async () => {
       try {
         if (USE_MOCK) {
@@ -337,20 +296,15 @@ const StatusCards = () => {
           typeof me.data?.user_id === "number"
             ? me.data.user_id
             : typeof me.data?.id === "number"
-              ? me.data.id
-              : undefined;
-
+            ? me.data.id
+            : undefined;
         if (!userId) throw new Error("Cannot determine current user id.");
         setCurrentUserId(userId);
-
-        // NEW: đọc cờ KYC (hỗ trợ 2 key phổ biến)
         setKycVerified(!!(me.data?.kycVerified ?? me.data?.kyc_verified));
 
-        const { data } = await api.get<ReservationResponseBE[]>(
-          `/user/${userId}/reservations`,
-          { withCredentials: true }
-        );
-
+        const { data } = await api.get<ReservationResponseBE[]>(`/user/${userId}/reservations`, {
+          withCredentials: true,
+        });
         if (!mounted) return;
 
         const feItems = mapBEToFE(Array.isArray(data) ? data : []);
@@ -369,7 +323,6 @@ const StatusCards = () => {
         if (mounted) setLoading(false);
       }
     };
-
     load();
     return () => {
       mounted = false;
@@ -402,7 +355,7 @@ const StatusCards = () => {
 
   const onStartChargingAPI = async (reservationId: number) => {
     try {
-      const r = items.find(x => x.reservationId === reservationId);
+      const r = items.find((x) => x.reservationId === reservationId);
       if (!r) throw new Error("Reservation not found.");
       if (!currentUserId) throw new Error("Cannot determine current user id.");
       if (!vehicleId) throw new Error("Please choose a vehicle.");
@@ -418,29 +371,41 @@ const StatusCards = () => {
         pillarId: r.pillarId,
         driverId: currentUserId,
         vehicleId: vehicleId,
-        targetSoc: targetSoc / 100,
+        targetSoc: 1, // luôn FULL
         paymentMethod: payChannel === "wallet" ? "WALLET" : "VNPAY",
       };
 
       const { data } = await api.post("/session/create", payload);
-      const ret = data?.data ?? data;       // lấy phần data bên trong nếu có
+      const ret = data?.data ?? data;
       const sid = ret?.sessionId ?? ret?.id;
-
       if (!sid) throw new Error("Invalid start response (missing sessionId).");
+
       toast({ title: "Charging session started" });
-      // pack meta để trang Session đọc được ngay cả khi BE không trả snapshot
+
       const initialSocFrac = (Number(currentSoc) || 0) / 100;
-      const targetSocFrac  = (Number(targetSoc) || 0) / 100;
+      const targetSocFrac = 1; // luôn FULL
       localStorage.setItem(
         `session_meta_${sid}`,
         JSON.stringify({ vehicleId, initialSoc: initialSocFrac, targetSoc: targetSocFrac, reservationId })
       );
+
+      localStorage.setItem(
+        `reservation_cache_${reservationId}`,
+        JSON.stringify({
+          reservationId,
+          stationId: r.stationId,
+          stationName: r.stationName,
+          pillarId: r.pillarId,
+          pillarCode: r.pillarCode,
+        })
+      );
+
       navigate(
-        `/charging?sessionId=${encodeURIComponent(sid)}`
-        + `&reservationId=${reservationId}`
-        + `&vehicleId=${vehicleId}`
-        + `&initialSoc=${initialSocFrac}`
-        + `&targetSoc=${targetSocFrac}`
+        `/charging?sessionId=${encodeURIComponent(sid)}` +
+          `&reservationId=${reservationId}` +
+          `&vehicleId=${vehicleId}` +
+          `&initialSoc=${initialSocFrac}` +
+          `&targetSoc=${targetSocFrac}`
       );
     } catch (e: any) {
       const msg = e?.response?.data?.message || "Cannot start the session.";
@@ -449,9 +414,7 @@ const StatusCards = () => {
   };
 
   const onPayNow = (r: ReservationItem) => {
-    const amount =
-      (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
-
+    const amount = (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
     navigate("/reservation/deposit", {
       state: {
         reservationId: r.reservationId,
@@ -484,18 +447,16 @@ const StatusCards = () => {
     try {
       if (!currentUserId) throw new Error("Cannot determine current user id.");
 
-      const { data } = await api.post("/api/token/create",
+      const { data } = await api.post(
+        "/api/token/create",
         { userId: currentUserId, reservationId: r.reservationId },
         { withCredentials: true }
       );
       const payload = data?.data ?? data;
       const token = String(payload?.token || "");
       let url = payload?.qrUrl || "";
-      if (!url || url.includes("your-fe.com")) {
-        url = `${window.location.origin}/checkin?token=${token}`;
-      }
+      if (!url || url.includes("your-fe.com")) url = `${window.location.origin}/checkin?token=${token}`;
       const exp = String(payload?.expiresAt || "");
-
       if (!token || !url || !exp) throw new Error("Invalid token response.");
 
       setQrToken(token);
@@ -511,36 +472,38 @@ const StatusCards = () => {
     }
   };
 
-  // Đánh dấu PLUGGED (sau khi đã VERIFIED)
   const markPlugged = async (r: ReservationItem) => {
     try {
       if (USE_MOCK) {
-        setItems((xs) => xs.map(x => x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x));
+        setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x)));
         toast({ title: "Plugged in", description: `${r.stationName} • ${r.pillarCode}` });
         return;
       }
       await api.post(`/book/${r.reservationId}`, {}, { withCredentials: true });
-      setItems((xs) => xs.map(x => x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x));
+      setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x)));
       toast({ title: "Plugged in" });
     } catch (e: any) {
-      toast({ title: "Action failed", description: e?.response?.data?.message || "Cannot mark plugged.", variant: "destructive" });
+      toast({
+        title: "Action failed",
+        description: e?.response?.data?.message || "Cannot mark plugged.",
+        variant: "destructive",
+      });
     }
   };
 
-  //  mở popup Start Charging để chọn payment
+  // mở popup Start Charging để chọn payment
   const openPayment = (r: ReservationItem) => {
     setPmResId(r.reservationId);
-    // nếu chưa KYC → luôn là prepaid, postpaid bị disable
     setPayFlow(kycVerified ? "postpaid" : "prepaid");
     setPayChannel("wallet");
-    // load vehicles của user để chọn
+
     if (currentUserId) {
-      api.get(`/vehicle/user/${currentUserId}`, { withCredentials: true })
+      api
+        .get(`/vehicle/user/${currentUserId}`, { withCredentials: true })
         .then((res) => {
           const raw = res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
           const list: Vehicle[] = Array.isArray(raw) ? raw.map(mapApiVehicle) : [];
           setVehicles(list);
-          // nếu chỉ có 1 xe: tự chọn + gán SOC Now từ xe
           if (list.length === 1) {
             setVehicleId(list[0].id);
             if (typeof list[0].socNow === "number") setCurrentSoc(list[0].socNow);
@@ -548,20 +511,17 @@ const StatusCards = () => {
         })
         .catch(() => setVehicles([]));
     }
-    // default target từ localStorage
-    setTargetSoc(Number(localStorage.getItem("soc_target") ?? "80"));
+
     setEst(null);
     setPmOpen(true);
   };
 
-  // fetch estimate (có thể override SOC Now để chính xác khi vừa chọn xe)
-  async function fetchEstimateFor(
-    r?: ReservationItem,
-    vehId?: number,
-    target?: number,
-    socNowOverride?: number
-  ) {
-    if (!r || !vehId || !r.pillarId || !r.connectorId) { setEst(null); return; }
+  // estimate (target luôn 100%)
+  async function fetchEstimateFor(r?: ReservationItem, vehId?: number, socNowOverride?: number) {
+    if (!r || !vehId || !r.pillarId || !r.connectorId) {
+      setEst(null);
+      return;
+    }
     setEstimating(true);
     try {
       const socToUse = typeof socNowOverride === "number" ? socNowOverride : currentSoc;
@@ -571,7 +531,7 @@ const StatusCards = () => {
         pillarId: r.pillarId,
         connectorId: r.connectorId,
         socNow: isFinite(socToUse) ? socToUse / 100 : undefined,
-        socTarget: isFinite(target ?? 0) ? (target! / 100) : undefined,
+        socTarget: 1, // FULL
       };
       const { data } = await api.post("/estimate/estimate-kw", payload, { withCredentials: true });
       if (typeof data?.estimatedMinutes === "number") {
@@ -583,11 +543,14 @@ const StatusCards = () => {
           advice: data.advice,
         });
       } else setEst(null);
-    } catch { setEst(null); }
-    finally { setEstimating(false); }
+    } catch {
+      setEst(null);
+    } finally {
+      setEstimating(false);
+    }
   }
 
-  // countdown helpers
+  // helpers
   const copyToken = async () => {
     try {
       await navigator.clipboard.writeText(qrToken || "");
@@ -596,7 +559,6 @@ const StatusCards = () => {
       toast({ title: "Copy failed", description: "Cannot copy token.", variant: "destructive" });
     }
   };
-
   const regenerate = async () => {
     const r = items.find((x) => x.reservationId === lastResId);
     if (r) await openQrFor(r);
@@ -608,36 +570,33 @@ const StatusCards = () => {
     const scheduled = r.status === "SCHEDULED";
     const pending = r.status === "PENDING_PAYMENT";
 
-    // chọn bg theo trạng thái
-    const bgClass =
-      pending
-        ? "bg-rose-50/60 border-rose-200"
-        : r.status === "VERIFYING" || scheduled
-        ? "bg-amber-50/60 border-amber-200"
-        : r.status === "VERIFIED"
-        ? "bg-teal-50/60 border-teal-200"
-        : r.status === "PLUGGED"
-        ? "bg-sky-50/60 border-sky-200"
-        : r.status === "CHARGING"
-        ? "bg-emerald-50/60 border-emerald-200"
-        : ready
-        ? "bg-emerald-50/60 border-emerald-200"
-        : "bg-emerald-50/60 border-emerald-200";
+    const bgClass = pending
+      ? "bg-rose-50/60 border-rose-200"
+      : r.status === "VERIFYING" || scheduled
+      ? "bg-amber-50/60 border-amber-200"
+      : r.status === "VERIFIED"
+      ? "bg-teal-50/60 border-teal-200"
+      : r.status === "PLUGGED"
+      ? "bg-sky-50/60 border-sky-200"
+      : r.status === "CHARGING"
+      ? "bg-emerald-50/60 border-emerald-200"
+      : ready
+      ? "bg-emerald-50/60 border-emerald-200"
+      : "bg-emerald-50/60 border-emerald-200";
 
-    const toneClass =
-      pending
-        ? "text-rose-700"
-        : r.status === "VERIFYING" || scheduled
-        ? "text-amber-700"
-        : r.status === "VERIFIED"
-        ? "text-teal-700"
-        : r.status === "PLUGGED"
-        ? "text-sky-700"
-        : r.status === "CHARGING"
-        ? "text-emerald-700"
-        : ready
-        ? "text-emerald-700"
-        : "text-emerald-700";
+    const toneClass = pending
+      ? "text-rose-700"
+      : r.status === "VERIFYING" || scheduled
+      ? "text-amber-700"
+      : r.status === "VERIFIED"
+      ? "text-teal-700"
+      : r.status === "PLUGGED"
+      ? "text-sky-700"
+      : r.status === "CHARGING"
+      ? "text-emerald-700"
+      : ready
+      ? "text-emerald-700"
+      : "text-emerald-700";
 
     return (
       <div
@@ -655,13 +614,19 @@ const StatusCards = () => {
           <div
             className={[
               "size-12 rounded-2xl flex items-center justify-center shadow-inner text-white",
-              pending ? "bg-rose-500"
-              : r.status === "VERIFYING" || scheduled ? "bg-amber-500"
-              : r.status === "VERIFIED" ? "bg-teal-500"
-              : r.status === "PLUGGED" ? "bg-sky-500"
-              : r.status === "CHARGING" ? "bg-emerald-600"
-              : ready ? "bg-emerald-500"
-              : "bg-emerald-500",
+              pending
+                ? "bg-rose-500"
+                : r.status === "VERIFYING" || scheduled
+                ? "bg-amber-500"
+                : r.status === "VERIFIED"
+                ? "bg-teal-500"
+                : r.status === "PLUGGED"
+                ? "bg-sky-500"
+                : r.status === "CHARGING"
+                ? "bg-emerald-600"
+                : ready
+                ? "bg-emerald-500"
+                : "bg-emerald-500",
             ].join(" ")}
           >
             {pending ? <CreditCard className="size-6" /> : <Calendar className="size-6" />}
@@ -670,12 +635,8 @@ const StatusCards = () => {
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold truncate text-base">{r.stationName}</h4>
             <div className="flex flex-wrap gap-2 my-1">
-              <Badge variant="outline" className="text-xs rounded-full border-dashed">
-                {`Port ${r.pillarCode}`}
-              </Badge>
-              <Badge variant="outline" className="text-xs rounded-full border-dashed">
-                {r.connectorType}
-              </Badge>
+              <Badge variant="outline" className="text-xs rounded-full border-dashed">{`Port ${r.pillarCode}`}</Badge>
+              <Badge variant="outline" className="text-xs rounded-full border-dashed">{r.connectorType}</Badge>
             </div>
             <p className={["text-xs sm:text-[13px] font-medium", toneClass].join(" ")}>
               {fmtDateTime(r.startTime)}
@@ -694,7 +655,7 @@ const StatusCards = () => {
               <Button
                 size="sm"
                 className="rounded-full px-4 bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => navigate(`/charging?reservationId=${r.reservationId}`)}
+                onClick={() => openPayment(r)}
               >
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
               </Button>
@@ -704,10 +665,7 @@ const StatusCards = () => {
           {/* SCHEDULED */}
           {scheduled && (
             <>
-              <Badge className="rounded-full bg-amber-100 text-amber-700 border-amber-200">
-                Scheduled
-              </Badge>
-
+              <Badge className="rounded-full bg-amber-100 text-amber-700 border-amber-200">Scheduled</Badge>
               {isArrivableNow(r.startTime) ? (
                 <Button
                   size="sm"
@@ -718,12 +676,7 @@ const StatusCards = () => {
                   <QrCode className="w-4 h-4 mr-1" /> Arrived
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full px-4 border-amber-200 text-amber-700"
-                  disabled
-                >
+                <Button size="sm" variant="outline" className="rounded-full px-4 border-amber-200 text-amber-700" disabled>
                   <Clock className="w-4 h-4 mr-1" /> Not yet
                 </Button>
               )}
@@ -749,17 +702,13 @@ const StatusCards = () => {
           {r.status === "VERIFIED" && (
             <>
               <Badge className="rounded-full bg-teal-600 text-white border-0">Verified</Badge>
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-teal-600 hover:bg-teal-700 text-white"
-                onClick={() => markPlugged(r)}
-              >
+              <Button size="sm" className="rounded-full px-4 bg-teal-600 hover:bg-teal-700 text-white" onClick={() => markPlugged(r)}>
                 Plug
               </Button>
             </>
           )}
 
-          {/* PLUGGED → Start Charging (mở popup chọn thanh toán) */}
+          {/* PLUGGED → Start Charging (open payment) */}
           {r.status === "PLUGGED" && (
             <>
               <Badge className="rounded-full bg-sky-600 text-white border-0">Plugged</Badge>
@@ -776,14 +725,8 @@ const StatusCards = () => {
           {/* PENDING_PAYMENT */}
           {pending && (
             <>
-              <Badge className="rounded-full bg-rose-500 text-white border-0 animate-pulse">
-                Payment required
-              </Badge>
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-rose-500 hover:bg-rose-600"
-                onClick={() => onPayNow(r)}
-              >
+              <Badge className="rounded-full bg-rose-500 text-white border-0 animate-pulse">Payment required</Badge>
+              <Button size="sm" className="rounded-full px-4 bg-rose-500 hover:bg-rose-600" onClick={() => onPayNow(r)}>
                 <CreditCard className="w-4 h-4 mr-1" /> Pay now
               </Button>
             </>
@@ -800,7 +743,6 @@ const StatusCards = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT: Battery + Next booking */}
         <div className="space-y-6 lg:col-span-1">
-          {/* Battery card */}
           <Card className="overflow-hidden border-0 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -812,13 +754,13 @@ const StatusCards = () => {
               </div>
 
               <div className="mt-4 flex items-end gap-2">
-                <span className="text-4xl font-extrabold drop-shadow">{batteryPct}%</span>
-                <span className="text-sm opacity-90 mb-1">{batteryRangeKm} km</span>
+                <span className="text-4xl font-extrabold drop-shadow">85%</span>
+                <span className="text-sm opacity-90 mb-1">425 km</span>
               </div>
 
               <div className="mt-3">
                 <div className="h-2 w-full rounded-full bg-white/30 overflow-hidden">
-                  <div className="h-2 rounded-full bg-white" style={{ width: `${batteryPct}%` }} />
+                  <div className="h-2 rounded-full bg-white" style={{ width: `85%` }} />
                 </div>
                 <p className="text-xs mt-2 opacity-90">Enough for a long trip</p>
               </div>
@@ -851,12 +793,8 @@ const StatusCards = () => {
 
                   {next.pillarCode && (
                     <div className="mt-2 inline-flex items-center gap-2">
-                      <Badge variant="secondary" className="rounded-full">
-                        {`Port ${next.pillarCode}`}
-                      </Badge>
-                      <Badge variant="secondary" className="rounded-full">
-                        {next.connectorType}
-                      </Badge>
+                      <Badge variant="secondary" className="rounded-full">{`Port ${next.pillarCode}`}</Badge>
+                      <Badge variant="secondary" className="rounded-full">{next.connectorType}</Badge>
                     </div>
                   )}
                 </div>
@@ -867,7 +805,7 @@ const StatusCards = () => {
           </Card>
         </div>
 
-        {/* RIGHT: Reservations list – max 4 items + scroll */}
+        {/* RIGHT: Reservations list */}
         <div className="lg:col-span-2">
           <Card className="rounded-2xl border-2 border-primary/15">
             <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent rounded-t-2xl">
@@ -881,9 +819,7 @@ const StatusCards = () => {
                     Core
                   </Badge>
                 </div>
-                {!loading && (
-                  <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>
-                )}
+                {!loading && <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>}
               </CardTitle>
             </CardHeader>
 
@@ -891,13 +827,9 @@ const StatusCards = () => {
               {loading ? (
                 <div className="p-6 text-sm text-muted-foreground">Loading…</div>
               ) : items.length === 0 ? (
-                <div className="p-6 text-sm text-muted-foreground">
-                  You have no reservations yet.
-                </div>
+                <div className="p-6 text-sm text-muted-foreground">You have no reservations yet.</div>
               ) : (
-                <div
-                  className="space-y-3 max-h-[430px] overflow-y-auto pr-1 nice-scroll"
-                >
+                <div className="space-y-3 max-h-[430px] overflow-y-auto pr-1 nice-scroll">
                   {items.map(renderReservation)}
                 </div>
               )}
@@ -936,9 +868,7 @@ const StatusCards = () => {
               </a>
             ) : null}
 
-            <div className="text-sm text-center text-muted-foreground">
-              {qrStation}
-            </div>
+            <div className="text-sm text-center text-muted-foreground">{qrStation}</div>
 
             <div className="w-full text-xs break-all rounded-lg bg-muted p-2">
               <div className="text-muted-foreground">Token</div>
@@ -970,29 +900,52 @@ const StatusCards = () => {
               Select Payment Method
             </DialogTitle>
             <DialogDescription>
-              {kycVerified
-                ? "You can choose Prepaid or Postpaid."
-                : "You are not KYC verified. Postpaid option is disabled."}
+              {kycVerified ? "You can choose Prepaid or Postpaid." : "You are not KYC verified. Postpaid option is disabled."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* Hình thức: Trả trước / Trả sau */}
+            {/* Method */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Method</div>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant={payFlow === "prepaid" ? "default" : "outline"} className="rounded-xl" onClick={() => setPayFlow("prepaid")}>Prepaid</Button>
-                <Button variant={payFlow === "postpaid" ? "default" : "outline"} className="rounded-xl disabled:opacity-60" disabled={!kycVerified} onClick={() => setPayFlow("postpaid")}>Postpaid</Button>
+                <Button
+                  variant={payFlow === "prepaid" ? "default" : "outline"}
+                  className="rounded-xl"
+                  onClick={() => setPayFlow("prepaid")}
+                >
+                  Prepaid
+                </Button>
+                <Button
+                  variant={payFlow === "postpaid" ? "default" : "outline"}
+                  className="rounded-xl disabled:opacity-60"
+                  disabled={!kycVerified}
+                  onClick={() => setPayFlow("postpaid")}
+                >
+                  Postpaid
+                </Button>
               </div>
-              {!kycVerified && <div className="text-xs text-muted-foreground mt-1"> Postpaid requires KYC verified</div>}
+              {!kycVerified && <div className="text-xs text-muted-foreground mt-1">Postpaid requires KYC verified</div>}
             </div>
 
-            {/* Kênh thanh toán */}
+            {/* Payment channel */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Payment</div>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant={payChannel === "wallet" ? "default" : "outline"} className="rounded-xl" onClick={() => setPayChannel("wallet")}>Wallet</Button>
-                <Button variant={payChannel === "vnpay" ? "default" : "outline"} className="rounded-xl" onClick={() => setPayChannel("vnpay")}>VNPay</Button>
+                <Button
+                  variant={payChannel === "wallet" ? "default" : "outline"}
+                  className="rounded-xl"
+                  onClick={() => setPayChannel("wallet")}
+                >
+                  Wallet
+                </Button>
+                <Button
+                  variant={payChannel === "vnpay" ? "default" : "outline"}
+                  className="rounded-xl"
+                  onClick={() => setPayChannel("vnpay")}
+                >
+                  VNPay
+                </Button>
               </div>
             </div>
 
@@ -1005,16 +958,17 @@ const StatusCards = () => {
                 onChange={(e) => {
                   const v = Number(e.target.value) || null;
                   setVehicleId(v);
-                  // gán SOC theo xe vừa chọn
-                  const picked = vehicles.find(x => x.id === v);
-                  const socPct = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc; // đã là %
+                  const picked = vehicles.find((x) => x.id === v);
+                  const socPct = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc;
                   setCurrentSoc(socPct);
-                  const r = items.find(x => x.reservationId === pmResId!);
-                  if (r) fetchEstimateFor(r, v!, targetSoc, socPct);
+                  const r = items.find((x) => x.reservationId === pmResId!);
+                  if (r) fetchEstimateFor(r, v!, socPct);
                 }}
               >
-                <option value="" disabled>Choose vehicle</option>
-                {vehicles.map(v => (
+                <option value="" disabled>
+                  Choose vehicle
+                </option>
+                {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.make || ""} {v.model || ""} (#{v.id})
                   </option>
@@ -1028,51 +982,35 @@ const StatusCards = () => {
                 <div className="text-sm font-medium">Current SOC</div>
                 <div className="text-sm font-semibold">{currentSoc}%</div>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={currentSoc}
-                disabled
-                readOnly
-                className="w-full opacity-70 cursor-not-allowed"
-              />
+              <input type="range" min={0} max={100} step={1} value={currentSoc} disabled readOnly className="w-full opacity-70 cursor-not-allowed" />
             </div>
 
-            {/* Target SOC */}
+            {/* Target SOC – luôn 100%, hiển thị read-only */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">SOC Target</div>
-                <div className="text-sm font-semibold">{targetSoc}%</div>
+                <div className="text-sm font-semibold">{TARGET_SOC_FIXED}%</div>
               </div>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={targetSoc}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setTargetSoc(v);
-                  const r = items.find(x => x.reservationId === pmResId!);
-                  if (r && vehicleId) fetchEstimateFor(r, vehicleId, v);
-                }}
-                className="w-full"
-              />
+              <input type="range" max={100} value={100} readOnly disabled className="w-full opacity-70 cursor-not-allowed" />
             </div>
 
             {/* Estimate */}
             <div className="rounded-xl border p-3 bg-muted/40">
-              {(!vehicleId || !pmResId) ? (
-                <div className="text-sm text-muted-foreground">Select vehicle & SOC to estimate.</div>
+              {!vehicleId || !pmResId ? (
+                <div className="text-sm text-muted-foreground">Select vehicle to estimate.</div>
               ) : estimating ? (
                 <div className="text-sm text-primary">Estimating…</div>
               ) : est ? (
                 <div className="text-sm space-y-1">
-                  <div>Time ~ <b>{est.estimatedMinutes} minutes</b></div>
-                  <div>Energy ~ <b>{est.energyKwh.toFixed(1)} kWh</b> • From ~ <b>{est.energyFromStationKwh.toFixed(1)} kWh</b></div>
-                  <div>Cost ~ <b>{new Intl.NumberFormat("vi-VN",{style:"currency",currency:"VND"}).format(est.estimatedCost)}</b></div>
+                  <div>
+                    Time ~ <b>{est.estimatedMinutes} minutes</b>
+                  </div>
+                  <div>
+                    Energy ~ <b>{est.energyKwh.toFixed(1)} kWh</b> • From ~ <b>{est.energyFromStationKwh.toFixed(1)} kWh</b>
+                  </div>
+                  <div>
+                    Cost ~ <b>{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(est.estimatedCost)}</b>
+                  </div>
                   {est.advice && <div className="text-xs text-amber-600">{est.advice}</div>}
                 </div>
               ) : (
@@ -1081,7 +1019,9 @@ const StatusCards = () => {
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setPmOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setPmOpen(false)}>
+                Cancel
+              </Button>
               <Button
                 onClick={() => {
                   if (!pmResId) return;
