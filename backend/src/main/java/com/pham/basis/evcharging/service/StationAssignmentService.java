@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.service;
 
 
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.mapper.StationMapper;
 import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.User;
@@ -45,9 +46,7 @@ public class StationAssignmentService {
     public ChargingStationDetailResponse getStationByManager(Long managerId) {
 
         ChargingStation station = chargingStationRepository.findByManagerId(managerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No station found for manager id: " + managerId
-                ));
+                .orElseThrow(() -> new AppException.NotFoundException("No station found for manager id: " + managerId));
 
         return stationMapper.toDetailResponse(station);
     }
