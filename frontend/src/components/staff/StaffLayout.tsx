@@ -9,7 +9,8 @@ import {
   BarChart3,
   MapPin,
   CreditCard,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
@@ -35,7 +36,8 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
     { path: "/staff/monitor", icon: MapPin, label: "Monitor Station" },
     { path: "/staff/details", icon: Zap, label: "Station Details" },
     { path: "/staff/payments", icon: CreditCard, label: "Payments" },
-    { path: "/staff/incidents", icon: AlertTriangle, label: "Incidents" }
+    { path: "/staff/incidents", icon: AlertTriangle, label: "Incidents" },
+    { path: "/staff/reports", icon: TrendingUp, label: "Reports" }, // THÊM MENU REPORTS
   ];
 
   return (
