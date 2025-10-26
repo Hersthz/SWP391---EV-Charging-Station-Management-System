@@ -2,9 +2,7 @@ package com.pham.basis.evcharging.controller;
 
 import com.pham.basis.evcharging.dto.request.AssignManagerRequest;
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
-import com.pham.basis.evcharging.dto.response.StationManagerResponse;
-import com.pham.basis.evcharging.exception.GlobalExceptionHandler;
-import com.pham.basis.evcharging.model.ChargingStation;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.service.StationAssignmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -33,14 +30,13 @@ public class StationManagerController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<ChargingStationDetailResponse> getStationByUser(@PathVariable Long userId) {
-        if (userId == null || userId <= 0) {
-            throw new GlobalExceptionHandler.BadRequestException("userId không hợp lệ");
+    public ResponseEntity<ChargingStationDetailResponse> getStationByManager(@PathVariable Long managerId) {
+
+        if (managerId == null || managerId <= 0) {
+            throw new AppException.BadRequestException("managerId không hợp lệ");
         }
-        ChargingStationDetailResponse station = stationAssignmentService.getStationByManager(userId);
-        if (station == null) {
-            throw new GlobalExceptionHandler.ResourceNotFoundException("Không tìm thấy trạm được gán cho người dùng");
-        }
+
+        ChargingStationDetailResponse station = stationAssignmentService.getStationByManager(managerId);
         return ResponseEntity.ok(station);
     }
 }
