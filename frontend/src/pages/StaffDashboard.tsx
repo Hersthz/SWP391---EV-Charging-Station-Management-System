@@ -6,7 +6,16 @@ import StaffLayout from "./../components/staff/StaffLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { MapPin, Wifi, WifiOff, Signal, TrendingUp, Power, Zap, Thermometer, Battery, Eye, AlertTriangle, Clock } from "lucide-react";
+import {
+  MapPin,
+  Wifi,
+  WifiOff,
+  Signal,
+  TrendingUp,
+  Battery,
+  Eye,
+  AlertTriangle,
+} from "lucide-react";
 
 type PillarDto = {
   code?: string;
@@ -58,63 +67,51 @@ const StaffDashboard = () => {
 
         const meRes = await api.get("/auth/me", { signal: controller.signal });
         const me = meRes.data;
-        const userId = me?.user_id ?? me?.id ?? me?.userId ?? Number(localStorage.getItem("userId"));
+        const userId =
+          me?.user_id ?? me?.id ?? me?.userId ?? Number(localStorage.getItem("userId"));
         if (!userId) throw new Error("Không tìm thấy userId từ /auth/me");
 
-        // backend có thể trả 1 object (trạm) hoặc mảng [{station: {...}}] hoặc [{...}]
-        let s: any = null;
-        if (Array.isArray(data)) {
-          if (data.length === 0) {
-            setStation(null);
-            return;
-          }
-          const first = data[0];
-          s = first.station ?? first.stationDto ?? first;
-        } else {
-          s = data.station ?? data.stationDto ?? data;
-        }
-
-// Lấy thông tin station-manager từ userId
+        // ➜ Lấy thông tin station-manager từ userId
         const res = await api.get(`/station-managers/${userId}`, { signal: controller.signal });
-        const raw = res.data;
+        const raw = res.data?.data ?? res.data;
 
-        // backend có thể trả 1 object, hoặc mảng [{ station: {...} }]
-        let s: any = null;
+        // ➜ Chuẩn hoá dữ liệu từ backend (có thể là object hoặc array)
+        let stationObj: any = null;
         if (Array.isArray(raw)) {
           if (raw.length === 0) {
             setStation(null);
             return;
           }
           const first = raw[0];
-          s = first.station ?? first.stationDto ?? first;
+          stationObj = first.station ?? first.stationDto ?? first;
         } else {
-          s = raw.station ?? raw.stationDto ?? raw;
+          stationObj = raw.station ?? raw.stationDto ?? raw;
         }
 
-        if (!s) {
+        if (!stationObj) {
           setStation(null);
           return;
         }
 
-        // map dữ liệu sang kiểu response
+        // ➜ Map dữ liệu sang DTO FE
         const mapped: ChargingStationDetailResponse = {
-          id: s.id ?? s.stationId ?? undefined,
-          name: s.name ?? s.stationName,
-          address: s.address,
-          latitude: s.latitude,
-          longitude: s.longitude,
-          status: s.status,
-          availablePillars: s.availablePillars,
+          id: stationObj.id ?? stationObj.stationId ?? undefined,
+          name: stationObj.name ?? stationObj.stationName,
+          address: stationObj.address,
+          latitude: stationObj.latitude,
+          longitude: stationObj.longitude,
+          status: stationObj.status,
+          availablePillars: stationObj.availablePillars,
           totalPillars:
-            s.totalPillars ??
-            s.total_pillars ??
-            (Array.isArray(s.pillars) ? s.pillars.length : undefined),
-          minPrice: s.minPrice ?? s.min_price,
-          maxPrice: s.maxPrice ?? s.max_price,
-          minPower: s.minPower ?? s.min_power,
-          maxPower: s.maxPower ?? s.max_power,
-          pillars: Array.isArray(s.pillars) ? s.pillars : undefined,
-          reviews: Array.isArray(s.reviews) ? s.reviews : undefined,
+            stationObj.totalPillars ??
+            stationObj.total_pillars ??
+            (Array.isArray(stationObj.pillars) ? stationObj.pillars.length : undefined),
+          minPrice: stationObj.minPrice ?? stationObj.min_price,
+          maxPrice: stationObj.maxPrice ?? stationObj.max_price,
+          minPower: stationObj.minPower ?? stationObj.min_power,
+          maxPower: stationObj.maxPower ?? stationObj.max_power,
+          pillars: Array.isArray(stationObj.pillars) ? stationObj.pillars : undefined,
+          reviews: Array.isArray(stationObj.reviews) ? stationObj.reviews : undefined,
         };
 
         setStation(mapped);
@@ -125,7 +122,9 @@ const StaffDashboard = () => {
           localStorage.clear();
           navigate("/login");
         } else {
-          setError(err?.response?.status ? `HTTP ${err.response.status}` : err.message ?? "Request failed");
+          setError(
+            err?.response?.status ? `HTTP ${err.response.status}` : err.message ?? "Request failed"
+          );
         }
       } finally {
         setLoading(false);
@@ -146,9 +145,7 @@ const StaffDashboard = () => {
   if (error) {
     return (
       <StaffLayout title="Staff Dashboard">
-        <div className="p-6 text-sm text-destructive">
-          Failed to load station ({error}).
-        </div>
+        <div className="p-6 text-sm text-destructive">Failed to load station ({error}).</div>
       </StaffLayout>
     );
   }
@@ -156,13 +153,10 @@ const StaffDashboard = () => {
   if (!station) {
     return (
       <StaffLayout title="Staff Dashboard">
-        <div className="p-6 text-sm text-muted-foreground">
-          No assigned station.
-        </div>
+        <div className="p-6 text-sm text-muted-foreground">No assigned station.</div>
       </StaffLayout>
     );
   }
-
 
   // số liệu tổng quan từ DTO
   const total = station.totalPillars ?? station.pillars?.length ?? 0;
@@ -180,7 +174,9 @@ const StaffDashboard = () => {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{station.name ?? "Unknown Station"}</h2>
-                  <p className="text-sm text-muted-foreground">{station.address ?? "Address not provided"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {station.address ?? "Address not provided"}
+                  </p>
                 </div>
               </div>
 
@@ -268,7 +264,10 @@ const StaffDashboard = () => {
               <div className="space-y-3">
                 {station.reviews.map((r) => (
                   <div key={r.id} className="p-3 border rounded-md">
-                    <div className="font-medium">{r.userName ?? "Anonymous"} <span className="text-xs text-muted-foreground">• {r.rating ?? "—"}/5</span></div>
+                    <div className="font-medium">
+                      {r.userName ?? "Anonymous"}{" "}
+                      <span className="text-xs text-muted-foreground">• {r.rating ?? "—"}/5</span>
+                    </div>
                     <div className="text-sm text-muted-foreground line-clamp-2">{r.comment}</div>
                     <div className="text-xs text-muted-foreground mt-1">{r.createdAt}</div>
                   </div>

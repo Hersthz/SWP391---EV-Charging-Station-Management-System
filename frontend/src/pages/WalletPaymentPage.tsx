@@ -73,7 +73,7 @@ export default function WalletPaymentPage() {
   // 1) Lấy userId qua /auth/me (JWT ở HttpOnly cookie)
   const loadUserId = useCallback(async () => {
     const { data } = await api.get("/auth/me");
-    const id = data?.id ?? data?.data?.id ?? data?.user?.id ?? data?.profile?.id;
+    const id = data?.id ?? data?.user_id ??data?.data?.id ?? data?.user?.id ?? data?.profile?.id;
     if (id == null) throw new Error("Cannot fetch current user");
     return Number(id);
   }, []);

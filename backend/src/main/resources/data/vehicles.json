@@ -1,0 +1,92 @@
+[
+  {
+    "make": "Tesla",
+    "model": "Model 3 Long Range",
+    "socNow": 78,
+    "batteryCapacityKwh": 75,
+    "acMaxKw": 11,
+    "dcMaxKw": 250,
+    "efficiency": 6.5
+  },
+  {
+    "make": "Tesla",
+    "model": "Model Y Performance",
+    "socNow": 55,
+    "batteryCapacityKwh": 82,
+    "acMaxKw": 11,
+    "dcMaxKw": 250,
+    "efficiency": 6.0
+  },
+  {
+    "make": "Hyundai",
+    "model": "Ioniq 5",
+    "socNow": 65,
+    "batteryCapacityKwh": 77.4,
+    "acMaxKw": 11,
+    "dcMaxKw": 232,
+    "efficiency": 5.8
+  },
+  {
+    "make": "Kia",
+    "model": "EV6 GT-Line",
+    "socNow": 48,
+    "batteryCapacityKwh": 77.4,
+    "acMaxKw": 11,
+    "dcMaxKw": 240,
+    "efficiency": 5.9
+  },
+  {
+    "make": "VinFast",
+    "model": "VF8 Eco",
+    "socNow": 80,
+    "batteryCapacityKwh": 87.7,
+    "acMaxKw": 11,
+    "dcMaxKw": 160,
+    "efficiency": 5.2
+  },
+  {
+    "make": "BYD",
+    "model": "Atto 3",
+    "socNow": 72,
+    "batteryCapacityKwh": 60.5,
+    "acMaxKw": 7.2,
+    "dcMaxKw": 88,
+    "efficiency": 6.3
+  },
+  {
+    "make": "Porsche",
+    "model": "Taycan 4S",
+    "socNow": 40,
+    "batteryCapacityKwh": 79.2,
+    "acMaxKw": 11,
+    "dcMaxKw": 270,
+    "efficiency": 4.5
+  },
+  {
+    "make": "Mercedes-Benz",
+    "model": "EQE 350+",
+    "socNow": 67,
+    "batteryCapacityKwh": 90.6,
+    "acMaxKw": 11,
+    "dcMaxKw": 170,
+    "efficiency": 5.0
+  },
+  {
+    "make": "BMW",
+    "model": "i4 eDrive40",
+    "socNow": 52,
+    "batteryCapacityKwh": 83.9,
+    "acMaxKw": 11,
+    "dcMaxKw": 205,
+    "efficiency": 5.7
+  },
+  {
+    "make": "Nissan",
+    "model": "Leaf e+",
+    "socNow": 85,
+    "batteryCapacityKwh": 62,
+    "acMaxKw": 6.6,
+    "dcMaxKw": 100,
+    "efficiency": 6.1
+  }
+]

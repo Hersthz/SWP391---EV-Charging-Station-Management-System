@@ -6,10 +6,7 @@ import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.model.Wallet;
-import com.pham.basis.evcharging.repository.PaymentTransactionRepository;
-import com.pham.basis.evcharging.repository.ReservationRepository;
-import com.pham.basis.evcharging.repository.UserRepository;
-import com.pham.basis.evcharging.repository.WalletRepository;
+import com.pham.basis.evcharging.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -40,6 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final WalletRepository walletRepo;
     private final VNPayConfig vnpayConfig;
     private final ReservationRepository reservationRepo;
+    private final ChargingSessionRepository  chargingSessionRepo;
 
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
 
@@ -316,7 +314,7 @@ public class PaymentServiceImpl implements PaymentService {
             case TYPE_WALLET:
                 return "Nạp tiền ví";
             case TYPE_SESSION:
-                return "Thanh toán dịch vụ #" + req.getReferenceId();
+                return "Thanh toán charging session #" + req.getReferenceId();
             case TYPE_MEMBERSHIP:
                 return "Gia hạn thành viên #" + req.getReferenceId();
             default:
@@ -445,7 +443,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void handleServicePaymentSuccess(PaymentTransaction tx) {
-        // TODO: Kích hoạt dịch vụ
         log.info("Service payment successful - Reference: {}", tx.getReferenceId());
     }
 

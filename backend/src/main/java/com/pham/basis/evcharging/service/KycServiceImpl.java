@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.service;
 
 
 import com.pham.basis.evcharging.dto.request.KycSubmissionRequest;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.exception.GlobalExceptionHandler;
 import com.pham.basis.evcharging.model.KycSubmission;
 import com.pham.basis.evcharging.model.User;
@@ -9,8 +10,14 @@ import com.pham.basis.evcharging.repository.KycRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import javax.swing.text.html.Option;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -23,7 +30,7 @@ public class KycServiceImpl implements KycService {
     @Override
     public KycSubmission submitKyc(KycSubmissionRequest req) {
         User user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new GlobalExceptionHandler.BadRequestException("User not found"));
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
 
         KycSubmission kyc = KycSubmission.builder()
                 .user(user)
@@ -38,12 +45,33 @@ public class KycServiceImpl implements KycService {
     @Override
     public KycSubmission findByUserId(Long userId) {
         return kycRepository.findByUserId(userId)
-                .orElseThrow(() -> new EntityNotFoundException("KYC submission not found for user id: " + userId));
+                .orElseThrow(() -> new AppException.NotFoundException("KYC submission not found for user id: " + userId));
     }
 
     @Override
-    public List<KycSubmission> getAll() {
-        return kycRepository.findAll();
+    public Page<KycSubmission> getAll(Integer page, Integer size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return kycRepository.findAll(pageable);
+    }
+
+    @Override
+    public KycSubmission updateKyc(Long id, String status, String reason) {
+        if (!isValidStatus(status)) {
+            throw new AppException.BadRequestException("Invalid status: " + status);
+        }
+
+        KycSubmission kyc = kycRepository.findById(id)
+                .orElseThrow(() -> new AppException.NotFoundException("KYC submission not found with id: " + id));
+
+        kyc.setStatus(status);
+        kyc.setUpdatedAt(LocalDateTime.now());
+        kyc.setRejectionReason(reason);
+
+        return kycRepository.save(kyc);
+    }
+
+    private boolean isValidStatus(String status) {
+        return Arrays.asList("APPROVED", "REJECTED").contains(status);
     }
 
 
