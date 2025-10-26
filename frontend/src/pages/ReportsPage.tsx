@@ -1,11 +1,15 @@
 // src/pages/ReportsPage.tsx
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import api from "../api/axios";
+
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
+
 import {
   ArrowLeft,
   BarChart3,
@@ -19,61 +23,296 @@ import {
   Calendar,
   Battery,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { ChatBot } from "./ChatBot";
 
+/* ===================== Backend types ===================== */
+type ApiResponse<T> = { code?: string; message?: string; data?: T };
+
+type PageResp<T> = {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+};
+
+type ChargingSessionResponse = {
+  id: number;
+  stationId?: number | null;
+  pillarId?: number | null;
+  driverUserId?: number | null;
+  vehicleId?: number | null;
+  status?: string | null; // ACTIVE | COMPLETED | ...
+  energyCount?: number | null; // kWh
+  chargedAmount?: number | null; // money
+  ratePerKwh?: number | null;
+  targetSoc?: number | null;
+  socNow?: number | null;
+  startTime?: string | null; // ISO
+  endTime?: string | null;   // ISO
+};
+
+type ReservationResponseBE = {
+  reservationId: number;
+  stationId: number;
+  stationName: string;
+  pillarId: number;
+  pillarCode?: string;
+  connectorId: number;
+  connectorType?: string;
+  status: string;
+  holdFee?: number;
+  startTime: string;
+  endTime?: string;
+  createdAt?: string;
+  expiredAt?: string;
+  payment?: { paid?: boolean; depositTransactionId?: string };
+};
+
+/* ===================== Helpers ===================== */
+const fmtDate = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString() : "—";
+const fmtTime = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
+const fmtMoney = (n?: number | null) =>
+  typeof n === "number" && Number.isFinite(n)
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n)
+    : "$0.00";
+
+const minutesBetween = (a?: string | null, b?: string | null) => {
+  if (!a) return 0;
+  const end = b ? new Date(b).getTime() : Date.now();
+  const start = new Date(a).getTime();
+  const ms = end - start;
+  return Math.max(0, Math.round(ms / 60000));
+};
+const humanDuration = (mins: number) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${m}m`;
+};
+
+/* ===================== Component ===================== */
 const ReportsPage = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [selectedPeriod, setSelectedPeriod] =
+    useState<"week" | "month" | "quarter" | "year">("month");
 
-  const chargingSessions = [
-    { id: "1", date: "2024-01-15", time: "14:30", station: "Mall Station #2", location: "Shopping Center", duration: "2h 15m", energy: "45 kWh", cost: "$18.50", status: "Completed", efficiency: "94%" },
-    { id: "2", date: "2024-01-12", time: "09:15", station: "Highway Station #7", location: "Highway Rest Stop", duration: "1h 45m", energy: "52 kWh", cost: "$22.10", status: "Completed", efficiency: "96%" },
-    { id: "3", date: "2024-01-08", time: "16:45", station: "Downtown Station #3", location: "City Center", duration: "3h 20m", energy: "38 kWh", cost: "$15.75", status: "Completed", efficiency: "91%" },
-    { id: "4", date: "2024-01-05", time: "11:00", station: "Office Station #1", location: "Business District", duration: "4h 30m", energy: "42 kWh", cost: "$17.85", status: "Completed", efficiency: "93%" },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const monthlyStats = {
-    totalCost: 127.45,
-    totalEnergy: 234.5,
-    totalSessions: 18,
-    avgCostPerSession: 7.08,
-    avgEnergyPerSession: 13.03,
-    mostUsedStation: "Mall Station #2",
-    preferredTime: "14:00 - 18:00",
-    efficiency: "94.2%",
-  };
+  const [userId, setUserId] = useState<number | null>(null);
+  const [sessions, setSessions] = useState<ChargingSessionResponse[]>([]);
 
-  const chargingHabits = {
-    preferredStations: [
-      { name: "Mall Station #2", visits: 12, percentage: 35, avgCost: 15.2, avgTime: "2h 15m" },
-      { name: "Highway Station #7", visits: 8, percentage: 28, avgCost: 22.1, avgTime: "1h 45m" },
-      { name: "Downtown Station #3", visits: 6, percentage: 22, avgCost: 18.75, avgTime: "2h 30m" },
-      { name: "Office Station #1", visits: 4, percentage: 15, avgCost: 12.5, avgTime: "3h 20m" },
-    ],
-    timePatterns: [
-      { period: "06:00 - 09:00", sessions: 2, percentage: 11, label: "Early morning" },
-      { period: "09:00 - 12:00", sessions: 3, percentage: 17, label: "Morning" },
-      { period: "12:00 - 15:00", sessions: 6, percentage: 33, label: "Noon" },
-      { period: "15:00 - 18:00", sessions: 5, percentage: 28, label: "Afternoon" },
-      { period: "18:00 - 21:00", sessions: 2, percentage: 11, label: "Evening" },
-    ],
-    powerPreferences: [
-      { type: "DC Ultra Fast (250-350kW)", usage: 8, percentage: 44, avgCost: 25.3 },
-      { type: "DC Fast (100-150kW)", usage: 6, percentage: 33, avgCost: 18.45 },
-      { type: "AC Fast (22kW)", usage: 3, percentage: 17, avgCost: 12.2 },
-      { type: "AC Standard (7-11kW)", usage: 1, percentage: 6, avgCost: 8.5 },
-    ],
-  };
+  // ⬇️ NEW: meta map giống StatusCards: pillarId -> {stationName, pillarCode, connectorType}
+  const [pillarMeta, setPillarMeta] = useState<
+    Map<number, { stationName?: string; pillarCode?: string; connectorType?: string }>
+  >(new Map());
 
-  const monthlyReports = [
-    { month: "January", cost: 127.45, energy: 234.5, sessions: 18, savings: 15.2 },
-    { month: "December", cost: 142.3, energy: 218.3, sessions: 16, savings: 12.8 },
-    { month: "November", cost: 156.75, energy: 245.8, sessions: 20, savings: 18.9 },
-    { month: "October", cost: 134.2, energy: 201.2, sessions: 15, savings: 14.5 },
-    { month: "September", cost: 168.9, energy: 267.4, sessions: 22, savings: 22.1 },
-    { month: "August", cost: 145.6, energy: 229.1, sessions: 17, savings: 16.3 },
-  ];
+  // 1) Load user id -> load sessions -> load reservations (để có tên Station/Pillar/Connector)
+  useEffect(() => {
+    let mounted = true;
 
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // /auth/me → userId
+        const me = await api.get("/auth/me", { withCredentials: true });
+        const uid =
+          typeof me.data?.user_id === "number"
+            ? me.data.user_id
+            : typeof me.data?.id === "number"
+            ? me.data.id
+            : undefined;
+
+        if (!uid) throw new Error("Cannot determine current user id.");
+        if (!mounted) return;
+        setUserId(uid);
+
+        // /session/user/{userId}
+        const sres = await api.get<ApiResponse<PageResp<ChargingSessionResponse>>>(
+          `/session/user/${uid}?page=0&size=100`,
+          { withCredentials: true }
+        );
+        const content = sres?.data?.data?.content ?? [];
+        if (!mounted) return;
+        setSessions(Array.isArray(content) ? content : []);
+
+        // ⬇️ NEW: /user/{userId}/reservations để suy ra tên Station/Pillar/Connector
+        try {
+          const rres = await api.get<ReservationResponseBE[]>(
+            `/user/${uid}/reservations`,
+            { withCredentials: true }
+          );
+          const rows = Array.isArray(rres.data) ? rres.data : [];
+          const map = new Map<number, { stationName?: string; pillarCode?: string; connectorType?: string }>();
+          rows.forEach((r) => {
+            if (typeof r.pillarId === "number") {
+              map.set(r.pillarId, {
+                stationName: r.stationName,
+                pillarCode: r.pillarCode ?? `P${r.pillarId}`,
+                connectorType: r.connectorType ?? (r.connectorId ? `Connector ${r.connectorId}` : undefined),
+              });
+            }
+          });
+          if (mounted) setPillarMeta(map);
+        } catch {
+          // không có reservation meta → dùng fallback (#id)
+          if (mounted) setPillarMeta(new Map());
+        }
+      } catch (e: any) {
+        const msg = e?.response?.data?.message || e?.message || "Failed to load sessions.";
+        setError(msg);
+        setSessions([]);
+        setPillarMeta(new Map());
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // 2) Derive UI rows (dùng meta giống StatusCards)
+  const rows = useMemo(() => {
+    return (sessions || [])
+      .slice()
+      .sort((a, b) => {
+        const at = new Date(a.startTime || 0).getTime();
+        const bt = new Date(b.startTime || 0).getTime();
+        return bt - at;
+      })
+      .map((s) => {
+        const meta = typeof s.pillarId === "number" ? pillarMeta.get(s.pillarId) : undefined;
+
+        // duration: nếu COMPLETED → dùng endTime; nếu ACTIVE → dùng now
+        const isCompleted = (s.status || "").toUpperCase() === "COMPLETED";
+        const mins = minutesBetween(s.startTime, isCompleted ? s.endTime : undefined);
+
+        const station =
+          meta?.stationName ||
+          (typeof s.stationId === "number" ? `Station #${s.stationId}` : "Station");
+
+        const portText =
+          meta?.pillarCode ??
+          (typeof s.pillarId === "number" ? `P${s.pillarId}` : "P—");
+
+        const connectorText = meta?.connectorType || "";
+
+        return {
+          id: String(s.id),
+          date: fmtDate(s.startTime),
+          time: fmtTime(s.startTime),
+          station,
+          port: portText,
+          connector: connectorText,
+          duration: mins ? humanDuration(mins) : "—",
+          energy: typeof s.energyCount === "number" ? `${s.energyCount.toFixed(0)} kWh` : "—",
+          cost: fmtMoney(s.chargedAmount ?? 0),
+          status: isCompleted ? "Completed" : (s.status || "ACTIVE"),
+        };
+      });
+  }, [sessions, pillarMeta]);
+
+  // 3) Lọc theo period & tính quick stats
+  const filtered = useMemo(() => {
+    if (!rows.length) return rows;
+    const now = new Date();
+
+    const isInPeriod = (d: Date) => {
+      if (selectedPeriod === "week") {
+        const start = new Date(now);
+        start.setDate(now.getDate() - 7);
+        return d >= start && d <= now;
+      }
+      if (selectedPeriod === "month") {
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }
+      if (selectedPeriod === "quarter") {
+        const q = Math.floor(now.getMonth() / 3);
+        return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === q;
+      }
+      return d.getFullYear() === now.getFullYear();
+    };
+
+    return rows.filter((r) => {
+      const s = sessions.find((x) => String(x.id) === r.id)?.startTime;
+      return s ? isInPeriod(new Date(s)) : false;
+    });
+  }, [rows, sessions, selectedPeriod]);
+
+  const monthlyStats = useMemo(() => {
+    if (!filtered.length) {
+      return {
+        totalCost: 0,
+        totalEnergy: 0,
+        totalSessions: 0,
+        avgCostPerSession: 0,
+        avgEnergyPerSession: 0,
+        mostUsedStation: "—",
+        preferredTime: "—",
+        efficiency: "—",
+      };
+    }
+
+    const totalCost = filtered.reduce((acc, r) => acc + (Number((r.cost || "").replace(/[^0-9.]/g, "")) || 0), 0);
+    const totalEnergy = filtered.reduce((acc, r) => acc + (Number((r.energy || "").replace(/[^0-9.]/g, "")) || 0), 0);
+    const totalSessions = filtered.length;
+
+    const avgCostPerSession = totalSessions ? +(totalCost / totalSessions).toFixed(2) : 0;
+    const avgEnergyPerSession = totalSessions ? +(totalEnergy / totalSessions).toFixed(2) : 0;
+
+    // most used station
+    const countByStation = new Map<string, number>();
+    filtered.forEach((r) => countByStation.set(r.station, (countByStation.get(r.station) || 0) + 1));
+    let mostUsedStation = "—";
+    let max = 0;
+    countByStation.forEach((v, k) => {
+      if (v > max) {
+        max = v;
+        mostUsedStation = k;
+      }
+    });
+
+    // preferred time window (thô – nhóm theo 4h)
+    const bucket = new Map<string, number>();
+    filtered.forEach((r) => {
+      const raw = sessions.find((s) => String(s.id) === r.id)?.startTime;
+      if (!raw) return;
+      const hh = new Date(raw).getHours();
+      const slotStart = Math.floor(hh / 4) * 4;
+      const label = `${String(slotStart).padStart(2, "0")}:00 - ${String(slotStart + 4).padStart(2, "0")}:00`;
+      bucket.set(label, (bucket.get(label) || 0) + 1);
+    });
+    let preferredTime = "—";
+    let maxSlot = 0;
+    bucket.forEach((v, k) => {
+      if (v > maxSlot) {
+        maxSlot = v;
+        preferredTime = k;
+      }
+    });
+
+    // efficiency (ước lượng rất đơn giản)
+    const eff = totalEnergy ? `${Math.min(100, Math.round((totalEnergy / totalSessions) * 4))}%` : "—";
+
+    return {
+      totalCost: +totalCost.toFixed(2),
+      totalEnergy: +totalEnergy.toFixed(1),
+      totalSessions,
+      avgCostPerSession,
+      avgEnergyPerSession,
+      mostUsedStation,
+      preferredTime,
+      efficiency: eff,
+    };
+  }, [filtered, sessions]);
+
+  /* ===================== UI ===================== */
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
       {/* Header */}
@@ -96,7 +335,7 @@ const ReportsPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <Select value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)}>
               <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>
@@ -126,6 +365,7 @@ const ReportsPage = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
+          {/* Tabs */}
           <TabsList
             className="
               grid w-full grid-cols-3 rounded-2xl bg-[#F7FAFD] p-1.5
@@ -162,11 +402,11 @@ const ReportsPage = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">This month’s cost</p>
-                      <p className="text-2xl font-bold text-primary">${monthlyStats.totalCost}</p>
+                      <p className="text-sm text-muted-foreground">This period’s cost</p>
+                      <p className="text-2xl font-bold text-primary">{fmtMoney(monthlyStats.totalCost)}</p>
                       <p className="text-xs text-success flex items-center mt-1">
                         <TrendingUp className="w-3 h-3 mr-1" />
-                        12% lower than last month
+                        Auto from sessions
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -184,7 +424,7 @@ const ReportsPage = () => {
                       <p className="text-2xl font-bold text-secondary">{monthlyStats.totalEnergy} kWh</p>
                       <p className="text-xs text-success flex items-center mt-1">
                         <TrendingUp className="w-3 h-3 mr-1" />
-                        8% higher than last month
+                        Auto from sessions
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -201,7 +441,7 @@ const ReportsPage = () => {
                       <p className="text-sm text-muted-foreground">Total sessions</p>
                       <p className="text-2xl font-bold text-foreground">{monthlyStats.totalSessions}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Avg {Math.round((monthlyStats.totalSessions / 30) * 10) / 10} sessions/day
+                        Avg {(monthlyStats.totalSessions / 30).toFixed(1)} sessions/day
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -219,140 +459,12 @@ const ReportsPage = () => {
                       <p className="text-2xl font-bold text-success">{monthlyStats.efficiency}</p>
                       <p className="text-xs text-success flex items-center mt-1">
                         <Battery className="w-3 h-3 mr-1" />
-                        Optimized
+                        Estimated
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
                       <Battery className="w-6 h-6 text-white" />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Monthly list */}
-            <Card className="shadow-card border-0 bg-white">
-              <CardHeader>
-                <CardTitle className="text-slate-900">Cost report (last 6 months)</CardTitle>
-                <p className="text-sm text-muted-foreground">Track your spending and savings trend</p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {monthlyReports.map((report) => (
-                    <div
-                      key={report.month}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-gradient-card"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                          <DollarSign className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">{report.month}</h4>
-                          <p className="text-sm text-muted-foreground">{report.sessions} sessions</p>
-                        </div>
-                      </div>
-                      <div className="text-right grid grid-cols-3 gap-6">
-                        <div>
-                          <div className="text-sm text-muted-foreground">Cost</div>
-                          <div className="font-bold text-primary">${report.cost}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-muted-foreground">Energy</div>
-                          <div className="font-medium">{report.energy} kWh</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-muted-foreground">Savings</div>
-                          <div className="font-medium text-success">${report.savings}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader>
-                  <CardTitle>Most used stations</CardTitle>
-                  <p className="text-sm text-muted-foreground">Location-based charging habits</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {chargingHabits.preferredStations.map((station, index) => (
-                      <div key={station.name} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                index === 0
-                                  ? "bg-primary"
-                                  : index === 1
-                                  ? "bg-secondary"
-                                  : index === 2
-                                  ? "bg-warning"
-                                  : "bg-muted"
-                              }`}
-                            />
-                            <span className="font-medium">{station.name}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold">{station.percentage}%</span>
-                            <div className="text-xs text-muted-foreground">{station.visits} visits</div>
-                          </div>
-                        </div>
-                        <div className="ml-6 text-xs text-muted-foreground">
-                          Avg cost: ${station.avgCost} • Avg time: {station.avgTime}
-                        </div>
-                        <div className="ml-6 w-full bg-muted/50 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              index === 0
-                                ? "bg-gradient-to-r from-sky-500 to-emerald-500"
-                                : index === 1
-                                ? "bg-secondary"
-                                : index === 2
-                                ? "bg-warning"
-                                : "bg-muted"
-                            }`}
-                            style={{ width: `${station.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader>
-                  <CardTitle>Charging time preferences</CardTitle>
-                  <p className="text-sm text-muted-foreground">When you typically charge</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {chargingHabits.timePatterns.map((pattern) => (
-                      <div key={pattern.period} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-medium">{pattern.label}</span>
-                            <div className="text-sm text-muted-foreground">{pattern.period}</div>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold">{pattern.percentage}%</span>
-                            <div className="text-xs text-muted-foreground">{pattern.sessions} sessions</div>
-                          </div>
-                        </div>
-                        <div className="w-full bg-muted/50 rounded-full h-2">
-                          <div
-                            className="h-2 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
-                            style={{ width: `${pattern.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </CardContent>
               </Card>
@@ -368,7 +480,7 @@ const ReportsPage = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Avg cost per session:</span>
-                      <span className="font-medium">${monthlyStats.avgCostPerSession}</span>
+                      <span className="font-medium">{fmtMoney(monthlyStats.avgCostPerSession)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Avg energy per session:</span>
@@ -390,7 +502,7 @@ const ReportsPage = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Usage trend:</span>
-                      <Badge className="bg-primary/10 text-primary border-primary/20">Increasing</Badge>
+                      <Badge className="bg-primary/10 text-primary border-primary/20">Auto</Badge>
                     </div>
                   </div>
                 </div>
@@ -411,56 +523,64 @@ const ReportsPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {chargingSessions.map((session, index) => (
-                    <div key={session.id}>
-                      <div className="flex items-center justify-between p-4 rounded-lg transition-colors hover:bg-white">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                            <Zap className="w-6 h-6 text-white" />
+                {loading ? (
+                  <div className="p-6 text-sm text-muted-foreground">Loading…</div>
+                ) : error ? (
+                  <div className="p-6 text-sm text-rose-600">{error}</div>
+                ) : rows.length === 0 ? (
+                  <div className="p-6 text-sm text-muted-foreground">No sessions yet.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {rows.map((session, index) => (
+                      <div key={session.id}>
+                        <div className="flex items-center justify-between p-4 rounded-lg transition-colors hover:bg-white">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
+                              <Zap className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-foreground">{session.station}</h4>
+                              <p className="text-sm text-muted-foreground flex items-center">
+                                <MapPin className="w-3 h-3 mr-1" />
+                                {`Port ${session.port}`}{session.connector ? ` • ${session.connector}` : ""}
+                              </p>
+                              <p className="text-sm text-muted-foreground flex items-center mt-1">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                {session.date} • {session.time}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-foreground">{session.station}</h4>
-                            <p className="text-sm text-muted-foreground flex items-center">
-                              <MapPin className="w-3 h-3 mr-1" />
-                              {session.location}
-                            </p>
-                            <p className="text-sm text-muted-foreground flex items-center mt-1">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {session.date} • {session.time}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="text-right">
-                          <div className="grid grid-cols-3 gap-4 text-sm mb-2">
-                            <div>
-                              <div className="text-muted-foreground">Duration</div>
-                              <div className="font-medium">{session.duration}</div>
+                          <div className="text-right">
+                            <div className="grid grid-cols-3 gap-4 text-sm mb-2">
+                              <div>
+                                <div className="text-muted-foreground">Duration</div>
+                                <div className="font-medium">{session.duration}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Energy</div>
+                                <div className="font-medium">{session.energy}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Cost</div>
+                                <div className="font-medium text-primary">{session.cost}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-muted-foreground">Energy</div>
-                              <div className="font-medium">{session.energy}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Cost</div>
-                              <div className="font-medium text-primary">{session.cost}</div>
-                            </div>
+                            <Badge className="bg-success/10 text-success border-success/20">
+                              {session.status}
+                            </Badge>
                           </div>
-                          <Badge className="bg-success/10 text-success border-success/20">
-                            {session.status}
-                          </Badge>
                         </div>
+                        {index < rows.length - 1 && <Separator />}
                       </div>
-                      {index < chargingSessions.length - 1 && <Separator />}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* ===== Analytics ===== */}
+          {/* ===== Analytics (placeholder) ===== */}
           <TabsContent value="analytics" className="space-y-6 animate-fade-in">
             <Card className="shadow-card border-0 bg-gradient-card">
               <CardHeader>
@@ -468,141 +588,8 @@ const ReportsPage = () => {
                 <p className="text-sm text-muted-foreground">Power choices & average cost</p>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {chargingHabits.powerPreferences.map((power) => (
-                    <div key={power.type} className="p-4 border rounded-lg bg-white/80">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <Battery className="w-5 h-5 text-primary" />
-                          <span className="font-medium">{power.type}</span>
-                        </div>
-                        <Badge className="bg-primary/10 text-primary border-primary/20">{power.percentage}%</Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Usage count:</span>
-                          <span className="font-medium">{power.usage} sessions</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Average cost:</span>
-                          <span className="font-medium text-primary">${power.avgCost}</span>
-                        </div>
-                        <div className="w-full bg-muted/50 rounded-full h-2">
-                          <div className="h-2 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500" style={{ width: `${power.percentage}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader>
-                  <CardTitle>Charging efficiency</CardTitle>
-                  <p className="text-sm text-muted-foreground">Performance & trend overview</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Battery className="w-10 h-10 text-success" />
-                      </div>
-                      <div className="text-3xl font-bold text-success mb-2">{monthlyStats.efficiency}</div>
-                      <p className="text-sm text-muted-foreground">Average efficiency</p>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Vs last month:</span>
-                        <Badge className="bg-success/10 text-success border-success/20">+2.1%</Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">6-month trend:</span>
-                        <span className="text-sm text-success font-medium flex items-center">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          Improving
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Ranking:</span>
-                        <Badge className="bg-warning/10 text-warning border-warning/20">Top 15%</Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader>
-                  <CardTitle>Cost optimization</CardTitle>
-                  <p className="text-sm text-muted-foreground">Tips to save more</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-success/5 border border-success/20 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <DollarSign className="w-4 h-4 text-success" />
-                        <span className="font-medium text-success">Savings this month</span>
-                      </div>
-                      <div className="text-2xl font-bold text-success mb-1">$15.20</div>
-                      <p className="text-xs text-muted-foreground">Compared to last month</p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="p-3 bg-info/5 border border-info/20 rounded-lg">
-                        <div className="font-medium text-info mb-1">💡 Tip</div>
-                        <p className="text-sm text-muted-foreground">Charge between 10:00–14:00 to save ~15%.</p>
-                      </div>
-                      <div className="p-3 bg-warning/5 border border-warning/20 rounded-lg">
-                        <div className="font-medium text-warning mb-1">⚡ Optimize</div>
-                        <p className="text-sm text-muted-foreground">Use DC Fast instead of Ultra Fast for short trips.</p>
-                      </div>
-                      <div className="p-3 bg-secondary/5 border border-secondary/20 rounded-lg">
-                        <div className="font-medium text-secondary mb-1">📍 Location</div>
-                        <p className="text-sm text-muted-foreground">Mall Station #2 offers the best frequent-charge price.</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Habits summary */}
-            <Card className="shadow-card border-0 bg-gradient-card">
-              <CardHeader>
-                <CardTitle>Personal charging habits</CardTitle>
-                <p className="text-sm text-muted-foreground">A quick look at your behavior</p>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MapPin className="w-8 h-8 text-primary" />
-                    </div>
-                    <h4 className="font-semibold mb-2">Favorite location</h4>
-                    <p className="text-sm text-muted-foreground mb-2">{monthlyStats.mostUsedStation}</p>
-                    <Badge className="bg-primary/10 text-primary border-primary/20">35% of sessions</Badge>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Clock className="w-8 h-8 text-secondary" />
-                    </div>
-                    <h4 className="font-semibold mb-2">Favorite time</h4>
-                    <p className="text-sm text-muted-foreground mb-2">{monthlyStats.preferredTime}</p>
-                    <Badge className="bg-secondary/10 text-secondary border-secondary/20">61% of sessions</Badge>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Zap className="w-8 h-8 text-warning" />
-                    </div>
-                    <h4 className="font-semibold mb-2">Preferred power</h4>
-                    <p className="text-sm text-muted-foreground mb-2">DC Ultra Fast</p>
-                    <Badge className="bg-warning/10 text-warning border-warning/20">44% usage</Badge>
-                  </div>
+                <div className="text-sm text-muted-foreground">
+                  Coming soon — we’ll break down power tiers once pillar meta is exposed.
                 </div>
               </CardContent>
             </Card>

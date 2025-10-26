@@ -91,8 +91,14 @@ public class PaymentController {
     }
 
     private String buildFrontendRedirectUrl(PaymentResultResponse result) {
+        String path = "/depositss";
+        if ("WALLET".equalsIgnoreCase(result.getType())) {
+            path = "/wallet/topup-result";
+        } else if ("CHARGING-SESSION".equalsIgnoreCase(result.getType())) {
+            path = "/session-payment-result";
+        }
 
-        return UriComponentsBuilder.fromHttpUrl(frontendUrl+"/depositss")
+        return UriComponentsBuilder.fromHttpUrl(frontendUrl + path)
                 .queryParam("status", result.getStatus())
                 .queryParam("orderId", result.getOrderId())
                 .queryParam("message", result.getMessage())

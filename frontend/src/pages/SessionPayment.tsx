@@ -1,3 +1,4 @@
+// src/pages/SessionPayment.tsx
 import { useMemo, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -19,7 +20,13 @@ import {
 import api from "../api/axios";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../components/ui/card";
 
 type Method = "VNPAY" | "WALLET";
 
@@ -47,19 +54,31 @@ type PaymentResponse = {
 
 const SS_KEY = "sessionPaymentInit";
 const readInitFromSS = () => {
-  try { return JSON.parse(sessionStorage.getItem(SS_KEY) || "{}"); } catch { return {}; }
+  try {
+    return JSON.parse(sessionStorage.getItem(SS_KEY) || "{}");
+  } catch {
+    return {};
+  }
 };
 const writeInitToSS = (v: any) => {
-  try { sessionStorage.setItem(SS_KEY, JSON.stringify(v)); } catch {}
+  try {
+    sessionStorage.setItem(SS_KEY, JSON.stringify(v));
+  } catch {}
 };
 
 // === helpers ===
 const fmtUSD = (n?: number) =>
   typeof n === "number" && Number.isFinite(n)
-    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(n)
     : "—";
 
 const fmtDateTime = (iso?: string) => (iso ? new Date(iso).toLocaleString() : "—");
+
 const fmtEnergy = (kwh?: number) =>
   typeof kwh === "number" && Number.isFinite(kwh) ? `${kwh.toFixed(1)} kWh` : "—";
 
@@ -67,18 +86,22 @@ export default function SessionPayment() {
   const nav = useNavigate();
   const location = useLocation();
 
+  // ===== Init params from state/query/SS =====
   const init: InitParams = useMemo(() => {
     const state = (location.state || {}) as Partial<InitParams>;
     const sp = new URLSearchParams(location.search);
     const fromQuery: Partial<InitParams> = {
-      sessionId:   sp.get("sessionId") ? Number(sp.get("sessionId")) : state.sessionId,
-      amount:      sp.get("amount") ? Number(sp.get("amount")) : state.amount,
+      sessionId: sp.get("sessionId") ? Number(sp.get("sessionId")) : state.sessionId,
+      amount: sp.get("amount") ? Number(sp.get("amount")) : state.amount,
       stationName: sp.get("stationName") ?? state.stationName,
-      portLabel:   sp.get("portLabel") ?? state.portLabel,
-      startTime:   sp.get("startTime") ?? state.startTime,
-      endTime:     sp.get("endTime") ?? state.endTime,
-      energyKwh:   sp.get("energyKwh") ? Number(sp.get("energyKwh")) : state.energyKwh,
-      description: sp.get("description") ?? state.description ?? "Charging session payment",
+      portLabel: sp.get("portLabel") ?? state.portLabel,
+      startTime: sp.get("startTime") ?? state.startTime,
+      endTime: sp.get("endTime") ?? state.endTime,
+      energyKwh: sp.get("energyKwh") ? Number(sp.get("energyKwh")) : state.energyKwh,
+      description:
+        (sp.get("description") as string | undefined) ??
+        state.description ??
+        "Charging session payment",
     };
     const fromSS = readInitFromSS();
     return {
@@ -89,15 +112,30 @@ export default function SessionPayment() {
       startTime: fromQuery.startTime ?? fromSS.startTime ?? "",
       endTime: fromQuery.endTime ?? fromSS.endTime ?? "",
       energyKwh: Number((fromQuery.energyKwh ?? fromSS.energyKwh ?? NaN) as number),
-      description: fromQuery.description ?? fromSS.description ?? "Charging session payment",
+      description:
+        fromQuery.description ?? fromSS.description ?? "Charging session payment",
     } as InitParams;
   }, [location.search, location.state]);
 
+  // force method 
+  const forcedRaw =
+    (location.state as any)?.forceMethod ??
+    new URLSearchParams(location.search).get("method");
+  const forced: Method | undefined =
+    typeof forcedRaw === "string" && forcedRaw.toUpperCase() === "WALLET"
+      ? "WALLET"
+      : typeof forcedRaw === "string" && forcedRaw.toUpperCase() === "VNPAY"
+      ? "VNPAY"
+      : undefined;
+  const isForced = Boolean(forced);
+
+  // ===== UI state =====
   const [method, setMethod] = useState<Method>("VNPAY");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
+    // persist init
     if (init?.sessionId && typeof init?.amount === "number" && !Number.isNaN(init.amount)) {
       writeInitToSS(init);
       setErr(null);
@@ -106,13 +144,22 @@ export default function SessionPayment() {
     }
   }, [init]);
 
+  // set method when forced
+  useEffect(() => {
+    if (forced) setMethod(forced);
+  }, [forced]);
+
   const onPay = async () => {
     if (submitting) return;
+    // guard: if forced, ensure using forced method
+    if (isForced && forced && method !== forced) setMethod(forced);
+
     setSubmitting(true);
     setErr(null);
     try {
       writeInitToSS(init);
-      const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8080";
+      const BACKEND_URL =
+        (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8080";
       const returnUrl = `${BACKEND_URL}/api/payment/payment-return`;
       const body = {
         amount: init.amount,
@@ -141,17 +188,29 @@ export default function SessionPayment() {
         if (method === "WALLET") {
           const to = "/session-payment-result";
           if (res.data.status === "SUCCESS") {
-            nav(to, { replace: true, state: {
-              status: "SUCCESS", orderId: res.data.txnRef, amount: res.data.amount,
-              message: "Wallet payment succeeded", transactionNo: res.data.txnRef,
-            }});
+            nav(to, {
+              replace: true,
+              state: {
+                status: "SUCCESS",
+                orderId: res.data.txnRef,
+                amount: res.data.amount,
+                message: "Wallet payment succeeded",
+                transactionNo: res.data.txnRef,
+              },
+            });
             return;
           }
           if (res.data.status === "PENDING") {
-            nav(to, { replace: true, state: {
-              status: "PENDING", orderId: res.data.txnRef, amount: res.data.amount,
-              message: "Wallet payment is being processed", transactionNo: res.data.txnRef,
-            }});
+            nav(to, {
+              replace: true,
+              state: {
+                status: "PENDING",
+                orderId: res.data.txnRef,
+                amount: res.data.amount,
+                message: "Wallet payment is being processed",
+                transactionNo: res.data.txnRef,
+              },
+            });
             return;
           }
           setErr("Wallet payment failed. Please try again or choose another method.");
@@ -169,10 +228,10 @@ export default function SessionPayment() {
   };
 
   // === derived display ===
-  const amountText = fmtUSD(init.amount);              // CHANGED: always "$" with 2 decimals
+  const amountText = fmtUSD(init.amount);
   const energyText = fmtEnergy(init.energyKwh);
   const startTxt = fmtDateTime(init.startTime);
-  const endTxt   = fmtDateTime(init.endTime);
+  const endTxt = fmtDateTime(init.endTime);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
@@ -250,7 +309,7 @@ export default function SessionPayment() {
               </div>
             </div>
 
-            {/* Row 2: Start & End time (Amount card removed) */}
+            {/* Row 2: Start & End time */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center p-4 bg-white/70 rounded-xl border">
                 <Calendar className="w-5 h-5 text-primary mr-3" />
@@ -291,37 +350,58 @@ export default function SessionPayment() {
           </CardHeader>
 
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                onClick={() => setMethod("VNPAY")}
-                variant={method === "VNPAY" ? "default" : "outline"}
-                className={`h-12 rounded-xl gap-2 ${
-                  method === "VNPAY"
-                    ? "bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
-                    : "border-sky-200 hover:bg-sky-50"
-                }`}
-                disabled={submitting}
-              >
-                <CreditCard className="w-4 h-4" />
-                VNPay
-              </Button>
+            {!isForced ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  onClick={() => setMethod("VNPAY")}
+                  variant={method === "VNPAY" ? "default" : "outline"}
+                  className={`h-12 rounded-xl gap-2 ${
+                    method === "VNPAY"
+                      ? "bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
+                      : "border-sky-200 hover:bg-sky-50"
+                  }`}
+                  disabled={submitting}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  VNPay
+                </Button>
 
-              <Button
-                type="button"
-                onClick={() => setMethod("WALLET")}
-                variant={method === "WALLET" ? "default" : "outline"}
-                className={`h-12 rounded-xl gap-2 ${
-                  method === "WALLET"
-                    ? "bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
-                    : "border-sky-200 hover:bg-sky-50"
-                }`}
-                disabled={submitting}
-              >
-                <WalletIcon className="w-4 h-4" />
-                Wallet
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  onClick={() => setMethod("WALLET")}
+                  variant={method === "WALLET" ? "default" : "outline"}
+                  className={`h-12 rounded-xl gap-2 ${
+                    method === "WALLET"
+                      ? "bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
+                      : "border-sky-200 hover:bg-sky-50"
+                  }`}
+                  disabled={submitting}
+                >
+                  <WalletIcon className="w-4 h-4" />
+                  Wallet
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between rounded-xl border bg-white/70 p-3">
+                <div className="inline-flex items-center gap-2">
+                  {method === "VNPAY" ? (
+                    <>
+                      <CreditCard className="w-4 h-4 text-primary" />
+                      <span className="font-medium">VNPay</span>
+                    </>
+                  ) : (
+                    <>
+                      <WalletIcon className="w-4 h-4 text-primary" />
+                      <span className="font-medium">Wallet</span>
+                    </>
+                  )}
+                </div>
+                <Badge variant="outline" className="rounded-full text-xs">
+                  selected
+                </Badge>
+              </div>
+            )}
 
             {err && (
               <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-700">

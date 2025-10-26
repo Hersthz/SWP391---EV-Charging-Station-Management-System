@@ -32,7 +32,7 @@ import ChargingSessionPage from "./pages/ChargingSessionPage";
 import ChargingReceiptPage from "./pages/ChargingReceiptPage";
 import SessionPayment from "./pages/SessionPayment";
 import SessionPaymentResult from "./pages/SessionPaymentResult";
-
+import WalletTopupResult from "./pages/WalletTopupResult";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +73,7 @@ const App = () => (
           <Route path="/charging/receipt" element={<ChargingReceiptPage />} />
           <Route path="/session/payment" element={<SessionPayment />} />
           <Route path="/session-payment-result" element={<SessionPaymentResult />} />
+          <Route path="/wallet/topup-result" element={<WalletTopupResult />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
