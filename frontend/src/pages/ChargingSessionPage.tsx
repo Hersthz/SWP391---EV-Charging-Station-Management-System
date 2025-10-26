@@ -352,35 +352,77 @@ const ChargingSessionPage = () => {
           stopTick();
 
           try {
-            // 1) gọi stop
             const { data } = await api.post(`/session/${sessionIdParam}/stop`, {}, { withCredentials: true });
-            const stopPayload = data?.data ?? data; // ChargingStopResponse
+            const stopPayload = data?.data ?? data;
+            
+            // >>> AUTO-DEDUCT WALLET IF PREPAID <<<
+            // Chuẩn bị prevLast/meta sớm để tính method theo yêu cầu
+            const prevLast = JSON.parse(localStorage.getItem(`session_last_${sessionIdParam}`) || "null");
+            const total = Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? 0);
+            const method = String(
+              stopPayload?.paymentMethod ??
+              prevLast?.paymentMethod ??
+              (snap as any)?.paymentMethod ??
+              ""
+            ).toUpperCase();
+
+            if (method === "WALLET" && total > 0) {
+              try {
+                await api.post("/api/payment/create", {
+                  amount: Math.round(total),
+                  type: "CHARGING-SESSION",
+                  method: "WALLET",
+                  referenceId: Number(sessionIdParam),
+                  description: `Charging session #${sessionIdParam}`
+                }, { withCredentials: true });
+                // Không cần redirect – vẫn đi tiếp sang Receipt như cũ
+              } catch (e: any) {
+                // Thiếu tiền? → fallback đưa sang trang thanh toán VNPAY
+                navigate("/session/payment", {
+                  replace: true,
+                  state: {
+                    sessionId: Number(sessionIdParam),
+                    amount: Math.round(total),
+                    stationName: resv?.stationName || "",
+                    portLabel: resv?.pillarCode || (snap?.pillarId ? `P${snap.pillarId}` : ""),
+                    startTime: snap?.startTime,
+                    endTime: stopPayload?.endTime || new Date().toISOString(),
+                    energyKwh: stopPayload?.totalEnergy ?? snap?.energyCount ?? 0,
+                    description: `Charging session #${sessionIdParam}`,
+                    forceMethod: "VNPAY" // khoá UI ở trang SessionPayment
+                  }
+                });
+                return;
+              }
+            }
+
             localStorage.setItem(`session_stop_${sessionIdParam}`, JSON.stringify(stopPayload));
 
-            // 2) TỰ LƯU snapshot cuối 
-            const nowIso = stopPayload?.endTime || new Date().toISOString();
+            // đọc lại snapshot/meta để trộn
+            const meta     = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
+
             const finalSnap = {
-              id: snap?.id ?? Number(sessionIdParam),
-              stationId: snap?.stationId,
-              pillarId: snap?.pillarId,
+              id: Number(sessionIdParam),
+              stationId:   prevLast?.stationId ?? snap?.stationId ?? stopPayload?.stationId,
+              pillarId:    prevLast?.pillarId  ?? snap?.pillarId  ?? stopPayload?.pillarId,
               driverUserId: snap?.driverUserId,
-              vehicleId: snap?.vehicleId,
+              vehicleId:   prevLast?.vehicleId ?? snap?.vehicleId ?? meta?.vehicleId ?? stopPayload?.vehicleId,
               status: "COMPLETED",
-              energyCount: Number((snap?.energyCount ?? 0)), // hoặc Number(d?.energyCount ?? 0) nếu muốn lấy từ PATCH gần nhất
-              chargedAmount: Number(
-                stopPayload?.totalAmount ?? stopPayload?.totalCost ?? snap?.chargedAmount ?? 0
-              ),
-              ratePerKwh: snap?.ratePerKwh,
-              startTime: snap?.startTime!,
-              endTime: nowIso,
-              currency: snap?.currency ?? "VND",
-              paymentMethod: stopPayload?.paymentMethod ?? (snap as any)?.paymentMethod,
+              energyCount: Number(stopPayload?.totalEnergy ?? currentEnergyRef.current ?? prevLast?.energyCount ?? 0),
+              chargedAmount: Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? prevLast?.chargedAmount ?? 0),
+              ratePerKwh: Number(stopPayload?.ratePerKwh ?? prevLast?.ratePerKwh ?? 0),
+              startTime: prevLast?.startTime ?? snap?.startTime ?? stopPayload?.startTime ?? new Date().toISOString(),
+              endTime:   stopPayload?.endTime ?? new Date().toISOString(),
+              currency:  stopPayload?.currency ?? prevLast?.currency ?? snap?.currency ?? "VND",
+              paymentMethod: stopPayload?.paymentMethod ?? prevLast?.paymentMethod ?? (snap as any)?.paymentMethod,
             };
 
             localStorage.setItem(`session_last_${sessionIdParam}`, JSON.stringify(finalSnap));
-          } catch {}
+          } catch {
+            // nếu /stop fail vẫn điều hướng, Receipt sẽ ráng đọc được phần đã lưu
+          }
 
-
+          // Điều hướng sau khi đã setItem xong 
           navigate(`/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${reservationIdParam || ""}`);
           return;
         }
@@ -453,6 +495,39 @@ const ChargingSessionPage = () => {
       const { data } = await api.post(`/session/${sessionIdParam}/stop`, {}, { withCredentials: true });
       const stopPayload = data?.data ?? data;
       localStorage.setItem(`session_stop_${sessionIdParam}`, JSON.stringify(stopPayload));
+
+      // >>> AUTO-DEDUCT WALLET IF PREPAID <<<
+      const total = Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? 0);
+      const method = String(stopPayload?.paymentMethod ?? (snap as any)?.paymentMethod ?? "").toUpperCase();
+
+      if (method === "WALLET" && total > 0) {
+        try {
+          await api.post("/api/payment/create", {
+            amount: Math.round(total),
+            type: "CHARGING-SESSION",
+            method: "WALLET",
+            referenceId: Number(sessionIdParam),
+            description: `Charging session #${sessionIdParam}`
+          }, { withCredentials: true });
+        } catch (e: any) {
+          // fallback sang VNPAY nếu ví thiếu
+          navigate("/session/payment", {
+            replace: true,
+            state: {
+              sessionId: Number(sessionIdParam),
+              amount: Math.round(total),
+              stationName: resv?.stationName || "",
+              portLabel: resv?.pillarCode || (snap?.pillarId ? `P${snap.pillarId}` : ""),
+              startTime: snap?.startTime,
+              endTime: stopPayload?.endTime || new Date().toISOString(),
+              energyKwh: stopPayload?.totalEnergy ?? snap?.energyCount ?? 0,
+              description: `Charging session #${sessionIdParam}`,
+              forceMethod: "VNPAY"
+            }
+          });
+          return;
+        }
+      }
 
       const nowIso = stopPayload?.endTime || new Date().toISOString();
       const finalSnap = {

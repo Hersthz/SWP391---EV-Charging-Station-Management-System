@@ -54,7 +54,8 @@ type ReservationStatus =
   | "VERIFYING"
   | "VERIFIED"
   | "PLUGGED"
-  | "CHARGING";
+  | "CHARGING"
+  | "COMPLETED"; // ⬅️ NEW
 
 interface ReservationItem {
   reservationId: number;
@@ -173,10 +174,12 @@ function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   if (s === "VERIFY" || s === "VERIFYING") return "VERIFYING";
   if (s === "VERIFIED") return "VERIFIED";
   if (s === "PLUGGED") return "PLUGGED";
+  if (s === "CHARGING") return "CHARGING";
+  if (s === "COMPLETED") return "COMPLETED"; // ⬅️ NEW
+
   if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
     return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
   }
-  if (s === "CHARGING") return "CHARGING";
   return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
 }
 
@@ -416,7 +419,8 @@ const StatusCards = () => {
   };
 
   const onPayNow = (r: ReservationItem) => {
-    const amount = (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
+    const amount =
+      (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
     navigate("/reservation/deposit", {
       state: {
         reservationId: r.reservationId,
@@ -603,6 +607,8 @@ const StatusCards = () => {
       ? "bg-sky-50/60 border-sky-200"
       : r.status === "CHARGING"
       ? "bg-emerald-50/60 border-emerald-200"
+      : r.status === "COMPLETED"
+      ? "bg-zinc-50/60 border-zinc-200" // ⬅️ NEW color for completed
       : ready
       ? "bg-emerald-50/60 border-emerald-200"
       : "bg-emerald-50/60 border-emerald-200";
@@ -617,9 +623,26 @@ const StatusCards = () => {
       ? "text-sky-700"
       : r.status === "CHARGING"
       ? "text-emerald-700"
+      : r.status === "COMPLETED"
+      ? "text-zinc-700" // ⬅️ NEW tone for completed
       : ready
       ? "text-emerald-700"
       : "text-emerald-700";
+
+    const iconBg =
+      pending
+        ? "bg-rose-500"
+        : r.status === "VERIFYING" || scheduled
+        ? "bg-amber-500"
+        : r.status === "VERIFIED"
+        ? "bg-teal-500"
+        : r.status === "PLUGGED"
+        ? "bg-sky-500"
+        : r.status === "CHARGING"
+        ? "bg-emerald-600"
+        : r.status === "COMPLETED"
+        ? "bg-zinc-500" 
+        : "bg-emerald-500";
 
     return (
       <div
@@ -634,22 +657,7 @@ const StatusCards = () => {
       >
         {/* left info */}
         <div className="flex items-center space-x-4 flex-1 min-w-0">
-          <div
-            className={[
-              "size-12 rounded-2xl flex items-center justify-center shadow-inner text-white",
-              pending
-                ? "bg-rose-500"
-                : r.status === "VERIFYING" || scheduled
-                ? "bg-amber-500"
-                : r.status === "VERIFIED"
-                ? "bg-teal-500"
-                : r.status === "PLUGGED"
-                ? "bg-sky-500"
-                : r.status === "CHARGING"
-                ? "bg-emerald-600"
-                : "bg-emerald-500",
-            ].join(" ")}
-          >
+          <div className={["size-12 rounded-2xl flex items-center justify-center shadow-inner text-white", iconBg].join(" ")}>
             {pending ? <CreditCard className="size-6" /> : <Calendar className="size-6" />}
           </div>
 
@@ -743,6 +751,11 @@ const StatusCards = () => {
             </>
           )}
 
+          {/* CHARGING */}
+          {r.status === "CHARGING" && (
+            <Badge className="rounded-full bg-emerald-600 text-white border-0">Charging</Badge>
+          )}
+
           {/* PENDING_PAYMENT */}
           {pending && (
             <>
@@ -751,6 +764,11 @@ const StatusCards = () => {
                 <CreditCard className="w-4 h-4 mr-1" /> Pay now
               </Button>
             </>
+          )}
+
+          {/* COMPLETED */}
+          {r.status === "COMPLETED" && (
+            <Badge className="rounded-full bg-zinc-600 text-white border-0">Completed</Badge>
           )}
         </div>
       </div>
@@ -948,7 +966,7 @@ const StatusCards = () => {
                   //  chọn Postpaid sẽ tự set VNPay — disable nếu KYC không APPROVED
                   variant={payFlow === "postpaid" ? "default" : "outline"}
                   className="rounded-xl disabled:opacity-60"
-                  disabled={kycAtOpen !== "APPROVED"}  
+                  disabled={kycAtOpen !== "APPROVED"}
                   onClick={() => {
                     setPayFlow("postpaid");
                     setPayChannel("vnpay");
