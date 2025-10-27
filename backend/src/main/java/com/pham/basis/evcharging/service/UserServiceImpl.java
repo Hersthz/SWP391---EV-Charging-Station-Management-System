@@ -245,7 +245,7 @@ public class UserServiceImpl implements UserService {
         res.setUsername(saved.getUsername());
         res.setEmail(saved.getEmail());
         res.setPhone(saved.getPhone());
-        res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
+        res.setRoleCode(saved.getRole().getId());
         res.setMessage("Staff created successfully");
         res.setTempPassword(rawPwd); // Return temp password for first login
 
