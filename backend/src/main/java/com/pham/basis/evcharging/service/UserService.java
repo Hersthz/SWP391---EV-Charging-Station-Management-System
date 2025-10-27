@@ -1,13 +1,13 @@
 package com.pham.basis.evcharging.service;
 
-import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
+import com.pham.basis.evcharging.dto.request.StaffCreationRequest;
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
-import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
-import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
-import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
+import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.model.User;
+
+import java.util.List;
 
 
 public interface UserService {
@@ -21,6 +21,8 @@ public interface UserService {
     ChangePasswordResponse changePassword(String userName ,ChangePasswordRequest changePasswordRequest);
     User findByPhone(String phone);
     void setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole);
-    CreateStaffResponse adminAddStaff(CreateStaffRequest req);
+    StaffCreationResponse createStaff(StaffCreationRequest req);
+    List<UserResponse> getAllUsers();
+    List<ChargingStationResponse> getAllStations();
 }
 

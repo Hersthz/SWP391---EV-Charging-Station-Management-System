@@ -2,7 +2,6 @@ package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -13,7 +12,6 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
 @Table(name = "station_review")
 public class StationReview {
 
@@ -35,12 +33,8 @@ public class StationReview {
     @JoinColumn(name="user_id")
     private User user;
 
+    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @PrePersist
-    public void onCreate()
-    {
-        createdAt = LocalDateTime.now();
-    }
 }

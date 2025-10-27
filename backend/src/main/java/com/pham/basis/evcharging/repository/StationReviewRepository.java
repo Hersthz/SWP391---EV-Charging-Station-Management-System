@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface StationReviewRepository extends JpaRepository<StationReview, Long> {
-    List<StationReview>  findByChargingStationIdOrderByCreatedAtDesc(Long id);
-    boolean existsByChargingStation_IdAndUser_Id(Long stationId, Long userId);
+public interface StationReviewRepository extends JpaRepository<StationReview, Integer> {
+    public List<StationReview>  findByChargingStationIdOrderByCreatedAtDesc(Long id);
 }

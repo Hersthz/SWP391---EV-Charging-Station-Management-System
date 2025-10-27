@@ -1,39 +1,47 @@
 package com.pham.basis.evcharging.service;
 
-import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
+import com.pham.basis.evcharging.dto.request.StaffCreationRequest;
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
-import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
-import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
-import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
+import com.pham.basis.evcharging.dto.response.*;
+import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
+import com.pham.basis.evcharging.repository.ChargingStationRepository;
 import com.pham.basis.evcharging.repository.SubscriptionPlanRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-
+    @Autowired
     private final UserRepository userRepository;
+    @Autowired
     private final RoleRepository roleRepository;
+    @Autowired
     private final PasswordEncoder passwordEncoder;
+    @Autowired
     private final WalletService walletService;
+    @Autowired
     private final SubscriptionPlanRepository planRepository;
-
+    @Autowired
+    private final ChargingStationRepository stationRepository;
     @Override
     public User createUser(UserCreationRequest request) {
         User user = new User();
@@ -187,47 +195,105 @@ public class UserServiceImpl implements UserService {
             }
         }
     }
+    @Override
+    @Transactional
+    public StaffCreationResponse createStaff(StaffCreationRequest req) {
 
-        @Override
-        public CreateStaffResponse adminAddStaff(CreateStaffRequest req) {
+        final String email = req.getEmail().toLowerCase().trim();
+        final String username = req.getUsername().toLowerCase().trim();
+        final String phone = req.getPhone().trim();
+        final String fullName = req.getFull_name().trim();
 
-            final String email    = req.getEmail().toLowerCase().trim();
-            final String username = req.getUsername().toLowerCase().trim();
-            final String phone    = req.getPhone().trim();
+        // Check duplicates
+        if (userRepository.existsByEmail(email))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        if (userRepository.existsByPhone(phone))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
+        if (userRepository.existsByUsername(username))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
 
-            if (userRepository.existsByEmail(email))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
-            if (userRepository.existsByPhone(phone))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
-            if (userRepository.existsByUsername(username))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists"); // 409 [web:20][web:3]
+        // Validate role
+        Role role = roleRepository.findById(req.getRoleId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId"));
 
-            Role role = roleRepository.findById(req.getRoleId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId")); // 400 [web:20]
+        // Password handling
+        final String rawPwd = Optional.ofNullable(req.getPassword())
+                .map(String::trim)
+                .filter(p -> !p.isBlank())
+                .orElse("Temp123!"); // Simple default
 
-            // Password: dùng input, nếu trống đặt "1" (dev); production nên generate ngẫu nhiên
-            final String rawPwd = Optional.ofNullable(req.getPassword())
-                    .map(String::trim)
-                    .filter(p -> !p.isBlank())
-                    .orElse("1"); // CHỈ nên dùng ở dev [web:14][web:17]
+        // ✅ Hash password
+        String hashedPassword = passwordEncoder.encode(rawPwd);
 
-            User u = new User();
-            u.setFull_name(req.getFull_name().trim());
-            u.setUsername(username);
-            u.setEmail(email);
-            u.setPhone(phone);
-            u.setRole(role);
+        // Create user
+        User u = new User();
+        u.setFull_name(fullName);
+        u.setUsername(username);
+        u.setEmail(email);
+        u.setPhone(phone);
+        u.setPassword(hashedPassword); // Use hashed password
+        u.setRole(role);
+        u.setStatus(true);
+        u.setCreated_at(java.time.LocalDateTime.now()); // Add timestamp
 
-            User saved = userRepository.save(u);           // JPA save [web:20]
-            CreateStaffResponse res = new CreateStaffResponse();
-            res.setUser_id(saved.getId());
-            res.setFull_name(saved.getFull_name());
-            res.setUsername(saved.getUsername());
-            res.setEmail(saved.getEmail());
-            res.setPhone(saved.getPhone());
-            res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
-            return res;
-        }
+        User saved = userRepository.save(u);
+
+        // Build response
+        StaffCreationResponse res = new StaffCreationResponse();
+        res.setUser_id(saved.getId());
+        res.setFull_name(saved.getFull_name());
+        res.setUsername(saved.getUsername());
+        res.setEmail(saved.getEmail());
+        res.setPhone(saved.getPhone());
+        res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
+        res.setMessage("Staff created successfully");
+        res.setTempPassword(rawPwd); // Return temp password for first login
+
+        return res;
     }
+
+    @Override
+    public List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::convertToUserResponse)
+                .toList();
+    }
+
+
+    // Helper method - Simple password generation
+    private String generateSimplePassword() {
+        // For development: "Temp123!"
+        // In production: use more secure generation
+        return "Temp123!";
+    }
+
+    private UserResponse convertToUserResponse(User user) {
+        UserResponse response = new UserResponse();
+        response.setUser_id(user.getId());
+        response.setFull_name(user.getFull_name());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setPhone(user.getPhone());
+        response.setRoleId(user.getRole().getId()); // Assume you have this method
+        return response;
+    }
+
+    @Override
+    public List<ChargingStationResponse> getAllStations() {
+        return stationRepository.findAll().stream()
+                .map(this::convertToStationResponse)
+                .toList();
+    }
+
+    private ChargingStationResponse convertToStationResponse(ChargingStation station) {
+        ChargingStationResponse response = new ChargingStationResponse();
+        response.setId(station.getId());
+        response.setName(station.getName());
+        response.setAddress(station.getAddress());
+        response.setStatus(station.getStatus());
+        response.setManagerId(station.getManager().getId());
+        return response;
+    }
+}
 
 

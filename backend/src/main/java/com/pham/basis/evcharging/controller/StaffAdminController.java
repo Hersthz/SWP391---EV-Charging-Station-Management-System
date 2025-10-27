@@ -1,8 +1,8 @@
 package com.pham.basis.evcharging.controller;
 
 
-import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
-import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
+import com.pham.basis.evcharging.dto.request.StaffCreationRequest;
+import com.pham.basis.evcharging.dto.response.StaffCreationResponse;
 import com.pham.basis.evcharging.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,8 @@ public class StaffAdminController {
     private UserService userService;
 
     @PostMapping("/createStaff")
-    public ResponseEntity<CreateStaffResponse> create(@Valid @RequestBody CreateStaffRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.adminAddStaff(req));
+    public ResponseEntity<StaffCreationResponse> create(@Valid @RequestBody StaffCreationRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createStaff(req));
     }
+
 }

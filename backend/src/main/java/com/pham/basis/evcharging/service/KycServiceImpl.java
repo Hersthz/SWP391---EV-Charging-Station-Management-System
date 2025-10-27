@@ -2,7 +2,6 @@ package com.pham.basis.evcharging.service;
 
 
 import com.pham.basis.evcharging.dto.request.KycSubmissionRequest;
-import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.exception.GlobalExceptionHandler;
 import com.pham.basis.evcharging.model.KycSubmission;
 import com.pham.basis.evcharging.model.User;
@@ -30,7 +29,7 @@ public class KycServiceImpl implements KycService {
     @Override
     public KycSubmission submitKyc(KycSubmissionRequest req) {
         User user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+                .orElseThrow(() -> new GlobalExceptionHandler.BadRequestException("User not found"));
 
         KycSubmission kyc = KycSubmission.builder()
                 .user(user)
@@ -45,7 +44,7 @@ public class KycServiceImpl implements KycService {
     @Override
     public KycSubmission findByUserId(Long userId) {
         return kycRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException.NotFoundException("KYC submission not found for user id: " + userId));
+                .orElseThrow(() -> new EntityNotFoundException("KYC submission not found for user id: " + userId));
     }
 
     @Override
@@ -57,17 +56,17 @@ public class KycServiceImpl implements KycService {
     @Override
     public KycSubmission updateKyc(Long id, String status, String reason) {
         if (!isValidStatus(status)) {
-            throw new AppException.BadRequestException("Invalid status: " + status);
+            throw new IllegalArgumentException("Invalid status: " + status);
         }
 
-        KycSubmission kyc = kycRepository.findById(id)
-                .orElseThrow(() -> new AppException.NotFoundException("KYC submission not found with id: " + id));
-
-        kyc.setStatus(status);
-        kyc.setUpdatedAt(LocalDateTime.now());
-        kyc.setRejectionReason(reason);
-
-        return kycRepository.save(kyc);
+        return kycRepository.findById(id)
+                .map(kyc -> {
+                    kyc.setStatus(status);
+                    kyc.setUpdatedAt(LocalDateTime.now());
+                    kyc.setRejectionReason(reason);
+                    return kycRepository.save(kyc);
+                })
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("KYC submission not found with id: " + id));
     }
 
     private boolean isValidStatus(String status) {

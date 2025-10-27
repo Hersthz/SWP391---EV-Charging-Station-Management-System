@@ -2,7 +2,6 @@ package com.pham.basis.evcharging.service;
 
 import com.pham.basis.evcharging.dto.request.ReservationRequest;
 import com.pham.basis.evcharging.dto.response.ReservationResponse;
-import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.exception.GlobalExceptionHandler.*;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
@@ -31,16 +30,16 @@ public class ReservationServiceImpl implements ReservationService {
     public ReservationResponse createReservation(ReservationRequest request) {
 
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new AppException.BadRequestException("User not found"));
+                .orElseThrow(() -> new BadRequestException("User not found"));
         ChargingStation chargingStation = chargingStationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new AppException.BadRequestException("Station not found"));
+                .orElseThrow(() -> new BadRequestException("Station not found"));
         ChargerPillar chargerPillar = chargerPillarRepository.findChargerPillarById(request.getPillarId())
-                .orElseThrow(() -> new AppException.BadRequestException("Pillar not found"));
+                .orElseThrow(() -> new BadRequestException("Pillar not found"));
         Connector connector = connectorRepository.findById(request.getConnectorId())
-                .orElseThrow(() -> new AppException.BadRequestException("Connector not found"));
+                .orElseThrow(() -> new BadRequestException("Connector not found"));
         // kieem tra có đúng pillar ko không ?
         if(!connector.getPillar().getId().equals(chargerPillar.getId())){
-            throw new AppException.BadRequestException("Connector does not belong to the selected pillar");
+            throw new BadRequestException("Connector does not belong to the selected pillar");
         }
         //validate time
         validateTime(request);
@@ -91,7 +90,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public ReservationResponse updateStatus(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new AppException.BadRequestException("Reservation not found"));
+                .orElseThrow(() -> new BadRequestException("Reservation not found"));
         reservation.setStatus("PLUGGED");
         Reservation saved = reservationRepository.save(reservation);
         return toResponse(saved);
@@ -119,20 +118,20 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDate maxDateAllowed = today.plusDays(7);
 
         //kiem tra end va start time
-        if (!req.getEndTime().isAfter(req.getStartTime())) throw new AppException.BadRequestException("End time must be after start time");
+        if (!req.getEndTime().isAfter(req.getStartTime())) throw new BadRequestException("End time must be after start time");
 
-            if (!req.getStartTime().isAfter(now)) throw new AppException.BadRequestException("Start time must be after current time");
+            if (!req.getStartTime().isAfter(now)) throw new BadRequestException("Start time must be after current time");
 
         if (req.getStartTime().toLocalDate().isAfter(maxDateAllowed) ||
                 req.getEndTime().toLocalDate().isAfter(maxDateAllowed)) {
-            throw new AppException.BadRequestException("Reservations can only be made within 7 days from today");
+            throw new BadRequestException("Reservations can only be made within 7 days from today");
         }
 
         // kiem tra min
         long durationMinutes = ChronoUnit.MINUTES.between(req.getStartTime(), req.getEndTime());
 
         if (durationMinutes < 15) {
-            throw new AppException.BadRequestException("Minimum reservation time is 15 minutes");
+            throw new BadRequestException("Minimum reservation time is 15 minutes");
         }
     }
 
@@ -146,7 +145,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         if (!existingReservations.isEmpty()) {
             Reservation conflict = existingReservations.get(0);
-            throw new AppException.BadRequestException(String.format(
+            throw new BadRequestException(String.format(
                     "Pillar %d is already booked from %s to %s",
                     req.getPillarId(),
                     conflict.getStartTime(),

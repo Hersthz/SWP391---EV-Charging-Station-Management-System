@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/station-managers/**").permitAll()
                         .requestMatchers("/incident/**").permitAll()
                         .requestMatchers("/charging-stations/addStation").permitAll()
+                        .requestMatchers("/user/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
