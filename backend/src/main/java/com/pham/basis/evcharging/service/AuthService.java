@@ -38,7 +38,7 @@ public class AuthService {
                 .user_id(user.getId())
                 .username(user.getUsername())
                 .phone(user.getPhone())
-                .roleName(user.getRole().getName())
+                .roleId(user.getRole().getId())
                 .build();
     }
 
@@ -71,7 +71,7 @@ public class AuthService {
         UserResponse resp = new UserResponse(
                 user.getId(), user.getFull_name(), user.getUsername(),
                 user.getEmail(), user.getPhone(),
-                user.getRole() != null ? user.getRole().getName() : null
+                user.getRole().getId()
         );
         return ResponseEntity.ok(resp);
     }

@@ -5,6 +5,7 @@ import com.pham.basis.evcharging.dto.request.StationFilterRequest;
 import com.pham.basis.evcharging.dto.request.StationRequest;
 
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
+import com.pham.basis.evcharging.dto.response.ChargingStationResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
 import com.pham.basis.evcharging.mapper.StationMapper;
 import com.pham.basis.evcharging.model.ChargerPillar;
@@ -143,6 +144,8 @@ public class ChargingStationServiceImpl implements ChargingStationService {
             }
         }
 
+
+
         // Save station (cascade will save pillars and connectors)
         ChargingStation savedStation = stationRepository.save(station);
 
@@ -216,6 +219,12 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         return stationMapper.toDetailResponse(saved);
     }
 
+    @Override
+    public ChargingStationDetailResponse getStationById(Long stationId) {
+//        return stationRepository.findById(stationId);
+        return null;
+    }
+
     private void validatePillarRequest(StationRequest.PillarRequest pillarReq) {
         if (pillarReq.getCode() == null || pillarReq.getCode().trim().isEmpty()) {
             throw new ValidationException("Pillar code is required");
@@ -233,5 +242,6 @@ public class ChargingStationServiceImpl implements ChargingStationService {
             throw new ValidationException("Connector type is required");
         }
     }
+
 
 }
