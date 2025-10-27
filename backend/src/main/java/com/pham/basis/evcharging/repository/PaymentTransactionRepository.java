@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 @Repository
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction,Long> {
@@ -30,4 +31,26 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     Page<PaymentTransaction> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     Optional<PaymentTransaction> findByReferenceId(Long ReferenceId);
+    // sum all
+    @Query("""
+    SELECT COALESCE(SUM(pt.amount), 0)
+    FROM PaymentTransaction pt
+    WHERE pt.user.id = :userId
+      AND pt.status = 'SUCCESS'
+      AND NOT (pt.method = 'VNPAY' AND pt.type = 'WALLET')
+    """)
+    BigDecimal sumSpendingExcludingVnpayWallet(@Param("userId") Long userId);
+    // sum by month and year
+    @Query(value = """
+    SELECT COALESCE(SUM(pt.amount), 0)
+    FROM PaymentTransaction pt
+    WHERE pt.user.id = :userId
+      AND pt.status = 'SUCCESS'
+      AND NOT (pt.method = 'VNPAY' AND pt.type = 'WALLET')
+      AND FUNCTION('YEAR', pt.createdAt) = :year
+      AND FUNCTION('MONTH', pt.createdAt) = :month
+    """)
+    BigDecimal sumSpendingByUserAndMonth(@Param("userId") Long userId,
+                                         @Param("year") int year,
+                                         @Param("month") int month);
 }

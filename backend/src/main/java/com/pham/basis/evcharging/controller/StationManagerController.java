@@ -30,13 +30,13 @@ public class StationManagerController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<ChargingStationDetailResponse> getStationByManager(@PathVariable Long managerId) {
+    public ResponseEntity<ChargingStationDetailResponse> getStationByManager(@PathVariable Long userId) {
 
-        if (managerId == null || managerId <= 0) {
+        if (userId == null || userId <= 0) {
             throw new AppException.BadRequestException("managerId không hợp lệ");
         }
 
-        ChargingStationDetailResponse station = stationAssignmentService.getStationByManager(managerId);
+        ChargingStationDetailResponse station = stationAssignmentService.getStationByManager(userId);
         return ResponseEntity.ok(station);
     }
 }
