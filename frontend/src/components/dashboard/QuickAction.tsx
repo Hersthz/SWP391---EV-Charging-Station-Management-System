@@ -22,8 +22,8 @@ const QuickActions = () => {
     },
     {
       icon: History,
-      title: "Charging History",
-      desc: "See your previous sessions",
+      title: "Report & Analytics",
+      desc: "View your charging history and analytics",
       action: () => navigate("/reports"),
       tone: {
         bg: "from-orange-500 via-rose-500 to-pink-500",
@@ -50,7 +50,7 @@ const QuickActions = () => {
       icon: HeadphonesIcon,
       title: "24/7 Support",
       desc: "Contact us for help",
-      action: () => navigate("/charging"),
+      action: () => navigate("/contact"),
       tone: {
         bg: "from-emerald-600 via-green-500 to-lime-500",
         ring: "ring-emerald-200/40",
@@ -65,7 +65,6 @@ const QuickActions = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold tracking-tight">Quick Actions</h2>
-        <span className="text-xs text-muted-foreground">Handy shortcuts</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">

@@ -1,6 +1,6 @@
 // src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // ⬅️ thêm useLocation
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import WelcomeSection from "../components/dashboard/WelcomeSection";
 import QuickActions from "../components/dashboard/QuickAction";
@@ -14,7 +14,9 @@ import { ChatBot } from "./ChatBot";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation(); 
   const [loading, setLoading] = useState(true);
+
   interface UserResponse {
     username: string;
     role: string;
@@ -43,6 +45,14 @@ const Dashboard = () => {
     };
     checkAuth();
   }, [navigate]);
+
+  useEffect(() => {
+    const st = (location.state || {}) as any;
+    if (st?.refreshReservations) {
+      window.dispatchEvent(new Event("refresh-reservations"));
+      navigate(location.pathname, { replace: true, state: {} as any });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-100">

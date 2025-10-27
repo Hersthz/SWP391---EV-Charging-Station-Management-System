@@ -17,7 +17,7 @@ import java.util.List;
 public class VehicleController {
     private final VehicleService vehicleService;
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/{userId}")
     public ApiResponse<List<Vehicle>> getByUser(@PathVariable Long userId) {
         List<Vehicle> vehicles = vehicleService.getVehiclesByUserId(userId);
         return new ApiResponse<>("200", "Vehicles found", vehicles);

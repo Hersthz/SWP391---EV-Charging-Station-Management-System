@@ -45,10 +45,13 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         Vehicle vehicle = vehicleRepo.findById(request.getVehicleId())
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found"));
+        Reservation reservation = reservationRepo.findById(request.getReservationId())
+                .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
 
         validatePaymentMethod(request.getPaymentMethod(), driver, request.getTargetSoc(), vehicle, pillar);
         reservationRepo.updateStatusById(request.getReservationId(),"CHARGING");
         ChargingSession session = ChargingSession.builder()
+                .reservation(reservation)
                 .pillar(pillar)
                 .station(pillar.getStation())
                 .driver(driver)

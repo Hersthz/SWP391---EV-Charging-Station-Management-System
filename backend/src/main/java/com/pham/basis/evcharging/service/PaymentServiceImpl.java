@@ -4,7 +4,9 @@ import com.pham.basis.evcharging.config.VNPayConfig;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.model.ChargingSession;
 import com.pham.basis.evcharging.model.PaymentTransaction;
+import com.pham.basis.evcharging.model.Reservation;
 import com.pham.basis.evcharging.model.Wallet;
 import com.pham.basis.evcharging.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -443,7 +445,51 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void handleServicePaymentSuccess(PaymentTransaction tx) {
-        log.info("Service payment successful - Reference: {}", tx.getReferenceId());
+        Long sessionId = tx.getReferenceId();
+        if (sessionId == null) {
+            log.warn("Service payment success without sessionId. tx={}", tx.getTxnRef());
+            return;
+        }
+
+        ChargingSession session = chargingSessionRepo.findById(sessionId).orElse(null);
+        if (session == null) {
+            log.warn("Session not found for payment success. sessionId={}", sessionId);
+            return;
+        }
+
+        // (Tuỳ chọn) đảm bảo session đã đóng
+        if (!"COMPLETED".equalsIgnoreCase(session.getStatus())) {
+            session.setStatus("COMPLETED");
+            session.setUpdatedAt(LocalDateTime.now());
+            chargingSessionRepo.save(session);
+        }
+
+        // Cập nhật Reservation -> COMPLETED
+        Reservation res = session.getReservation();
+        if (res == null) {
+            log.warn("No reservation linked to session {} on payment success", sessionId);
+            return;
+        }
+
+        boolean changed = false;
+        if (!"COMPLETED".equalsIgnoreCase(res.getStatus())) {
+            res.setStatus("COMPLETED");
+            changed = true;
+        }
+
+        // Nếu endTime còn nằm tương lai hoặc null, chốt lại bằng now
+        LocalDateTime now = LocalDateTime.now();
+        if (res.getEndTime() == null || res.getEndTime().isAfter(now)) {
+            res.setEndTime(now);
+            res.setExpiredAt(now.plusMinutes(15)); // tuỳ business, có thể bỏ
+            changed = true;
+        }
+
+        if (changed) {
+            reservationRepo.save(res);
+            log.info("Reservation {} marked COMPLETED after payment success (sessionId={})",
+                    res.getId(), sessionId);
+        }
     }
 
     private void handleMembershipPaymentSuccess(PaymentTransaction tx) {
