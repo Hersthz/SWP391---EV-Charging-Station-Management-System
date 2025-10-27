@@ -1,19 +1,94 @@
 package com.pham.basis.evcharging.dto.response;
 
-import lombok.*;
-
+import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.List;
-import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * User analytics response DTO (đơn giản, rõ ràng, phù hợp đồ án môn học)
+ * Đơn vị:
+ * - Tiền: VND
+ * - Năng lượng: kWh
+ * - Thời lượng: phút
+ */
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class UserAnalyticsResponse {
-    private long totalSessions;
-    private double totalEnergyKwh;
-    private double totalCost;
-    private List<Map<String, Object>> monthlyCost;
-    private List<Map<String, Object>> topStations;
-    private List<Map<String, Object>> connectorUsage;
+
+    private AnalyticsOverview overview;
+    private List<MonthlyAnalytics> monthlyTrends;   // thống kê theo tháng (6–12 tháng gần nhất)
+    private List<StationAnalytics> topStations;     // 3 trạm dùng nhiều nhất
+    private List<ConnectorAnalytics> connectorUsage; // thống kê connector type
+    private List<HourlyUsage> hourlyUsage;          // thống kê theo giờ (0–23)
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AnalyticsOverview {
+        private Long totalSessions;
+        private Double totalEnergyKwh;
+        private BigDecimal totalCost;
+        private Double averageSessionDuration; // phút
+        private Double avgCostPerKwh;          // VND/kWh
+        private Double percentChangeCost;      // % so với tháng trước
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class MonthlyAnalytics {
+        @JsonFormat(pattern = "yyyy-MM")
+        private YearMonth yearMonth;
+        private BigDecimal cost;
+        private Double energyKwh;
+        private Integer sessionCount;
+        private Double averageDuration;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StationAnalytics {
+        private String stationId;
+        private String stationName;
+        private String address;
+        private Integer sessionCount;
+        private Double totalEnergyKwh;
+        private BigDecimal totalCost;
+        private Double usagePercentage; // % tổng lượng sử dụng
+        private Double lat;
+        private Double lng;
+        private Integer rank;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ConnectorAnalytics {
+        private String connectorType;
+        private Integer sessionCount;
+        private Double totalEnergyKwh;
+        private Double usagePercentage;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class HourlyUsage {
+        private Integer hour;          // 0–23
+        private Integer sessionCount;
+    }
 }
