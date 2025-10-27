@@ -54,7 +54,8 @@ type ReservationStatus =
   | "VERIFYING"
   | "VERIFIED"
   | "PLUGGED"
-  | "CHARGING";
+  | "CHARGING"
+  | "COMPLETED"; // ⬅️ NEW
 
 interface ReservationItem {
   reservationId: number;
@@ -173,10 +174,12 @@ function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   if (s === "VERIFY" || s === "VERIFYING") return "VERIFYING";
   if (s === "VERIFIED") return "VERIFIED";
   if (s === "PLUGGED") return "PLUGGED";
+  if (s === "CHARGING") return "CHARGING";
+  if (s === "COMPLETED") return "COMPLETED"; // ⬅️ NEW
+
   if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
     return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
   }
-  if (s === "CHARGING") return "CHARGING";
   return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
 }
 
@@ -354,6 +357,11 @@ const StatusCards = () => {
   );
 
   // ====== Actions ======
+  const gotoReview = (r: ReservationItem) => {
+    navigate(`/stations/${r.stationId}/review`, {
+      state: { stationName: r.stationName, pillarCode: r.pillarCode },
+    });
+  };
 
   const onStartChargingAPI = async (reservationId: number) => {
     try {
@@ -416,7 +424,8 @@ const StatusCards = () => {
   };
 
   const onPayNow = (r: ReservationItem) => {
-    const amount = (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
+    const amount =
+      (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
     navigate("/reservation/deposit", {
       state: {
         reservationId: r.reservationId,
@@ -508,11 +517,9 @@ const StatusCards = () => {
         effectiveKyc = raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
         setKycStatus(effectiveKyc);
       } catch {
-        // giữ nguyên effectiveKyc như hiện tại
+        // giữ nguyên effectiveKyc 
       }
     }
-
-    /** ⬇️ NEW: chốt KYC tại thời điểm mở popup để UI đọc ngay */
     setKycAtOpen(effectiveKyc);
 
     // 2) Quyết định flow dựa trên biến cục bộ
@@ -520,9 +527,26 @@ const StatusCards = () => {
     setPayFlow(initialFlow);
     setPayChannel(initialFlow === "prepaid" ? "wallet" : "vnpay");
 
+    let enriched = r;
+    try {
+      const { data } = await api.get(`/reservation/${r.reservationId}`, { withCredentials: true });
+      const d = data?.data ?? data ?? {};
+      enriched = {
+        ...r,
+        stationId: d.stationId ?? r.stationId,
+        pillarId: d.pillarId ?? r.pillarId,
+        connectorId: d.connectorId ?? r.connectorId,
+        connectorType: d.connectorType ?? r.connectorType,
+        pillarCode: d.pillarCode ?? r.pillarCode,
+      };
+      setItems(xs => xs.map(x => x.reservationId === r.reservationId ? { ...x, ...enriched } : x));
+    } catch {
+      // fetchEstimateFor sẽ tự bỏ qua nếu thiếu connectorId
+    }
+
     if (currentUserId) {
       api
-        .get(`/vehicle/user/${currentUserId}`, { withCredentials: true })
+        .get(`/vehicle/${currentUserId}`, { withCredentials: true })
         .then((res) => {
           const raw = res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
           const list: Vehicle[] = Array.isArray(raw) ? raw.map(mapApiVehicle) : [];
@@ -530,6 +554,7 @@ const StatusCards = () => {
           if (list.length === 1) {
             setVehicleId(list[0].id);
             if (typeof list[0].socNow === "number") setCurrentSoc(list[0].socNow);
+            fetchEstimateFor(enriched, list[0].id, list[0].socNow);
           }
         })
         .catch(() => setVehicles([]));
@@ -603,6 +628,8 @@ const StatusCards = () => {
       ? "bg-sky-50/60 border-sky-200"
       : r.status === "CHARGING"
       ? "bg-emerald-50/60 border-emerald-200"
+      : r.status === "COMPLETED"
+      ? "bg-zinc-50/60 border-zinc-200" // ⬅️ NEW color for completed
       : ready
       ? "bg-emerald-50/60 border-emerald-200"
       : "bg-emerald-50/60 border-emerald-200";
@@ -617,9 +644,26 @@ const StatusCards = () => {
       ? "text-sky-700"
       : r.status === "CHARGING"
       ? "text-emerald-700"
+      : r.status === "COMPLETED"
+      ? "text-zinc-700"
       : ready
       ? "text-emerald-700"
       : "text-emerald-700";
+
+    const iconBg =
+      pending
+        ? "bg-rose-500"
+        : r.status === "VERIFYING" || scheduled
+        ? "bg-amber-500"
+        : r.status === "VERIFIED"
+        ? "bg-teal-500"
+        : r.status === "PLUGGED"
+        ? "bg-sky-500"
+        : r.status === "CHARGING"
+        ? "bg-emerald-600"
+        : r.status === "COMPLETED"
+        ? "bg-zinc-500" 
+        : "bg-emerald-500";
 
     return (
       <div
@@ -634,22 +678,7 @@ const StatusCards = () => {
       >
         {/* left info */}
         <div className="flex items-center space-x-4 flex-1 min-w-0">
-          <div
-            className={[
-              "size-12 rounded-2xl flex items-center justify-center shadow-inner text-white",
-              pending
-                ? "bg-rose-500"
-                : r.status === "VERIFYING" || scheduled
-                ? "bg-amber-500"
-                : r.status === "VERIFIED"
-                ? "bg-teal-500"
-                : r.status === "PLUGGED"
-                ? "bg-sky-500"
-                : r.status === "CHARGING"
-                ? "bg-emerald-600"
-                : "bg-emerald-500",
-            ].join(" ")}
-          >
+          <div className={["size-12 rounded-2xl flex items-center justify-center shadow-inner text-white", iconBg].join(" ")}>
             {pending ? <CreditCard className="size-6" /> : <Calendar className="size-6" />}
           </div>
 
@@ -743,12 +772,31 @@ const StatusCards = () => {
             </>
           )}
 
+          {/* CHARGING */}
+          {r.status === "CHARGING" && (
+            <Badge className="rounded-full bg-emerald-600 text-white border-0">Charging</Badge>
+          )}
+
           {/* PENDING_PAYMENT */}
           {pending && (
             <>
               <Badge className="rounded-full bg-rose-500 text-white border-0 animate-pulse">Payment required</Badge>
               <Button size="sm" className="rounded-full px-4 bg-rose-500 hover:bg-rose-600" onClick={() => onPayNow(r)}>
                 <CreditCard className="w-4 h-4 mr-1" /> Pay now
+              </Button>
+            </>
+          )}
+
+          {/* COMPLETED */}
+          {r.status === "COMPLETED" && (
+            <>
+              <Badge className="rounded-full bg-zinc-600 text-white border-0">Completed</Badge>
+              <Button
+                size="sm"
+                className="rounded-full px-4"
+                onClick={() => gotoReview(r)}
+              >
+                Review
               </Button>
             </>
           )}
@@ -924,7 +972,7 @@ const StatusCards = () => {
             <DialogDescription>
               {kycAtOpen === "APPROVED"
                 ? "Choose payment flow. Channel is auto-selected by flow."
-                : "Your KYC is not approved (PENDING/REJECTED). Only Prepaid is available."}
+                : "Your KYC is not approved. Only Prepaid is available."}
             </DialogDescription>
           </DialogHeader>
 
@@ -948,7 +996,7 @@ const StatusCards = () => {
                   //  chọn Postpaid sẽ tự set VNPay — disable nếu KYC không APPROVED
                   variant={payFlow === "postpaid" ? "default" : "outline"}
                   className="rounded-xl disabled:opacity-60"
-                  disabled={kycAtOpen !== "APPROVED"}  
+                  disabled={kycAtOpen !== "APPROVED"}
                   onClick={() => {
                     setPayFlow("postpaid");
                     setPayChannel("vnpay");
@@ -957,11 +1005,6 @@ const StatusCards = () => {
                   Postpaid
                 </Button>
               </div>
-              {kycAtOpen !== "APPROVED" && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  Postpaid requires KYC status: APPROVED
-                </div>
-              )}
             </div>
 
             {/* Payment channel – hiển thị duy nhất 1 lựa chọn tương ứng flow */}
@@ -1012,7 +1055,7 @@ const StatusCards = () => {
                 </option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.make || ""} {v.model || ""} (#{v.id})
+                    {v.make || ""} {v.model || ""} 
                   </option>
                 ))}
               </select>
@@ -1055,13 +1098,7 @@ const StatusCards = () => {
                 <div className="text-sm space-y-1">
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
-                  </div>
-                  <div>
-                    Energy ~ <b>{est.energyKwh.toFixed(1)} kWh</b> • From ~ <b>{est.energyFromStationKwh.toFixed(1)} kWh</b>
-                  </div>
-                  <div>
-                    Cost ~ <b>{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(est.estimatedCost)}</b>
-                  </div>
+                  </div>                
                   {est.advice && <div className="text-xs text-amber-600">{est.advice}</div>}
                 </div>
               ) : (

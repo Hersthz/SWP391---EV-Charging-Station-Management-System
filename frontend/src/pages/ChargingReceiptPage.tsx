@@ -136,7 +136,7 @@ const ChargingReceiptPage = () => {
         // 3) Vehicle
         const vid = stop?.vehicleId ?? last?.vehicleId;
         if (userId && vid) {
-          const vres = await api.get(`/vehicle/user/${userId}`, { withCredentials: true });
+          const vres = await api.get(`/vehicle/${userId}`, { withCredentials: true });
           const list = vres.data?.data ?? vres.data?.content ?? vres.data ?? [];
           const found = Array.isArray(list) ? list.find((x: any) => Number(x?.id ?? x?.vehicleId) === Number(vid)) : null;
           if (found && !cancelled) {

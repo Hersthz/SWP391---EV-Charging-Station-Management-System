@@ -18,4 +18,6 @@ public class PaymentResultResponse {
     private String message;
     private BigDecimal amount;    // VND
     private String transactionNo; // vnp_TransactionNo
+    private String type;          // "WALLET" | "RESERVATION" | "CHARGING-SESSION" 
+    private Long referenceId;
 }
