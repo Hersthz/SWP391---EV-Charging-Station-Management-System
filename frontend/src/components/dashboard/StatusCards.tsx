@@ -357,6 +357,11 @@ const StatusCards = () => {
   );
 
   // ====== Actions ======
+  const gotoReview = (r: ReservationItem) => {
+    navigate(`/stations/${r.stationId}/review`, {
+      state: { stationName: r.stationName, pillarCode: r.pillarCode },
+    });
+  };
 
   const onStartChargingAPI = async (reservationId: number) => {
     try {
@@ -512,11 +517,9 @@ const StatusCards = () => {
         effectiveKyc = raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
         setKycStatus(effectiveKyc);
       } catch {
-        // giữ nguyên effectiveKyc như hiện tại
+        // giữ nguyên effectiveKyc 
       }
     }
-
-    /** ⬇️ NEW: chốt KYC tại thời điểm mở popup để UI đọc ngay */
     setKycAtOpen(effectiveKyc);
 
     // 2) Quyết định flow dựa trên biến cục bộ
@@ -524,9 +527,26 @@ const StatusCards = () => {
     setPayFlow(initialFlow);
     setPayChannel(initialFlow === "prepaid" ? "wallet" : "vnpay");
 
+    let enriched = r;
+    try {
+      const { data } = await api.get(`/reservation/${r.reservationId}`, { withCredentials: true });
+      const d = data?.data ?? data ?? {};
+      enriched = {
+        ...r,
+        stationId: d.stationId ?? r.stationId,
+        pillarId: d.pillarId ?? r.pillarId,
+        connectorId: d.connectorId ?? r.connectorId,
+        connectorType: d.connectorType ?? r.connectorType,
+        pillarCode: d.pillarCode ?? r.pillarCode,
+      };
+      setItems(xs => xs.map(x => x.reservationId === r.reservationId ? { ...x, ...enriched } : x));
+    } catch {
+      // fetchEstimateFor sẽ tự bỏ qua nếu thiếu connectorId
+    }
+
     if (currentUserId) {
       api
-        .get(`/vehicle/user/${currentUserId}`, { withCredentials: true })
+        .get(`/vehicle/${currentUserId}`, { withCredentials: true })
         .then((res) => {
           const raw = res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
           const list: Vehicle[] = Array.isArray(raw) ? raw.map(mapApiVehicle) : [];
@@ -534,6 +554,7 @@ const StatusCards = () => {
           if (list.length === 1) {
             setVehicleId(list[0].id);
             if (typeof list[0].socNow === "number") setCurrentSoc(list[0].socNow);
+            fetchEstimateFor(enriched, list[0].id, list[0].socNow);
           }
         })
         .catch(() => setVehicles([]));
@@ -624,7 +645,7 @@ const StatusCards = () => {
       : r.status === "CHARGING"
       ? "text-emerald-700"
       : r.status === "COMPLETED"
-      ? "text-zinc-700" // ⬅️ NEW tone for completed
+      ? "text-zinc-700"
       : ready
       ? "text-emerald-700"
       : "text-emerald-700";
@@ -768,7 +789,16 @@ const StatusCards = () => {
 
           {/* COMPLETED */}
           {r.status === "COMPLETED" && (
-            <Badge className="rounded-full bg-zinc-600 text-white border-0">Completed</Badge>
+            <>
+              <Badge className="rounded-full bg-zinc-600 text-white border-0">Completed</Badge>
+              <Button
+                size="sm"
+                className="rounded-full px-4"
+                onClick={() => gotoReview(r)}
+              >
+                Review
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -942,7 +972,7 @@ const StatusCards = () => {
             <DialogDescription>
               {kycAtOpen === "APPROVED"
                 ? "Choose payment flow. Channel is auto-selected by flow."
-                : "Your KYC is not approved (PENDING/REJECTED). Only Prepaid is available."}
+                : "Your KYC is not approved. Only Prepaid is available."}
             </DialogDescription>
           </DialogHeader>
 
@@ -975,11 +1005,6 @@ const StatusCards = () => {
                   Postpaid
                 </Button>
               </div>
-              {kycAtOpen !== "APPROVED" && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  Postpaid requires KYC status: APPROVED
-                </div>
-              )}
             </div>
 
             {/* Payment channel – hiển thị duy nhất 1 lựa chọn tương ứng flow */}
@@ -1030,7 +1055,7 @@ const StatusCards = () => {
                 </option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.make || ""} {v.model || ""} (#{v.id})
+                    {v.make || ""} {v.model || ""} 
                   </option>
                 ))}
               </select>
@@ -1073,13 +1098,7 @@ const StatusCards = () => {
                 <div className="text-sm space-y-1">
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
-                  </div>
-                  <div>
-                    Energy ~ <b>{est.energyKwh.toFixed(1)} kWh</b> • From ~ <b>{est.energyFromStationKwh.toFixed(1)} kWh</b>
-                  </div>
-                  <div>
-                    Cost ~ <b>{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(est.estimatedCost)}</b>
-                  </div>
+                  </div>                
                   {est.advice && <div className="text-xs text-amber-600">{est.advice}</div>}
                 </div>
               ) : (

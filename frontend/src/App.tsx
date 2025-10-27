@@ -34,6 +34,8 @@ import ChargingReceiptPage from "./pages/ChargingReceiptPage";
 import SessionPayment from "./pages/SessionPayment";
 import SessionPaymentResult from "./pages/SessionPaymentResult";
 import WalletTopupResult from "./pages/WalletTopupResult";
+import ContactHelp from "./pages/ContactHelp";
+import StationReviewPage from "./pages/StationReviewPage";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +78,8 @@ const App = () => (
           <Route path="/session/payment" element={<SessionPayment />} />
           <Route path="/session-payment-result" element={<SessionPaymentResult />} />
           <Route path="/wallet/topup-result" element={<WalletTopupResult />} />
+          <Route path="/contact" element={<ContactHelp />} />
+          <Route path="/stations/:stationId/review" element={<StationReviewPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

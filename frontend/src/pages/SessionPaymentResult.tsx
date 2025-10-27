@@ -79,7 +79,7 @@ export default function SessionPaymentResult() {
   useEffect(() => {
     // auto back sau 30s khi thành công
     if (ok) {
-      const t = setTimeout(() => nav("/dashboard", { replace: true }), 30000);
+      const t = setTimeout(() => nav("/dashboard", { replace: true, state: { refreshReservations: true } }), 30000);
       return () => clearTimeout(t);
     }
   }, [ok, nav]);
@@ -183,7 +183,7 @@ export default function SessionPaymentResult() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Link to="/dashboard">
+              <Link to="/dashboard" state={{ refreshReservations: true }}>
                 <Button className="w-full h-11 rounded-xl" variant="outline">
                   Go to Dashboard
                 </Button>

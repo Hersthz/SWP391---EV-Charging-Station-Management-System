@@ -161,8 +161,9 @@ export default function SessionPayment() {
       const BACKEND_URL =
         (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8080";
       const returnUrl = `${BACKEND_URL}/api/payment/payment-return`;
+      const amountVnd = Math.round(Number(init.amount) || 0);
       const body = {
-        amount: init.amount,
+        amount: amountVnd,
         returnUrl,
         locale: "en",
         description: init.description,
@@ -171,7 +172,7 @@ export default function SessionPayment() {
         method, // "VNPAY" | "WALLET"
       };
 
-      const { data } = await api.post("/api/payment/create", body);
+      const { data } = await api.post("/api/payment/create", body, {withCredentials: true });
       const res: { code?: string; message?: string; data?: PaymentResponse } = data;
 
       if (res?.code && res.code !== "00") {
@@ -238,7 +239,7 @@ export default function SessionPayment() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link to="/dashboard" className="inline-flex">
+          <Link to="/dashboard" state={{ refreshReservations: true }} className="inline-flex">
             <Button variant="ghost" size="sm" className="hover:bg-sky-50">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
