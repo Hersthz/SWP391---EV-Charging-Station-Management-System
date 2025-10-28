@@ -4,6 +4,7 @@ import com.pham.basis.evcharging.config.VNPayConfig;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.ChargingSession;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.model.Reservation;
@@ -40,6 +41,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final VNPayConfig vnpayConfig;
     private final ReservationRepository reservationRepo;
     private final ChargingSessionRepository  chargingSessionRepo;
+    private final NotificationService notificationService;
 
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
 
@@ -429,17 +431,31 @@ public class PaymentServiceImpl implements PaymentService {
                     tx.getTxnRef(), tx.getType(), e);
         }
     }
-
+    //reservation
     private void handleReservationPaymentSuccess(PaymentTransaction tx) {
-        // TODO: Update reservation status to CONFIRMED
         reservationRepo.updateStatusById(tx.getReferenceId(),"SCHEDULED");
+        //noti
+        reservationRepo.updateStatusById(tx.getReferenceId(), "SCHEDULED");
+        notificationService.createNotification(
+                tx.getUser().getId(),
+                "PAYMENT",
+                "Thanh toán đặt chỗ #" + tx.getReferenceId() + " thành công!"
+        );
+
         log.info("Reservation payment successful - Reference: {}", tx.getReferenceId());
+
     }
 
     private void handleWalletTopUpSuccess(PaymentTransaction tx) {
         // Nạp tiền vào ví khi thanh toán VNPAY thành công
         BigDecimal amount = tx.getAmount();
         walletRepo.addBalance(tx.getUser().getId(), amount);
+        //noti
+        notificationService.createNotification(
+                tx.getUser().getId(),
+                "WALLET_TOPUP",
+                "Nạp ví thành công " + amount.toPlainString() + " VND"
+        );
         log.info("Wallet top-up successful - User: {}, Amount: {}",
                 tx.getUser().getId(), amount);
     }
@@ -451,49 +467,39 @@ public class PaymentServiceImpl implements PaymentService {
             return;
         }
 
-        ChargingSession session = chargingSessionRepo.findById(sessionId).orElse(null);
-        if (session == null) {
-            log.warn("Session not found for payment success. sessionId={}", sessionId);
-            return;
-        }
+        ChargingSession session = chargingSessionRepo.findById(sessionId)
+                .orElseThrow(() -> new AppException.NotFoundException("Session not found for payment"));
 
-        // (Tuỳ chọn) đảm bảo session đã đóng
-        if (!"COMPLETED".equalsIgnoreCase(session.getStatus())) {
-            session.setStatus("COMPLETED");
-            session.setUpdatedAt(LocalDateTime.now());
-            chargingSessionRepo.save(session);
-        }
-
-        // Cập nhật Reservation -> COMPLETED
         Reservation res = session.getReservation();
         if (res == null) {
             log.warn("No reservation linked to session {} on payment success", sessionId);
             return;
         }
-
         boolean changed = false;
         if (!"COMPLETED".equalsIgnoreCase(res.getStatus())) {
             res.setStatus("COMPLETED");
             changed = true;
         }
 
-        // Nếu endTime còn nằm tương lai hoặc null, chốt lại bằng now
-        LocalDateTime now = LocalDateTime.now();
-        if (res.getEndTime() == null || res.getEndTime().isAfter(now)) {
-            res.setEndTime(now);
-            res.setExpiredAt(now.plusMinutes(15)); // tuỳ business, có thể bỏ
-            changed = true;
-        }
-
         if (changed) {
             reservationRepo.save(res);
-            log.info("Reservation {} marked COMPLETED after payment success (sessionId={})",
-                    res.getId(), sessionId);
+            //noti
+            notificationService.createNotification(
+                    tx.getUser().getId(),
+                    "CHARGING_SESSION",
+                    "Thanh toán phiên sạc #" + sessionId + " thành công!"
+            );
+            log.info("Reservation save");
         }
     }
 
     private void handleMembershipPaymentSuccess(PaymentTransaction tx) {
-        // TODO: Gia hạn membership
+        //noti
+        notificationService.createNotification(
+                tx.getUser().getId(),
+                "MEMBERSHIP",
+                "Gia hạn thành viên thành công!"
+        );
         log.info("Membership payment successful - User: {}, Reference: {}",
                 tx.getUser().getId(), tx.getReferenceId());
     }
