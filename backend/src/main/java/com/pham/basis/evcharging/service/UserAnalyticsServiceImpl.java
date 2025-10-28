@@ -28,10 +28,7 @@ import java.util.stream.IntStream;
 public class UserAnalyticsServiceImpl implements  UserAnalyticsService {
 
     private final ChargingSessionRepository chargingSessionRepository;
-    private final ReservationRepository reservationRepository;
-    private final ChargingStationRepository chargingStationRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
-    private final ConnectorRepository connectorRepository;
     private final UserRepository userRepository;
 
     @Override
