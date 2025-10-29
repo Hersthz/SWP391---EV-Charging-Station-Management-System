@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { ChatBot } from "./ChatBot";
 
-/* ===================== Charts ===================== */
 import {
   LineChart,
   Line,
@@ -35,9 +34,6 @@ import {
   Bar,
   AreaChart,
   Area,
-  PieChart,
-  Pie,
-  Cell,
   ResponsiveContainer,
   XAxis,
   YAxis,
@@ -46,7 +42,7 @@ import {
   Legend,
 } from "recharts";
 
-/* ===================== Backend types ===================== */
+/* ===================== Backend types (relaxed) ===================== */
 type ApiResponse<T> = { code?: string; message?: string; data?: T };
 
 type PageResp<T> = {
@@ -63,14 +59,14 @@ type ChargingSessionResponse = {
   pillarId?: number | null;
   driverUserId?: number | null;
   vehicleId?: number | null;
-  status?: string | null; // ACTIVE | COMPLETED | ...
-  energyCount?: number | null; // kWh
+  status?: string | null;
+  energyCount?: number | null;   // kWh
   chargedAmount?: number | null; // money
   ratePerKwh?: number | null;
   targetSoc?: number | null;
   socNow?: number | null;
-  startTime?: string | null; // ISO
-  endTime?: string | null;   // ISO
+  startTime?: string | null;     // ISO
+  endTime?: string | null;       // ISO
 };
 
 type ReservationResponseBE = {
@@ -90,22 +86,22 @@ type ReservationResponseBE = {
   payment?: { paid?: boolean; depositTransactionId?: string };
 };
 
-/* ---------- Analytics types (mirror backend) ---------- */
+/* ---------- Analytics mirror (numbers are optional to be defensive) ---------- */
 type AnalyticsOverview = {
-  totalSessions: number;
-  totalEnergyKwh: number;
-  totalCost: number; // BigDecimal → number
-  averageSessionDuration: number; // minutes
-  avgCostPerKwh: number;
-  percentChangeCost: number;
+  totalSessions?: number;
+  totalEnergyKwh?: number;
+  totalCost?: number;
+  averageSessionDuration?: number;
+  avgCostPerKwh?: number;
+  percentChangeCost?: number;
 };
 
 type MonthlyAnalytics = {
-  yearMonth: string; // "yyyy-MM"
-  cost: number; // BigDecimal → number
-  energyKwh: number;
-  sessionCount: number;
-  averageDuration: number; // minutes
+  yearMonth: string;      // normalized to "yyyy-MM"
+  cost?: number;
+  energyKwh?: number;
+  sessionCount?: number;
+  averageDuration?: number;
 };
 
 type StationAnalytics = {
@@ -114,7 +110,7 @@ type StationAnalytics = {
   address: string;
   sessionCount: number;
   totalEnergyKwh: number;
-  totalCost: number; // BigDecimal → number
+  totalCost: number;
   usagePercentage: number;
   lat?: number | null;
   lng?: number | null;
@@ -129,7 +125,7 @@ type ConnectorAnalytics = {
 };
 
 type HourlyUsage = {
-  hour: number; // 0-23
+  hour: number;
   sessionCount: number;
 };
 
@@ -168,10 +164,23 @@ const humanDuration = (mins: number) => {
   return `${h}h ${m}m`;
 };
 
+// Accept both "yyyy-MM" string or {year,month} object
+const normalizeYearMonth = (v: unknown): string => {
+  if (typeof v === "string") return v;
+  if (v && typeof v === "object") {
+    const anyV = v as any;
+    if (typeof anyV.year === "number" && typeof anyV.month === "number") {
+      const m = String(anyV.month).padStart(2, "0");
+      return `${anyV.year}-${m}`;
+    }
+  }
+  return "";
+};
+
 const ymLabel = (ym: string) => {
   // "2025-10" → "Oct 2025"
   const [y, m] = ym.split("-").map(Number);
-  const d = new Date(y, (m || 1) - 1, 1);
+  const d = new Date(y || 1970, (m || 1) - 1, 1);
   return d.toLocaleString(undefined, { month: "short", year: "numeric" });
 };
 
@@ -186,12 +195,10 @@ const ReportsPage = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<ChargingSessionResponse[]>([]);
 
-  // sessions meta: pillarId -> stationName/pillarCode/connectorType
   const [pillarMeta, setPillarMeta] = useState<
     Map<number, { stationName?: string; pillarCode?: string; connectorType?: string }>
   >(new Map());
 
-  // NEW: analytics
   const [analytics, setAnalytics] = useState<UserAnalyticsResponse | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
@@ -204,29 +211,37 @@ const ReportsPage = () => {
         setLoading(true);
         setError(null);
 
-        // /auth/me → userId
-        const me = await api.get("/auth/me", { withCredentials: true });
-        const uid =
-          typeof me.data?.user_id === "number"
-            ? me.data.user_id
-            : typeof me.data?.id === "number"
-            ? me.data.id
-            : undefined;
+        // Get current user id (robust to many possible shapes)
+        const me = await api.get<any>("/auth/me", { withCredentials: true });
+        const uidRaw =
+          me?.data?.id ??
+          me?.data?.user_id ??
+          me?.data?.data?.id ??
+          me?.data?.user?.id ??
+          me?.data?.profile?.id;
+        const uid = Number.isFinite(Number(uidRaw)) ? Number(uidRaw) : undefined;
 
         if (!uid) throw new Error("Cannot determine current user id.");
         if (!mounted) return;
+        console.log("Current user id:", uid);
         setUserId(uid);
 
-        // sessions: /session/user/{userId}
-        const sres = await api.get<ApiResponse<PageResp<ChargingSessionResponse>>>(
-          `/session/user/${uid}?page=0&size=100`,
-          { withCredentials: true }
-        );
-        const content = sres?.data?.data?.content ?? [];
-        if (!mounted) return;
-        setSessions(Array.isArray(content) ? content : []);
+        // Sessions
+        try {
+          const sres = await api.get<ApiResponse<PageResp<ChargingSessionResponse>>>(
+            `/session/user/${uid}?page=0&size=100`,
+            { withCredentials: true }
+          );
+          const content = sres?.data?.data?.content ?? [];
+          if (mounted) setSessions(Array.isArray(content) ? content : []);
+        } catch (e: any) {
+          if (mounted) {
+            setSessions([]);
+            setError(e?.response?.data?.message || e?.message || "Failed to load sessions.");
+          }
+        }
 
-        // reservations meta for pillar/station/connector
+        // Reservations meta for pillar/station/connector
         try {
           const rres = await api.get<ReservationResponseBE[]>(
             `/user/${uid}/reservations`,
@@ -248,14 +263,32 @@ const ReportsPage = () => {
           if (mounted) setPillarMeta(new Map());
         }
 
-        // analytics
+        // Analytics
         try {
+          console.log("Loading analytics for user:", uid);
           setLoadingAnalytics(true);
-          const ares = await api.get<ApiResponse<UserAnalyticsResponse>>(
-            `/analytics/${uid}`,
-            { withCredentials: true }
+          const ares = await api.get<ApiResponse<UserAnalyticsResponse>>(       
+            "/analytics/" + uid,
+            { withCredentials: true  }
           );
-          if (mounted) setAnalytics(ares?.data?.data ?? null);
+          console.log("Analytics response:", uid);
+          // Normalize YearMonth before using in charts
+          const raw = ares?.data?.data || null;
+          if (raw && Array.isArray(raw.monthlyTrends)) {
+            const fixed: UserAnalyticsResponse = {
+              ...raw,
+              monthlyTrends: raw.monthlyTrends.map((m: any) => ({
+                yearMonth: normalizeYearMonth(m?.yearMonth),
+                cost: Number(m?.cost ?? 0),
+                energyKwh: Number(m?.energyKwh ?? 0),
+                sessionCount: Number(m?.sessionCount ?? 0),
+                averageDuration: Number(m?.averageDuration ?? 0),
+              })),
+            };
+            if (mounted) setAnalytics(fixed);
+          } else {
+            if (mounted) setAnalytics(null);
+          }
         } catch (e: any) {
           console.warn("Analytics load failed:", e?.response?.data || e?.message);
           if (mounted) setAnalytics(null);
@@ -263,7 +296,7 @@ const ReportsPage = () => {
           if (mounted) setLoadingAnalytics(false);
         }
       } catch (e: any) {
-        const msg = e?.response?.data?.message || e?.message || "Failed to load sessions.";
+        const msg = e?.response?.data?.message || e?.message || "Failed to load data.";
         setError(msg);
         setSessions([]);
         setPillarMeta(new Map());
@@ -291,7 +324,6 @@ const ReportsPage = () => {
       .map((s) => {
         const meta = typeof s.pillarId === "number" ? pillarMeta.get(s.pillarId) : undefined;
 
-        // duration: nếu COMPLETED → dùng endTime; nếu ACTIVE → dùng now
         const isCompleted = (s.status || "").toUpperCase() === "COMPLETED";
         const mins = minutesBetween(s.startTime, isCompleted ? s.endTime : undefined);
 
@@ -314,17 +346,16 @@ const ReportsPage = () => {
           connector: connectorText,
           duration: mins ? humanDuration(mins) : "—",
           energy: typeof s.energyCount === "number" ? `${s.energyCount.toFixed(1)} kWh` : "—",
-          cost: fmtMoney(s.chargedAmount ?? 0),
+          cost: fmtMoney(typeof s.chargedAmount === "number" ? s.chargedAmount : 0),
           status: isCompleted ? "Completed" : (s.status || "ACTIVE"),
         };
       });
   }, [sessions, pillarMeta]);
 
-  /* ===================== Filters & quick stats (session list) ===================== */
+  /* ===================== Filters & quick stats ===================== */
   const filtered = useMemo(() => {
     if (!rows.length) return rows;
     const now = new Date();
-
     const isInPeriod = (d: Date) => {
       if (selectedPeriod === "week") {
         const start = new Date(now);
@@ -379,7 +410,6 @@ const ReportsPage = () => {
       }
     });
 
-    // preferred time window (thô – nhóm theo 4h)
     const bucket = new Map<string, number>();
     filtered.forEach((r) => {
       const raw = sessions.find((s) => String(s.id) === r.id)?.startTime;
@@ -398,7 +428,6 @@ const ReportsPage = () => {
       }
     });
 
-    // efficiency 
     const eff = totalEnergy ? `${Math.min(100, Math.round((totalEnergy / totalSessions) * 4))}%` : "—";
 
     return {
@@ -416,10 +445,10 @@ const ReportsPage = () => {
   /* ===================== Derived analytics for charts ===================== */
   const monthlyChart = useMemo(() => {
     if (!analytics?.monthlyTrends?.length) return [];
-    // hiển thị gần 6 tháng, đảo ngược để cột thời gian tăng dần
-    const items = [...analytics.monthlyTrends].sort(
-      (a, b) => (a.yearMonth > b.yearMonth ? 1 : -1)
-    );
+    const items = [...analytics.monthlyTrends]
+      .map((m) => ({ ...m, yearMonth: normalizeYearMonth(m.yearMonth) }))
+      .filter((m) => m.yearMonth)
+      .sort((a, b) => (a.yearMonth > b.yearMonth ? 1 : -1));
     return items.map((m) => ({
       label: ymLabel(m.yearMonth),
       cost: m.cost ?? 0,
@@ -434,14 +463,15 @@ const ReportsPage = () => {
     return analytics.connectorUsage.map((c) => ({
       type: c.connectorType,
       sessions: c.sessionCount,
-      energy: +(+c.totalEnergyKwh).toFixed(2),
-      usage: +(+c.usagePercentage).toFixed(2),
+      energy: +(Number(c.totalEnergyKwh ?? 0).toFixed(2)),
+      usage: +(Number(c.usagePercentage ?? 0).toFixed(2)),
     }));
   }, [analytics]);
 
   const hourlyChart = useMemo(() => {
     if (!analytics?.hourlyUsage?.length) return [];
     return [...analytics.hourlyUsage]
+      .slice()
       .sort((a, b) => a.hour - b.hour)
       .map((h) => ({ hour: `${String(h.hour).padStart(2, "0")}:00`, sessions: h.sessionCount }));
   }, [analytics]);
@@ -542,7 +572,7 @@ const ReportsPage = () => {
                       <p className={`text-xs mt-1 flex items-center ${((analytics?.overview?.percentChangeCost ?? 0) >= 0) ? "text-success" : "text-rose-500"}`}>
                         <TrendingUp className="w-3 h-3 mr-1" />
                         {analytics
-                          ? `${(analytics.overview.percentChangeCost ?? 0).toFixed(1)}% vs last month`
+                          ? `${(analytics.overview?.percentChangeCost ?? 0).toFixed(1)}% vs last month`
                           : "Auto from sessions"}
                       </p>
                     </div>
@@ -618,7 +648,7 @@ const ReportsPage = () => {
               </Card>
             </div>
 
-            {/* Monthly trends (cost / energy / sessions) */}
+            {/* Monthly trends */}
             <Card className="shadow-card border-0 bg-gradient-card">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -777,7 +807,7 @@ const ReportsPage = () => {
                             </div>
                             <div>
                               <div className="text-muted-foreground">Usage</div>
-                              <div className="font-medium">{s.usagePercentage.toFixed(1)}%</div>
+                              <div className="font-medium">{(s.usagePercentage ?? 0).toFixed(1)}%</div>
                             </div>
                           </div>
                         </CardContent>
@@ -853,7 +883,7 @@ const ReportsPage = () => {
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Total cost</div>
-                        <div className="font-semibold">{fmtMoney(analytics.overview.totalCost)}</div>
+                        <div className="font-semibold">{fmtMoney(analytics.overview?.totalCost ?? 0)}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -862,7 +892,7 @@ const ReportsPage = () => {
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Energy</div>
-                        <div className="font-semibold">{fmtKwh(analytics.overview.totalEnergyKwh, 1)}</div>
+                        <div className="font-semibold">{fmtKwh(analytics.overview?.totalEnergyKwh ?? 0, 1)}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -871,7 +901,7 @@ const ReportsPage = () => {
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Avg session</div>
-                        <div className="font-semibold">{fmtMinute(analytics.overview.averageSessionDuration)}</div>
+                        <div className="font-semibold">{fmtMinute(analytics.overview?.averageSessionDuration ?? 0)}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -880,7 +910,7 @@ const ReportsPage = () => {
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Cost / kWh</div>
-                        <div className="font-semibold">{fmtMoney(analytics.overview.avgCostPerKwh)}</div>
+                        <div className="font-semibold">{fmtMoney(analytics.overview?.avgCostPerKwh ?? 0)}</div>
                       </div>
                     </div>
                   </div>

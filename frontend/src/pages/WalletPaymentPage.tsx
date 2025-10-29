@@ -12,13 +12,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { useToast } from "../hooks/use-toast";
 import {
-  ArrowLeft, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, CreditCard, FileText, Filter, History, Shield,
-  Sparkles, TrendingUp, Wallet, Zap
+  ArrowLeft, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock,
+  CreditCard, FileText, Filter, History, Shield, Sparkles, TrendingUp, Wallet, Zap
 } from "lucide-react";
 import api from "../api/axios";
 import { ChatBot } from "./ChatBot";
 
-/* ================= Helpers ================= */
+/* ================= Types ================= */
+type ApiResponse<T> = { code?: string; statusCode?: string; message?: string; data?: T };
+
+type PageResp<T> = {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number; // current page (0-based)
+};
+
+type PaymentTx = {
+  id: number | string;
+  userId?: number;
+  amount: number;         // VND
+  type: "CREDIT" | "DEBIT" | "HOLD" | "RELEASE" | string;
+  status: "COMPLETED" | "PENDING" | "FAILED" | string;
+  description?: string;
+  referenceId?: string | number;
+  createdAt?: string;     // ISO
+};
+
 type TxItem = {
   id: string | number;
   type: "CREDIT" | "DEBIT" | "HOLD" | "RELEASE";
@@ -26,7 +47,7 @@ type TxItem = {
   description: string;
   date: string;
   status: "COMPLETED" | "PENDING" | "FAILED";
-  ref?: string;
+  ref?: string | number;
 };
 
 const txIcon = (type: string) => {
@@ -52,7 +73,7 @@ const statusBadge = (status: string) => {
   }
 };
 
-// Backend URL chỉ dùng cho returnUrl khi tạo VNPay
+// Backend URL only used for returnUrl when creating VNPay link
 const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8080";
 
 export default function WalletPaymentPage() {
@@ -70,22 +91,50 @@ export default function WalletPaymentPage() {
   const [filterDate, setFilterDate] = useState("all");
   const [topupLoading, setTopupLoading] = useState(false);
 
-  // 1) Lấy userId qua /auth/me (JWT ở HttpOnly cookie)
+  /* ============== Load current user id ============== */
   const loadUserId = useCallback(async () => {
-    const { data } = await api.get("/auth/me");
-    const id = data?.id ?? data?.user_id ??data?.data?.id ?? data?.user?.id ?? data?.profile?.id;
+    // use any to avoid TS error “Property 'id' does not exist on type '{}'”
+    const { data } = await api.get<any>("/auth/me");
+    const id =
+      data?.id ?? data?.user_id ?? data?.data?.id ?? data?.user?.id ?? data?.profile?.id;
     if (id == null) throw new Error("Cannot fetch current user");
     return Number(id);
   }, []);
 
-  // 2) Lấy số dư ví bằng /wallet/{userId} (đúng với backend hiện tại)
+  /* ============== Load wallet balance ============== */
   const loadBalance = useCallback(async (userId: number) => {
-    const { data } = await api.get(`/wallet/${userId}`);
-    const bal = Number(data?.balance ?? 0);
+    const { data } = await api.get<any>(`/wallet/${userId}`);
+    const bal = Number(data?.balance ?? data?.data?.balance ?? 0);
     return Number.isFinite(bal) ? bal : 0;
   }, []);
 
-  // Khởi tạo: lấy uid, rồi lấy balance
+  /* ============== Load user's transactions ============== */
+  const loadTransactions = useCallback(async (userId: number) => {
+    setLoadingTx(true);
+    try {
+      // Backend: GET /api/payment/getPaymentU?userid=...&page=0&pageSize=50
+      const { data } = await api.get<PageResp<PaymentTx>>("/api/payment/getPaymentU", {
+        params: { userid: userId, page: 0, pageSize: 50 },
+      });
+
+      const items: TxItem[] = (data?.content ?? []).map((t) => ({
+        id: t.id,
+        type: (t.type?.toUpperCase?.() ?? "DEBIT") as TxItem["type"],
+        amount: Number(t.amount ?? 0),
+        description: t.description ?? (t.type === "CREDIT" ? "Top-up" : "Payment"),
+        date: t.createdAt ? new Date(t.createdAt).toLocaleString() : "",
+        status: (t.status?.toUpperCase?.() ?? "COMPLETED") as TxItem["status"],
+        ref: t.referenceId,
+      }));
+      setTransactions(items);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setLoadingTx(false);
+    }
+  }, []);
+
+  /* ============== Init ============== */
   useEffect(() => {
     (async () => {
       try {
@@ -94,47 +143,44 @@ export default function WalletPaymentPage() {
         setUid(id);
         const bal = await loadBalance(id);
         setBalance(bal);
+        await loadTransactions(id);
       } catch {
         setBalance(null);
+        setTransactions([]);
       } finally {
         setLoadingBalance(false);
       }
     })();
+  }, [loadUserId, loadBalance, loadTransactions]);
 
-    (async () => {
-      setLoadingTx(true);
-      try {
-        // Chưa có API lịch sử -> để trống
-        setTransactions([]);
-      } finally {
-        setLoadingTx(false);
-      }
-    })();
-  }, [loadUserId, loadBalance]);
-
-  // 3) Tạo payment VNPay để top-up ví 
+  /* ============== Create VNPay top-up ============== */
   const createVnpayTopUp = async (amount: number) => {
     if (uid == null) throw new Error("Missing user id");
+
     const payload = {
-      amount,
+      amount,                       // VND, integer
       type: "WALLET",
       method: "VNPAY",
-      referenceId: uid, 
+      referenceId: uid,
       returnUrl: `${BACKEND_URL}/api/payment/payment-return`,
       locale: "en" as const,
-      description: `Top-up ${amount} VND`,
+      description: `Top-up ${amount.toLocaleString("vi-VN")} VND`,
     };
 
-    const { data } = await api.post("/api/payment/create", payload);
+    // normalized response type per PaymentController
+    const { data } = await api.post<ApiResponse<{ paymentUrl?: string; url?: string }>>(
+      "/api/payment/create",
+      payload
+    );
+
     const code = data?.code ?? data?.statusCode;
     if (code && code !== "00") {
       throw new Error(data?.message || "Cannot create payment");
     }
-    const paymentUrl =
-      data?.data?.paymentUrl ?? data?.paymentUrl ?? data?.data?.url ?? data?.url;
-
+    const paymentUrl = data?.data?.paymentUrl ?? data?.data?.url;
     if (!paymentUrl) throw new Error("paymentUrl is missing from backend response");
-    window.location.href = paymentUrl; // redirect tới VNPay
+
+    window.location.href = paymentUrl; // redirect to VNPay
   };
 
   const handleTopUp = async (amount: number) => {
@@ -149,9 +195,12 @@ export default function WalletPaymentPage() {
         return;
       }
       setTopupLoading(true);
-      toast({ title: "Creating payment", description: `${amount.toLocaleString("vi-VN")}₫` });
+      toast({
+        title: "Creating payment",
+        description: `${amount.toLocaleString("vi-VN")}₫`,
+      });
       await createVnpayTopUp(amount);
-      // Redirect sang VNPay nên không reset loading ở đây
+      // will navigate away to VNPay
     } catch (e: any) {
       toast({
         title: "Top-up failed",
@@ -176,16 +225,19 @@ export default function WalletPaymentPage() {
     setTopUpAmount("");
   };
 
+  /* ============== Filters (UI only) ============== */
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
       if (filterType !== "all" && t.type !== (filterType as any)) return false;
+      // add date filtering when needed
       return true;
     });
   }, [transactions, filterType, filterDate]);
 
+  /* ============== UI ============== */
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
-      {/* ===== Header ===== */}
+      {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link to="/dashboard" className="inline-flex">
@@ -211,7 +263,7 @@ export default function WalletPaymentPage() {
         </div>
       </header>
 
-      {/* ===== Body ===== */}
+      {/* Body */}
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {/* Title */}
         <div className="mb-2">
@@ -297,24 +349,17 @@ export default function WalletPaymentPage() {
                       </Button>
 
                       <p className="text-xs text-muted-foreground text-center">
-                        VNPAY will handle bank/QR payment. Your wallet will be credited after successful confirmation.
+                        VNPAY will process your payment. Your wallet will be credited after a successful confirmation.
                       </p>
                     </div>
                   </DialogContent>
                 </Dialog>
 
-                <Button variant="outline" className="gap-2" disabled>
+                <Button variant="outline" className="gap-2" onClick={() => uid && loadTransactions(uid)}>
                   <TrendingUp className="h-4 w-4" />
                   View History
                 </Button>
               </div>
-
-              {balance === null && !loadingBalance && (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  * Backend has no balance endpoint yet. Once available (e.g. <code>/api/wallet/me</code>),
-                  this section will display your current balance.
-                </p>
-              )}
             </CardContent>
           </Card>
 
@@ -345,10 +390,7 @@ export default function WalletPaymentPage() {
         {/* Tabs */}
         <Tabs defaultValue="transactions" className="space-y-6">
           <TabsList
-            className="
-              grid w-full grid-cols-3 rounded-2xl bg-[#F7FAFD] p-1.5
-              ring-1 ring-slate-200/70 h-auto gap-1
-            "
+            className="grid w-full grid-cols-3 rounded-2xl bg-[#F7FAFD] p-1.5 ring-1 ring-slate-200/70 h-auto gap-1"
           >
             {[
               { v: "transactions", label: "Transactions" },
@@ -358,14 +400,11 @@ export default function WalletPaymentPage() {
               <TabsTrigger
                 key={t.v}
                 value={t.v}
-                className="
-                  group w-full rounded-xl px-6 py-3
-                  text-slate-600 font-medium hover:text-slate-700
-                  data-[state=active]:text-white
-                  data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                  data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                  transition-all flex items-center justify-center
-                "
+                className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700
+                           data-[state=active]:text-white
+                           data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
+                           data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
+                           transition-all flex items-center justify-center"
               >
                 {t.label}
               </TabsTrigger>
@@ -383,7 +422,7 @@ export default function WalletPaymentPage() {
                   </div>
                   <div className="flex gap-2">
                     <Select value={filterType} onValueChange={setFilterType}>
-                      <SelectTrigger className="w-[160px]">
+                      <SelectTrigger className="w/[160px]">
                         <Filter className="h-4 w-4 mr-2" />
                         <SelectValue placeholder="All types" />
                       </SelectTrigger>
@@ -418,9 +457,7 @@ export default function WalletPaymentPage() {
                   </div>
                 ) : transactions.length === 0 ? (
                   <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground text-center">
-                    No transaction API available yet.
-                    <br />
-                    Once provided (e.g. <code>/api/payment/transactions</code>), your history will appear here.
+                    No transactions.
                   </div>
                 ) : (
                   <ScrollArea className="h-[460px] pr-2">
@@ -479,7 +516,7 @@ export default function WalletPaymentPage() {
                 <div className="p-6 rounded-lg border-2 border-dashed border-sky-200 text-center bg-sky-50/40">
                   <CreditCard className="h-12 w-12 mx-auto mb-3 text-sky-500" />
                   <p className="text-sm text-muted-foreground mb-3">
-                    Backend does not yet support saving payment methods. This section will be enabled when available.
+                    Backend does not support saving payment methods yet.
                   </p>
                   <Button variant="outline" className="border-sky-200 hover:bg-sky-50" disabled>
                     Add card or bank account
@@ -523,8 +560,7 @@ export default function WalletPaymentPage() {
                 <div className="p-6 rounded-lg border-2 border-dashed border-sky-200 text-center bg-sky-50/40">
                   <FileText className="h-10 w-10 mx-auto mb-3 text-green-600" />
                   <p className="text-sm text-muted-foreground">
-                    No invoice API yet. When backend provides it (e.g. <code>/api/payment/invoices</code>),
-                    you’ll be able to list and download PDFs here.
+                    No invoice API yet. When the backend provides it, items will appear here.
                   </p>
                 </div>
               </CardContent>
@@ -543,8 +579,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-medium">Deposit hold</p>
                 <p className="text-muted-foreground">
-                  A deposit amount (calculated by backend) will be held on booking. Any remaining balance is released
-                  after the charging session ends.
+                  A deposit amount will be held when booking. Any remaining balance will be released after the charging session ends.
                 </p>
               </div>
             </div>
@@ -553,7 +588,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-medium">Free cancellation</p>
                 <p className="text-muted-foreground">
-                  Cancel ≥15 minutes before your slot for a full deposit release (subject to backend policy).
+                  Cancel ≥ 15 minutes before your slot for a full deposit release (subject to backend policy).
                 </p>
               </div>
             </div>
@@ -562,7 +597,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-medium">No-show & late cancellation</p>
                 <p className="text-muted-foreground">
-                  Cancelling &lt;15 minutes before start or no check-in on time may forfeit the deposit.
+                  Cancelling &lt; 15 minutes before start or not checking in on time may forfeit the deposit.
                 </p>
               </div>
             </div>

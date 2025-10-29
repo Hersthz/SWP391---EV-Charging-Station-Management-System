@@ -13,7 +13,7 @@ import {
   CreditCard,
   AlertTriangle,
   Calendar as CalendarIcon,
-  Car, 
+  Car,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -161,11 +161,11 @@ type TimePickerProps = {
   label?: string;
   value: string;
   onChange: (v: string) => void;
-  date?: string;          // yyyy-MM-dd
-  step?: number;          // minutes
-  minHM?: string | null;  // clamp min HM (ví dụ End >= Start)
-  maxHM?: string | null;  // clamp max HM
-  suggest?: string[];     // quick presets
+  date?: string; // yyyy-MM-dd
+  step?: number; // minutes
+  minHM?: string | null; // clamp min HM (ví dụ End >= Start)
+  maxHM?: string | null; // clamp max HM
+  suggest?: string[]; // quick presets
 };
 
 const TimePicker = ({
@@ -240,24 +240,25 @@ const TimePicker = ({
 
   return (
     <div className="relative">
-      {label && <div className="text-sm text-muted-foreground mb-1">{label}</div>}
+      {label && <div className="text-sm font-medium text-slate-700 mb-1">{label}</div>}
+
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full h-10 px-3 border rounded-lg text-left hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        className="w-full h-11 px-3 border border-slate-300 bg-white rounded-lg text-left hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
       >
         {btnText}
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-2 w-[320px] rounded-xl border bg-white shadow-xl p-3">
+        <div className="absolute z-40 mt-1 w-[320px] rounded-xl border border-slate-200 bg-white shadow-xl p-3">
           <div className="mb-2 flex gap-2">
             {suggest.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => pressPreset(s)}
-                className="px-3 py-1.5 rounded-lg border bg-slate-50 hover:bg-slate-100 text-sm"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm text-slate-700"
               >
                 {s}
               </button>
@@ -265,7 +266,7 @@ const TimePicker = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="max-h-48 overflow-auto rounded-lg border">
+            <div className="max-h-48 overflow-auto rounded-lg border border-slate-200">
               {hours.map((h) => {
                 const disabled = hourDisabled(h);
                 return (
@@ -275,8 +276,8 @@ const TimePicker = ({
                     disabled={disabled}
                     onClick={() => pick(h, mCur ?? "00")}
                     className={[
-                      "w-full px-3 py-2 text-left hover:bg-slate-100",
-                      h === hCur ? "bg-primary/10 font-semibold" : "",
+                      "w-full px-3 py-2 text-left hover:bg-slate-100 text-slate-800",
+                      h === hCur ? "bg-emerald-50 text-emerald-700 font-semibold" : "",
                       disabled ? "opacity-40 cursor-not-allowed" : "",
                     ].join(" ")}
                   >
@@ -286,7 +287,7 @@ const TimePicker = ({
               })}
             </div>
 
-            <div className="max-h-48 overflow-auto rounded-lg border">
+            <div className="max-h-48 overflow-auto rounded-lg border border-slate-200">
               {minutes.map((m) => {
                 const disabled = minuteDisabled(m);
                 return (
@@ -296,8 +297,8 @@ const TimePicker = ({
                     disabled={disabled}
                     onClick={() => pick(hCur ?? pad(new Date().getHours()), m)}
                     className={[
-                      "w-full px-3 py-2 text-left hover:bg-slate-100",
-                      m === mCur ? "bg-primary/10 font-semibold" : "",
+                      "w-full px-3 py-2 text-left hover:bg-slate-100 text-slate-800",
+                      m === mCur ? "bg-emerald-50 text-emerald-700 font-semibold" : "",
                       disabled ? "opacity-40 cursor-not-allowed" : "",
                     ].join(" ")}
                   >
@@ -312,7 +313,7 @@ const TimePicker = ({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-sm px-3 py-1.5 rounded-md hover:bg-slate-100"
+              className="text-sm px-3 py-1.5 rounded-md hover:bg-slate-100 text-slate-600"
             >
               Close
             </button>
@@ -357,8 +358,8 @@ export default function BookingPage() {
 
   // Timeslot (date, start, end)
   const [bookingDate, setBookingDate] = useState<string>(""); // yyyy-MM-dd
-  const [startTime, setStartTime] = useState<string>("");     // HH:mm
-  const [endTime, setEndTime] = useState<string>("");         // HH:mm
+  const [startTime, setStartTime] = useState<string>(""); // HH:mm
+  const [endTime, setEndTime] = useState<string>(""); // HH:mm
 
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
 
@@ -495,7 +496,7 @@ export default function BookingPage() {
         const me = await api.get("/auth/me");
         const userId = me.data?.user_id ?? me.data?.id;
         if (!userId) throw new Error("No userId");
-        
+
         const res = await api.get(`/vehicle/${userId}`);
         const list: Vehicle[] = res.data?.data ?? [];
         if (!cancelled) {
@@ -512,7 +513,9 @@ export default function BookingPage() {
         if (!cancelled) setLoadingVehicles(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -672,7 +675,7 @@ export default function BookingPage() {
       const userId = await fetchCurrentUserId();
 
       const startStr = toLocalDateTimeString(bookingDate, startTime);
-      const endStr   = toLocalDateTimeString(bookingDate, endTime);
+      const endStr = toLocalDateTimeString(bookingDate, endTime);
 
       if (!startStr || !endStr) {
         toast({ title: "Thiếu thời gian", description: "Ngày/giờ không hợp lệ.", variant: "destructive" });
@@ -713,7 +716,7 @@ export default function BookingPage() {
         Number(localStorage.getItem("vehicle_id"));
 
       // FE lưu %; nếu BE cần 0..1 thì sẽ chia 100 khi gửi payload
-      const socNow = Number(localStorage.getItem("soc_now") ?? "50");     // %
+      const socNow = Number(localStorage.getItem("soc_now") ?? "50"); // %
       const socTarget = Number(localStorage.getItem("soc_target") ?? "80"); // %
 
       if (!vehicleId || Number.isNaN(socNow) || Number.isNaN(socTarget)) return null;
@@ -766,7 +769,9 @@ export default function BookingPage() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [station?.id, selectedPillarId, selectedConnectorIdNum, selectedVehicleId]); // <- theo xe chọn
 
   // UI helpers
@@ -776,7 +781,7 @@ export default function BookingPage() {
         type="button"
         variant={paymentMethod === "wallet" ? "default" : "outline"}
         onClick={() => setPaymentMethod("wallet")}
-        className="h-9 px-3"
+        className="h-9 px-3 rounded-full border text-sm font-medium transition-colors bg-white data-[state=on]:bg-gradient-to-r from-emerald-500 to-cyan-600"
       >
         <Wallet className="w-4 h-4 mr-2" /> Ví
       </Button>
@@ -784,7 +789,7 @@ export default function BookingPage() {
         type="button"
         variant={paymentMethod === "card" ? "default" : "outline"}
         onClick={() => setPaymentMethod("card")}
-        className="h-9 px-3"
+        className="h-9 px-3 rounded-full border text-sm font-medium transition-colors"
       >
         <CreditCard className="w-4 h-4 mr-2" /> Thẻ
       </Button>
@@ -795,33 +800,33 @@ export default function BookingPage() {
      Steps
   ========================= */
   const renderSelectionStep = () => (
-    <div className="space-y-6">
-      <Card className="shadow-card rounded-2xl">
+    <div className="space-y-8">
+      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-xl">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <MapPin className="w-5 h-5 mr-2 text-primary" />
-              <span className="font-semibold"> {station!.name} </span>
+              <MapPin className="w-5 h-5 mr-2 text-emerald-600" />
+              <span className="font-semibold text-slate-900"> {station!.name} </span>
             </div>
-            <Badge className="bg-success/10 text-success border-success/20 rounded-full">
+            <Badge variant="outline" className="rounded-full border-emerald-200 text-emerald-700 bg-emerald-50">
               {station!.available ?? "Available"}
             </Badge>
           </div>
 
           <div className="grid grid-cols-3 gap-4 text-center mt-4">
             <div>
-              <div className="text-sm text-muted-foreground">Distance</div>
-              <div className="font-semibold">{station!.distance ?? "—"}</div>
+              <div className="text-sm text-slate-500">Distance</div>
+              <div className="font-semibold text-slate-800">{station!.distance ?? "—"}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Rate</div>
-              <div className="font-semibold">{station!.price ?? "—"}</div>
+              <div className="text-sm text-slate-500">Rate</div>
+              <div className="font-semibold text-slate-800">{station!.price ?? "—"}</div>
             </div>
             <div className="flex items-center justify-center">
               {station!.live && (
                 <>
-                  <span className="w-2 h-2 bg-success rounded-full mr-1" />
-                  <span className="text-sm font-medium text-success">Live</span>
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full mr-1 animate-pulse" />
+                  <span className="text-sm font-medium text-emerald-700">Live</span>
                 </>
               )}
             </div>
@@ -829,17 +834,17 @@ export default function BookingPage() {
         </CardContent>
       </Card>
 
-      {/* === NEW: Vehicle selection (chỉ thêm phần chọn xe) === */}
+      {/* === Vehicle selection === */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Car className="w-5 h-5" /> Select Vehicle
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+            <Car className="w-5 h-5 text-emerald-600" /> Select Vehicle
           </h3>
-          {loadingVehicles && <span className="text-xs text-muted-foreground">Loading vehicles…</span>}
+          {loadingVehicles && <span className="text-xs text-slate-500">Loading vehicles…</span>}
         </div>
 
         {!vehicles.length && !loadingVehicles ? (
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-slate-500">
             Chưa có xe nào. Bạn có thể thêm trong Profile/Vehicle, hoặc tiếp tục đặt chỗ (ước tính sẽ dùng SoC mặc định).
           </div>
         ) : (
@@ -857,21 +862,22 @@ export default function BookingPage() {
                     }
                   }}
                   className={[
-                    "cursor-pointer transition-colors rounded-xl",
+                    "cursor-pointer transition-all duration-200 rounded-xl overflow-hidden",
                     active
-                      ? "border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md"
-                      : "hover:border-primary/40",
+                      ? "border-2 border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-500/10"
+                      : "border border-slate-200/70 bg-white hover:border-emerald-400 hover:shadow-md",
                   ].join(" ")}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <div className="font-semibold">
+                      <div className="font-semibold text-slate-900">
                         {v.name || [v.brand, v.model].filter(Boolean).join(" ") || `Vehicle #${v.id}`}
                       </div>
                     </div>
                     {typeof v.socNow === "number" && (
-                      <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
-                        <Battery className="w-4 h-4" /> SoC NOW ~ <b>{v.socNow * 100}%</b>
+                      <div className="mt-2 text-sm text-slate-500 flex items-center gap-1.5">
+                        <Battery className="w-4 h-4 text-emerald-600" /> SoC ~{" "}
+                        <b className="text-slate-700">{`${v.socNow}%`}</b>
                       </div>
                     )}
                   </CardContent>
@@ -881,22 +887,22 @@ export default function BookingPage() {
           </div>
         )}
       </div>
-      {/* === END NEW: Vehicle selection === */}
+      {/* === END Vehicle selection === */}
 
-      {/* Reservation Time (Date + Start + End with TimePicker) */}
+      {/* Reservation Time */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5" /> Reservation Time
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+            <CalendarIcon className="w-5 h-5 text-sky-600" /> Reservation Time
           </h3>
           {renderPaymentSwitch()}
         </div>
 
-        <Card className="rounded-2xl border-primary/20">
-          <CardContent className="p-5 space-y-4">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-xl">
+          <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Date</div>
+                <div className="text-sm font-medium text-slate-700">Date</div>
                 <input
                   type="date"
                   value={bookingDate}
@@ -911,7 +917,7 @@ export default function BookingPage() {
                       }
                     }
                   }}
-                  className="w-full border rounded-lg h-10 px-3"
+                  className="w-full h-11 px-3 border border-slate-300 bg-white rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
                 />
               </div>
 
@@ -944,69 +950,76 @@ export default function BookingPage() {
 
             {/* Duration */}
             <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4 text-info" />
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Clock className="w-4 h-4 text-sky-600" />
                 <span>Duration</span>
               </div>
-              <Badge className="rounded-full bg-primary/10 text-primary border-primary/20">
+              <Badge variant="secondary" className="rounded-full bg-sky-100 text-sky-800 text-base font-semibold px-4 py-1">
                 {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
               </Badge>
             </div>
 
-            {/* === Estimated charge (minutes) === */}
+            {/* Estimated charge */}
             <div className="mt-2 flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">Estimated charge</div>
+              <div className="text-sm text-slate-600">Estimated charge</div>
               <div className="text-sm">
                 {!selectedPillarId || !selectedConnectorIdNum ? (
                   <span className="text-slate-400">Chọn trụ & đầu nối để ước tính</span>
                 ) : estimating ? (
-                  <span className="text-primary">Estimating…</span>
+                  <span className="text-emerald-700">Estimating…</span>
                 ) : estimate?.estimatedMinutes != null ? (
-                  <span className="font-medium">{`~ ${estimate.estimatedMinutes} min`}</span>
+                  <span className="font-medium text-slate-900">{`~ ${estimate.estimatedMinutes} min`}</span>
                 ) : (
                   <span className="text-slate-400">—</span>
                 )}
               </div>
             </div>
 
-            {/*  info: kWh + cost + advice */}
+            {/* info: kWh + cost + advice */}
             {estimate && !estimating && (
-              <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+              <div className="mt-1 text-xs text-slate-600 flex items-center gap-2">
                 <span>
-                  Energy ~ <b>{estimate.energyKwh.toFixed(1)} kWh</b>
+                  Energy ~ <b className="text-slate-800">{estimate.energyKwh.toFixed(1)} kWh</b>
                 </span>
                 <span>•</span>
                 <span>
-                  From station ~ <b>{estimate.energyFromStationKwh.toFixed(1)} kWh</b>
+                  From station ~ <b className="text-slate-800">{estimate.energyFromStationKwh.toFixed(1)} kWh</b>
                 </span>
                 <span>•</span>
                 <span>
-                  Est. cost ~ <b>{formatVND(estimate.estimatedCost)}</b>
+                  Est. cost ~ <b className="text-emerald-700">{formatVND(estimate.estimatedCost)}</b>
                 </span>
               </div>
             )}
             {estimate?.advice && (
-              <div className="mt-1 text-xs text-amber-600">{estimate.advice}</div>
+              <div className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5" />
+                {estimate.advice}
+              </div>
             )}
 
             {/* cảnh báo nếu slot < estimate */}
-            {estimate?.estimatedMinutes != null && durationMinutes > 0 && durationMinutes < estimate.estimatedMinutes && (
-              <div className="mt-1 text-xs text-amber-600 flex items-center gap-1">
-                <AlertTriangle className="w-4 h-4" />
-                Estimated charge (~{estimate.estimatedMinutes} min) exceeds your slot ({durationMinutes} min).
-              </div>
-            )}
+            {estimate?.estimatedMinutes != null &&
+              durationMinutes > 0 &&
+              durationMinutes < estimate.estimatedMinutes && (
+                <div className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5" />
+                  Estimated charge (~{estimate.estimatedMinutes} min) exceeds your slot ({durationMinutes} min).
+                </div>
+              )}
 
-            <div className="mt-3 bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-xl flex items-center justify-between">
-              <div className="text-sm">
+            <div className="mt-3 bg-gradient-to-r from-emerald-50 to-cyan-50 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
+              <div className="text-sm text-slate-700">
                 <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
                 <span className="font-semibold">{durationMinutes || 0} minutes</span>
               </div>
-              <div className="text-lg font-bold text-primary">{formatVND(estimatedHold || 0)}</div>
+              <div className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                {formatVND(estimatedHold || 0)}
+              </div>
             </div>
 
             {durationMinutes <= 0 && bookingDate && startTime && endTime && (
-              <div className="text-xs text-destructive mt-1">* Giờ kết thúc phải sau giờ bắt đầu.</div>
+              <div className="text-xs text-red-600 mt-1 font-medium">* Giờ kết thúc phải sau giờ bắt đầu.</div>
             )}
           </CardContent>
         </Card>
@@ -1015,15 +1028,15 @@ export default function BookingPage() {
       {/* PILLARS */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">Select Charging Pillar</h3>
-          {loadingDetail && <span className="text-xs text-muted-foreground">Loading pillars…</span>}
+          <h3 className="text-lg font-semibold text-slate-900">Select Charging Pillar</h3>
+          {loadingDetail && <span className="text-xs text-slate-500">Loading pillars…</span>}
         </div>
 
         {!pillarsUI.length && !loadingDetail && (
-          <div className="text-sm text-destructive">Không có pillar khả dụng ở trạm này.</div>
+          <div className="text-sm text-red-600">Không có pillar khả dụng ở trạm này.</div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {pillarsUI.map((p) => {
             const active = selectedPillarCode === p.code;
             const isAvailable = p.status === "available";
@@ -1048,39 +1061,43 @@ export default function BookingPage() {
                   }
                 }}
                 className={[
-                  "cursor-pointer transition-colors rounded-xl",
+                  "cursor-pointer transition-all duration-200 rounded-xl overflow-hidden text-center",
                   active
-                    ? "border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md"
+                    ? "border-2 border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-500/10"
                     : !isAvailable
-                    ? "bg-muted/50 opacity-60 cursor-not-allowed"
-                    : "hover:border-primary/40",
+                    ? "border border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed"
+                    : "border border-slate-200/70 bg-white hover:border-emerald-400 hover:shadow-md",
                 ].join(" ")}
               >
-                <CardContent className="p-3 text-center">
-                  <div className="font-semibold">{p.name}</div>
-                  <div className="flex flex-wrap gap-1 justify-center mt-1 min-h-[22px]">
+                <CardContent className="p-5">
+                  <div className="font-semibold text-lg text-slate-800">{p.name}</div>
+                  <div className="flex flex-wrap gap-1.5 justify-center mt-2 min-h-[22px]">
                     {p.connectorLabels.length ? (
                       p.connectorLabels.map((lbl) => (
-                        <span key={lbl} className="px-2 py-0.5 rounded-full border text-xs leading-5">
+                        <span
+                          key={lbl}
+                          className="px-2 py-0.5 rounded-full border border-slate-300 bg-white text-xs leading-5 text-slate-600"
+                        >
                           {lbl}
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-slate-400">—</span>
                     )}
                   </div>
-                  {p.power && <div className="text-xs font-medium text-primary mt-1">{p.power}</div>}
+                  {p.power && <div className="text-xs font-medium text-emerald-700 mt-1">{p.power}</div>}
                   <Badge
+                    variant="default"
                     className={[
-                      "mt-2 text-xs rounded-full",
+                      "mt-3 text-xs rounded-full capitalize font-medium px-3 py-1 border",
                       isAvailable
-                        ? "bg-success/10 text-success border-success/20"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                         : p.status === "occupied"
-                        ? "bg-destructive/10 text-destructive border-destructive/20"
-                        : "bg-warning/10 text-warning border-warning/20",
+                        ? "bg-red-100 text-red-800 border-red-200"
+                        : "bg-amber-100 text-amber-800 border-amber-200",
                     ].join(" ")}
                   >
-                    {isAvailable ? "Available" : p.status === "occupied" ? "Occupied" : "Maintenance"}
+                    {isAvailable ? "available" : p.status === "occupied" ? "occupied" : "maintenance"}
                   </Badge>
                 </CardContent>
               </Card>
@@ -1091,9 +1108,9 @@ export default function BookingPage() {
 
       {/* CONNECTOR TYPE */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Select Connector</h3>
+        <h3 className="text-lg font-semibold mb-3 text-slate-900">Select Connector</h3>
         {!selectedPillarCode ? (
-          <div className="text-sm text-muted-foreground">Vui lòng chọn trụ sạc trước.</div>
+          <div className="text-sm text-slate-500">Vui lòng chọn trụ sạc trước.</div>
         ) : (
           <div className="flex flex-wrap gap-3">
             {normalizedConnectors.map((c) => {
@@ -1107,10 +1124,10 @@ export default function BookingPage() {
                     setSelectedConnectorLabel(c.name);
                   }}
                   className={[
-                    "px-4 py-2 rounded-full text-sm transition-colors",
+                    "px-6 h-10 rounded-full text-sm font-medium transition-all",
                     active
-                      ? "bg-primary/10 border-2 border-primary ring-2 ring-primary/20"
-                      : "border border-border bg-white",
+                      ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-md ring-2 ring-emerald-500/20 border-transparent"
+                      : "bg-white border border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700",
                   ].join(" ")}
                 >
                   {c.name}
@@ -1118,7 +1135,7 @@ export default function BookingPage() {
               );
             })}
             {selectedPillarCode && normalizedConnectors.length === 0 && (
-              <div className="text-sm text-muted-foreground">Pillar này chưa có connector.</div>
+              <div className="text-sm text-slate-500">Pillar này chưa có connector.</div>
             )}
           </div>
         )}
@@ -1128,17 +1145,17 @@ export default function BookingPage() {
 
   const renderInsufficientBanner = () =>
     insufficient && (
-      <Card className="border-destructive/30 bg-destructive/10 rounded-xl">
+      <Card className="border border-red-200 bg-red-50 rounded-xl">
         <CardContent className="p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-destructive mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
           <div className="text-sm">
-            <div className="font-semibold text-destructive mb-1">Số dư ví không đủ</div>
+            <div className="font-semibold text-red-700 mb-1">Số dư ví không đủ</div>
             <div className="mb-1">
               Cần nạp thêm <b>{formatVND(insufficient.recommended_topup)}</b> để giữ chỗ.
             </div>
             <div>Phí giữ chỗ: <b>{formatVND(insufficient.holdFee)}</b></div>
             {insufficient.estimated_final_cost ? (
-              <div className="text-muted-foreground">
+              <div className="text-slate-600">
                 Ước tính chi phí phiên sạc: {formatVND(insufficient.estimated_final_cost)}
               </div>
             ) : null}
@@ -1146,7 +1163,7 @@ export default function BookingPage() {
           <div className="ml-auto">
             <Button
               variant="outline"
-              className="h-9"
+              className="h-9 bg-white border-red-300 text-red-700 hover:bg-red-100"
               onClick={() => toast({ title: "Chưa nối top-up API", description: "Gọi /wallet/topup ở đây." })}
             >
               Nạp {formatVND(insufficient.recommended_topup)}
@@ -1158,64 +1175,63 @@ export default function BookingPage() {
 
   const renderSummaryStep = () => {
     const holdToShow = serverHoldFee ?? estimatedHold;
-    // === NEW: vehicle selected for display ===
+    // === vehicle selected for display ===
     const vehicleChosen = vehicles.find(v => v.id === selectedVehicleId);
     return (
       <div className="space-y-8">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/30 bg-gradient-to-br from-emerald-500 to-cyan-600">
             <Receipt className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Booking Summary</h2>
-          <p className="text-muted-foreground">Kiểm tra thời gian, lựa chọn và thanh toán giữ chỗ</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Booking Summary</h2>
+          <p className="text-slate-600">Kiểm tra thời gian, lựa chọn và thanh toán giữ chỗ</p>
         </div>
 
         {renderInsufficientBanner()}
 
-        <Card className="shadow-electric border-2 border-primary/20 rounded-2xl">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-xl">
           <CardContent className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="space-y-4">
-                <div className="flex items-center p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl">
-                  <MapPin className="w-5 h-5 text-primary mr-3" />
+                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-cyan-50 border border-emerald-100">
+                  <MapPin className="w-5 h-5 text-emerald-600 mr-3" />
                   <div>
-                    <div className="text-sm text-muted-foreground">Station</div>
-                    <div className="font-bold text-lg">{station!.name}</div>
-                    <div className="text-xs text-muted-foreground">{station!.address}</div>
+                    <div className="text-sm text-slate-600">Station</div>
+                    <div className="font-bold text-lg text-slate-900">{station!.name}</div>
+                    <div className="text-xs text-slate-500">{station!.address}</div>
                   </div>
                 </div>
 
-                {/* === NEW: show selected vehicle in summary === */}
-                <div className="flex items-center p-4 bg-gradient-to-r from-emerald-100/40 to-emerald-50 rounded-xl">
+                {/* Vehicle summary */}
+                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-emerald-100/40 to-emerald-50 border border-emerald-200/60">
                   <Car className="w-5 h-5 text-emerald-600 mr-3" />
                   <div>
-                    <div className="text-sm text-muted-foreground">Vehicle</div>
-                    <div className="font-bold text-lg">
+                    <div className="text-sm text-slate-600">Vehicle</div>
+                    <div className="font-bold text-lg text-slate-900">
                       {vehicleChosen
                         ? (vehicleChosen.name || [vehicleChosen.brand, vehicleChosen.model].filter(Boolean).join(" ") || `Vehicle #${vehicleChosen.id}`)
                         : "—"}
-                    </div>                
+                    </div>
                   </div>
                 </div>
-                {/* === END NEW === */}
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center p-4 bg-gradient-to-r from-info/10 to-info/5 rounded-xl">
-                  <Clock className="w-5 h-5 text-info mr-3" />
+                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-sky-50 to-sky-100/40 border border-sky-100">
+                  <Clock className="w-5 h-5 text-sky-600 mr-3" />
                   <div>
-                    <div className="text-sm text-muted-foreground">Timeslot</div>
-                    <div className="font-bold text-lg">
+                    <div className="text-sm text-slate-600">Timeslot</div>
+                    <div className="font-bold text-lg text-slate-900">
                       {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} ({durationMinutes}’)
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center p-4 bg-gradient-to-r from-warning/10 to-warning/5 rounded-xl">
-                  <Zap className="w-5 h-5 text-warning mr-3" />
+                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/40 border border-amber-100">
+                  <Zap className="w-5 h-5 text-amber-600 mr-3" />
                   <div>
-                    <div className="text-sm text-muted-foreground">Pillar & Rate</div>
-                    <div className="font-bold text-lg">
+                    <div className="text-sm text-slate-600">Pillar & Rate</div>
+                    <div className="font-bold text-lg text-slate-900">
                       {selectedPillarCode} • {station!.price ?? "—"}
                     </div>
                   </div>
@@ -1223,13 +1239,15 @@ export default function BookingPage() {
               </div>
             </div>
 
-            <div className="border-t-2 border-dashed border-primary/20 pt-6">
-              <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-6 rounded-2xl">
+            <div className="border-t border-slate-200/60 pt-6">
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 via-white to-cyan-50 border border-emerald-100">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-lg font-semibold">Hold fee</span>
-                  <span className="text-3xl font-bold text-primary">{formatVND(holdToShow)}</span>
+                  <span className="text-lg font-semibold text-slate-800">Hold fee</span>
+                  <span className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                    {formatVND(holdToShow)}
+                  </span>
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-slate-600">
                   Phương thức: <b>{paymentMethod === "wallet" ? "Ví" : "Thẻ"}</b>. Hệ thống sẽ khóa số tiền
                   tạm giữ tương ứng với thời lượng đặt chỗ. Phần dư sẽ hoàn lại sau khi kết thúc phiên sạc.
                 </div>
@@ -1246,79 +1264,86 @@ export default function BookingPage() {
     return (
       <div className="space-y-8 text-center">
         <div className="relative">
-          <div className="w-24 h-24 bg-gradient-to-br from-success to-success/80 rounded-full flex items-center justify-center mx-auto shadow-glow animate-scale-in">
+          <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/30 bg-gradient-to-br from-emerald-500 to-cyan-600 animate-[fadeIn_0.4s_ease-out]">
             <CheckCircle className="w-12 h-12 text-white" />
           </div>
         </div>
 
         <div>
-          <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-success to-primary bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
             Booking Confirmed!
           </h2>
           <div className="flex justify-center mb-4">
-            <Badge className="bg-success/10 text-success border-success/30 px-4 py-2 text-base font-semibold rounded-full">
+            <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-4 py-2 text-base font-semibold rounded-full">
               <CheckCircle className="w-5 h-5 mr-2" />
               Hold created successfully
             </Badge>
           </div>
           {transactionId && (
-            <p className="text-success font-bold text-lg mb-6">
-              Mã giao dịch: <span className="font-mono">{transactionId}</span>
+            <p className="text-emerald-700 font-bold text-lg mb-6">
+              Mã giao dịch: <span className="font-mono text-slate-900">{transactionId}</span>
             </p>
           )}
         </div>
 
-        <Card className="shadow-electric border-2 border-success/20 rounded-2xl">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-xl">
           <CardContent className="p-8">
-            <h3 className="text-xl font-bold mb-6 flex items-center justify-center">
-              <QrCode className="w-6 h-6 mr-2 text-primary" />
+            <h3 className="text-xl font-bold mb-6 flex items-center justify-center text-slate-900">
+              <QrCode className="w-6 h-6 mr-2 text-emerald-600" />
               Your Reservation Details
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
               <div className="space-y-4">
-                <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Station</div>
-                  <div className="font-bold text-lg">{station!.name}</div>
+                <div className="bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100">
+                  <div className="text-sm text-slate-600 mb-1">Station</div>
+                  <div className="font-bold text-lg text-slate-900">{station!.name}</div>
                 </div>
 
-                <div className="bg-gradient-to-r from-warning/10 to-warning/5 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Pillar</div>
-                  <div className="font-bold text-lg text-warning">{selectedPillarCode}</div>
+                <div className="bg-gradient-to-r from-amber-50 to-amber-100/40 p-4 rounded-xl border border-amber-100">
+                  <div className="text-sm text-slate-600 mb-1">Pillar</div>
+                  <div className="font-bold text-lg text-amber-700">{selectedPillarCode}</div>
                 </div>
 
-                <div className="bg-gradient-to-r from-info/10 to-info/5 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Timeslot</div>
-                  <div className="font-bold text-lg">
+                <div className="bg-gradient-to-r from-sky-50 to-sky-100/40 p-4 rounded-xl border border-sky-100">
+                  <div className="text-sm text-slate-600 mb-1">Timeslot</div>
+                  <div className="font-bold text-lg text-slate-900">
                     {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} ({durationMinutes}’)
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gradient-to-r from-success/10 to-success/5 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Connector</div>
-                  <div className="font-bold text-lg">{selectedConnectorLabel}</div>
+                <div className="bg-gradient-to-r from-emerald-50 to-emerald-100/40 p-4 rounded-xl border border-emerald-100">
+                  <div className="text-sm text-slate-600 mb-1">Connector</div>
+                  <div className="font-bold text-lg text-slate-900">{selectedConnectorLabel}</div>
                 </div>
 
-                <div className="bg-gradient-to-r from-muted/30 to-muted/20 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Booking ID</div>
-                  <div className="font-bold text-lg">{reservationId ?? "—"}</div>
+                <div className="bg-gradient-to-r from-slate-50 to-slate-100 p-4 rounded-xl border border-slate-200">
+                  <div className="text-sm text-slate-600 mb-1">Booking ID</div>
+                  <div className="font-bold text-lg text-slate-900">{reservationId ?? "—"}</div>
                 </div>
 
-                <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-4 rounded-xl">
-                  <div className="text-sm text-muted-foreground mb-1">Hold fee</div>
-                  <div className="font-bold text-lg">{formatVND(holdToShow)}</div>
+                <div className="bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100">
+                  <div className="text-sm text-slate-600 mb-1">Hold fee</div>
+                  <div className="font-bold text-lg text-slate-900">{formatVND(holdToShow)}</div>
                 </div>
               </div>
             </div>
 
             <div className="flex gap-4 justify-center mt-2">
-              <Button variant="outline" onClick={() => navigate("/map")} className="min-w-[200px] h-11">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/map")}
+                className="min-w-[200px] h-11 border-slate-300 hover:bg-slate-50 text-slate-700 rounded-full"
+              >
                 <MapPin className="w-4 h-4 mr-2" />
                 Quay về bản đồ
               </Button>
-              <Button onClick={() => navigate("/dashboard")} className="min-w-[200px] h-11">
+              <Button
+                onClick={() => navigate("/dashboard")}
+                className="min-w-[200px] h-11 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-600 text-white hover:brightness-110 shadow-lg shadow-cyan-500/30"
+              >
                 Xem Dashboard
               </Button>
             </div>
@@ -1342,37 +1367,42 @@ export default function BookingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-white border-b shadow-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+    <div className="min-h-screen bg-slate-100">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+        <div className="max-w-4xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={handleBack}
-              className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full px-3 py-1.5 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               {currentStep === "selection" ? "Back to Selection" : "Back"}
             </button>
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-gradient-primary rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 shadow flex items-center justify-center">
                 <Zap className="w-4 h-4 text-white" />
               </div>
-              <span className="text-lg font-semibold text-primary">
+              <span className="text-lg font-semibold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
                 {currentStep === "confirmed" ? "Booking Confirmed" : "Book Station"}
               </span>
             </div>
+            <div className="w-24" />
           </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">{renderStepContent()}</div>
+      <div className="max-w-3xl mx-auto px-4 md:px-0 py-8 md:py-12">{renderStepContent()}</div>
 
       {currentStep !== "confirmed" && (
-        <div className="sticky bottom-0 left-0 right-0 z-40 border-t bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="sticky bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
           <div className="max-w-4xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               {currentStep === "summary" ? (
-                <Button variant="outline" onClick={() => setCurrentStep("selection")} className="h-11 px-6">
+                <Button
+                  variant="ghost"
+                  onClick={() => setCurrentStep("selection")}
+                  className="h-11 px-6 text-slate-600 hover:bg-slate-100 rounded-full"
+                >
                   Back
                 </Button>
               ) : (
@@ -1390,14 +1420,18 @@ export default function BookingPage() {
                     !endTime ||
                     durationMinutes <= 0
                   }
-                  className="h-11 px-8"
+                  className="h-12 px-8 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-600 text-white hover:brightness-110 shadow-lg shadow-cyan-500/30"
                 >
                   Continue to Payment
                 </Button>
               )}
 
               {currentStep === "summary" && (
-                <Button onClick={confirmAndCreateBooking} className="h-11 px-8" disabled={submitting || loadingDetail}>
+                <Button
+                  onClick={confirmAndCreateBooking}
+                  className="h-12 px-8 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-600 text-white hover:brightness-110 shadow-lg shadow-cyan-500/30"
+                  disabled={submitting || loadingDetail}
+                >
                   <QrCode className="w-5 h-5 mr-2" />
                   {submitting ? "Processing..." : "Pay & Hold Reservation"}
                 </Button>

@@ -119,11 +119,14 @@ interface ChargingStationDetailResponse {
 }
 
 /* =========================
-   Constants & helpers - UPDATED
+   Constants & helpers 
 ========================= */
+const formatVND = (n?: number) =>
+  n == null ? "—" : n.toLocaleString("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+
 const defaultFilters: Filters = {
   radius: 100, connectors: [], availableOnly: false,
-  minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10,
+  minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10000,
   sort: "distance", page: 0, size: 50,
 };
 
@@ -292,7 +295,7 @@ const StationMap = () => {
 
   // draft values for popovers
   const [draftRadius, setDraftRadius] = useState(appliedFilters.radius);
-  const [priceMax, setPriceMax] = useState(appliedFilters.maxPrice ?? 1);
+  const [priceMax, setPriceMax] = useState(appliedFilters.maxPrice ?? 10000);
   const [minPower, setMinPower] = useState(appliedFilters.minPower ?? 0);
   const [draftConnectors, setDraftConnectors] = useState<string[]>(appliedFilters.connectors ?? []);
   const [availableOnly, setAvailableOnly] = useState(appliedFilters.availableOnly ?? false);
@@ -520,7 +523,7 @@ const StationMap = () => {
             variant="outline" size="sm" className="rounded-full border-slate-200"
             onClick={() => { setShowPrice(v => !v); setShowRadius(false); setShowPower(false); setShowConnector(false); setShowMore(false); }}
           >
-            Up to ${Number(appliedFilters.maxPrice ?? 1).toFixed(2)}/kWh
+            Up to {formatVND(appliedFilters.maxPrice ?? 10000)}/kWh
             {Number(appliedFilters.maxPrice) !== defaultFilters.maxPrice && (
               <Badge className="ml-2 rounded-full w-5 h-5 p-0 grid place-items-center">1</Badge>
             )}
@@ -535,7 +538,7 @@ const StationMap = () => {
               <p className="text-xs text-muted-foreground mb-2">Max price per kWh</p>
               <input type="range" min={0} max={1} step={0.05} value={priceMax}
                 onChange={(e) => setPriceMax(parseFloat(e.target.value))} className="w-full" />
-              <div className="mt-1 text-sm">${Number(priceMax).toFixed(2)}</div>
+              <div className="mt-1 text-sm">{formatVND(priceMax)}</div>
               <div className="mt-4 text-right"><Button size="sm" onClick={applyAllFilters}>Apply</Button></div>
             </div>
           )}
@@ -711,8 +714,8 @@ const StationMap = () => {
                       <div className="flex items-center justify-between pt-2 border-t">
                         <span className="text-sm text-muted-foreground">Price</span>
                         <span className="font-semibold">
-                          ${station.minPrice?.toFixed(2)}
-                          {station.maxPrice && station.maxPrice !== station.minPrice ? ` - $${station.maxPrice.toFixed(2)}` : ''}/kWh
+                          {formatVND(station.minPrice)}
+                          {station.maxPrice && station.maxPrice !== station.minPrice ? ` - ${formatVND(station.maxPrice)}` : ''}/kWh
                         </span>
                       </div>
 
@@ -793,7 +796,10 @@ const StationMap = () => {
                     {s.address}<br />
                     <span>{s.availablePorts}/{s.totalPorts} available</span><br />
                     <span>Up to {s.maxPower} kW</span><br />
-                    <span>${s.minPrice?.toFixed(2)}/kWh{s.maxPrice && s.maxPrice !== s.minPrice ? ` - $${s.maxPrice.toFixed(2)}` : ''}</span>
+                    <span>
+                      {formatVND(s.minPrice)}/kWh
+                      {s.maxPrice && s.maxPrice !== s.minPrice ? ` - ${formatVND(s.maxPrice)}` : ''}
+                    </span>
                   </div>
                 </Popup>
               </Marker>
@@ -860,9 +866,9 @@ const StationMap = () => {
                   label="Price Range"
                   value={
                     <>
-                      ${selectedStation.minPrice?.toFixed(2)}
+                      {formatVND(selectedStation.minPrice)}
                       {selectedStation.maxPrice && selectedStation.maxPrice !== selectedStation.minPrice
-                        ? `–$${selectedStation.maxPrice.toFixed(2)}`
+                        ? `–${formatVND(selectedStation.maxPrice)}`
                         : ""}/kWh
                     </>
                   }
@@ -909,7 +915,7 @@ const StationMap = () => {
                             <PillarStatusBadge status={p.status} />
                           </div>
                           <div className="mt-1 text-sm text-slate-600">
-                            {p.power} kW • ${p.pricePerKwh.toFixed(2)}/kWh
+                            {p.power} kW • {formatVND(p.pricePerKwh)}/kWh
                           </div>
                           <div className="mt-2 flex flex-wrap gap-1">
                             {p.connectors.map((c, i) => (
