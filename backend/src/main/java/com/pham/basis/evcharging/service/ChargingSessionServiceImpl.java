@@ -238,7 +238,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
         Pageable pageable = PageRequest.of(page, size, Sort.by("startTime").descending());
-        return sessionRepo.findByDriverId(userId, pageable);
+        return sessionRepo.findByDriver_Id(userId, pageable);
     }
 
     @Override

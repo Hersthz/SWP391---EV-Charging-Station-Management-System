@@ -36,9 +36,11 @@ public class UserAnalyticsServiceImpl implements  UserAnalyticsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new AppException.NotFoundException("No user found"));
         //
-        List<ChargingSession> sessions = chargingSessionRepository.findByDriverId(user.getId());
+        List<ChargingSession> sessions = chargingSessionRepository.findByDriver_Id(user.getId());
         //
-        Long totalSessions = chargingSessionRepository.countByDriverId(user.getId());
+        System.out.println("Sessions: " + sessions.size());
+        System.out.println("Sessions: -------------------------------------------------");
+        Long totalSessions = chargingSessionRepository.countByDriver_Id(user.getId());
         double getTotalEnergy = sessions.stream()
                 .map(s-> s.getEnergyCount() != null ? s.getEnergyCount(): BigDecimal.ZERO)
                 .mapToDouble(BigDecimal::doubleValue)
