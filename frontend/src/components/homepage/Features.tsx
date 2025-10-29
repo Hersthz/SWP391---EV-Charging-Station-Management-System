@@ -1,95 +1,73 @@
-import { MapPin, Zap, CreditCard, Clock, Smartphone, Battery } from "lucide-react";
-import { Card } from "../ui/card";
+"use client";
+import React from "react";
+import ScrollStack from "../lightswind/scroll-stack";
+import { Badge } from "../../components/ui/badge";
 
-const Features = () => {
-  const features = [
+export default function Features() {
+  const cards = [
     {
-      icon: MapPin,
-      title: "Real-time station search",
-      description: "Locate nearby charging stations with accurate status and pricing.",
-      color: "text-primary"
-    },
-    {
-      icon: Zap,
-      title: "Fast-charging network",
-      description: "Access a large fast-charging network with speeds up to 350kW.",
-      color: "text-accent"
-    },
-    {
-      icon: CreditCard,
-      title: "Seamless payments",
-      description: "Pay in-app with automatic invoices and detailed history.",
-      color: "text-primary"
-    },
-    {
-      icon: Clock,
-      title: "Smart scheduling",
-      description: "Book charging sessions in advance and get notified when a port is ready.",
-      color: "text-accent"
-    },
-    {
-      icon: Smartphone,
       title: "Remote monitoring",
-      description: "Track your charging session remotely and get completion alerts.",
-      color: "text-primary"
+      subtitle: "Control pillars & connectors, alarms, and live sessions.",
+      badge: "Ops",
+      gradient: "from-slate-800 to-slate-950", 
     },
     {
-      icon: Battery,
-      title: "Battery analytics",
-      description: "Monitor battery health and charging habits to optimize performance.",
-      color: "text-accent"
-    }
+      title: "Smart scheduling",
+      subtitle: "Queue-aware reservations, arrival buffers, and overbooking guard.",
+      badge: "Booking",
+      gradient: "from-sky-600 to-blue-800", 
+    },
+    {
+      title: "Secure payments",
+      subtitle: "Invoices, holds, retries with audit-ready history.",
+      badge: "Finance",
+      gradient: "from-emerald-600 to-teal-800", 
+    },
+    {
+      title: "Analytics",
+      subtitle: "Revenue, utilization, and cost trends in one glance.",
+      badge: "Reports",
+      gradient: "from-purple-600 to-indigo-800", 
+    },
+    {
+      title: "Driver delight",
+      subtitle: "Clean, fast UI on every screen size.",
+      badge: "UX",
+      gradient: "from-rose-600 to-red-800", 
+    },
   ];
 
   return (
-    <section className="py-24 px-4 bg-gradient-section">
-      <div className="container mx-auto max-w-7xl">
-        {/* Section title */}
-        <div className="text-center mb-16 space-y-4">
-          <div className="flex items-center justify-center gap-2 text-primary mb-4">
-            <Zap className="w-6 h-6" />
-            <span className="text-sm font-semibold uppercase tracking-wider">
-              Powerful Features
-            </span>
-          </div>
-
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground">
-            Everything you need for
-            <span className="block text-primary">Smart EV Charging</span>
-          </h2>
-
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Our all-in-one platform gives you every tool you need to manage EV charging efficiently and conveniently.
-          </p>
+    <section id="features" className="py-16 bg-slate-100 text-slate-900">
+      <div className="container mx-auto max-w-6xl px-4">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <Badge
+            variant="secondary"
+            className="rounded-full px-3 py-1 bg-white text-emerald-700 border border-slate-300"
+          >
+            Features
+          </Badge>
+          <span className="text-sm text-slate-600">
+            Built for clarity, speed, and maintainability
+          </span>
         </div>
 
-        {/* Feature grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <Card
-              key={index}
-              className="p-8 bg-gradient-card border-0 shadow-card hover:shadow-primary transition-all duration-300 hover:-translate-y-2 group animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="space-y-4">
-                <div className={`w-14 h-14 rounded-xl bg-gradient-hero flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                  <feature.icon className="w-7 h-7 text-white" />
-                </div>
-
-                <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                  {feature.title}
-                </h3>
-
-                <p className="text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <h2 className="text-center text-3xl md:text-4xl font-extrabold tracking-tight">
+          Powerful features
+        </h2>
+        <p className="text-center text-slate-600 mt-2 mb-10">
+          Real-time operations, reliable booking, secure payments, and elegant dashboards.
+        </p>
       </div>
+
+      <ScrollStack
+        cards={cards}
+        backgroundColor="bg-slate-100"
+        cardHeight="70vh"
+        sectionHeightMultiplier={3.3}
+        animationDuration="0.6s"
+        className="select-none"
+      />
     </section>
   );
-};
-
-export default Features;
+}

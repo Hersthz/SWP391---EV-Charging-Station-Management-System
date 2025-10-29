@@ -75,13 +75,11 @@ const Dashboard = () => {
             <div className="lg:col-span-2 space-y-6">
               <QuickActions />
               <StatusCards />
-              <RecentSessions />
             </div>
 
             <div className="space-y-6">
               <ProfileSection />
               <VehicleSection />
-              <StatsSection />
               <ChatBot />
             </div>
           </div>

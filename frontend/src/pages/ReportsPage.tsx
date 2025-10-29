@@ -22,8 +22,29 @@ import {
   Filter,
   Calendar,
   Battery,
+  Activity,
+  Target,
 } from "lucide-react";
 import { ChatBot } from "./ChatBot";
+
+/* ===================== Charts ===================== */
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 /* ===================== Backend types ===================== */
 type ApiResponse<T> = { code?: string; message?: string; data?: T };
@@ -69,6 +90,57 @@ type ReservationResponseBE = {
   payment?: { paid?: boolean; depositTransactionId?: string };
 };
 
+/* ---------- Analytics types (mirror backend) ---------- */
+type AnalyticsOverview = {
+  totalSessions: number;
+  totalEnergyKwh: number;
+  totalCost: number; // BigDecimal → number
+  averageSessionDuration: number; // minutes
+  avgCostPerKwh: number;
+  percentChangeCost: number;
+};
+
+type MonthlyAnalytics = {
+  yearMonth: string; // "yyyy-MM"
+  cost: number; // BigDecimal → number
+  energyKwh: number;
+  sessionCount: number;
+  averageDuration: number; // minutes
+};
+
+type StationAnalytics = {
+  stationId: string;
+  stationName: string;
+  address: string;
+  sessionCount: number;
+  totalEnergyKwh: number;
+  totalCost: number; // BigDecimal → number
+  usagePercentage: number;
+  lat?: number | null;
+  lng?: number | null;
+  rank: number;
+};
+
+type ConnectorAnalytics = {
+  connectorType: string;
+  sessionCount: number;
+  totalEnergyKwh: number;
+  usagePercentage: number;
+};
+
+type HourlyUsage = {
+  hour: number; // 0-23
+  sessionCount: number;
+};
+
+type UserAnalyticsResponse = {
+  overview: AnalyticsOverview;
+  monthlyTrends: MonthlyAnalytics[];
+  topStations: StationAnalytics[];
+  connectorUsage: ConnectorAnalytics[];
+  hourlyUsage: HourlyUsage[];
+};
+
 /* ===================== Helpers ===================== */
 const fmtDate = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString() : "—";
@@ -78,6 +150,10 @@ const fmtMoney = (n?: number | null) =>
   typeof n === "number" && Number.isFinite(n)
     ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n)
     : "$0.00";
+const fmtKwh = (n?: number | null, d = 1) =>
+  typeof n === "number" && Number.isFinite(n) ? `${n.toFixed(d)} kWh` : "—";
+const fmtMinute = (m?: number | null) =>
+  typeof m === "number" && Number.isFinite(m) ? `${m} min` : "—";
 
 const minutesBetween = (a?: string | null, b?: string | null) => {
   if (!a) return 0;
@@ -92,6 +168,13 @@ const humanDuration = (mins: number) => {
   return `${h}h ${m}m`;
 };
 
+const ymLabel = (ym: string) => {
+  // "2025-10" → "Oct 2025"
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, (m || 1) - 1, 1);
+  return d.toLocaleString(undefined, { month: "short", year: "numeric" });
+};
+
 /* ===================== Component ===================== */
 const ReportsPage = () => {
   const [selectedPeriod, setSelectedPeriod] =
@@ -103,12 +186,16 @@ const ReportsPage = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<ChargingSessionResponse[]>([]);
 
-  // ⬇️ NEW: meta map giống StatusCards: pillarId -> {stationName, pillarCode, connectorType}
+  // sessions meta: pillarId -> stationName/pillarCode/connectorType
   const [pillarMeta, setPillarMeta] = useState<
     Map<number, { stationName?: string; pillarCode?: string; connectorType?: string }>
   >(new Map());
 
-  // 1) Load user id -> load sessions -> load reservations (để có tên Station/Pillar/Connector)
+  // NEW: analytics
+  const [analytics, setAnalytics] = useState<UserAnalyticsResponse | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  /* ===================== Data load ===================== */
   useEffect(() => {
     let mounted = true;
 
@@ -130,7 +217,7 @@ const ReportsPage = () => {
         if (!mounted) return;
         setUserId(uid);
 
-        // /session/user/{userId}
+        // sessions: /session/user/{userId}
         const sres = await api.get<ApiResponse<PageResp<ChargingSessionResponse>>>(
           `/session/user/${uid}?page=0&size=100`,
           { withCredentials: true }
@@ -139,7 +226,7 @@ const ReportsPage = () => {
         if (!mounted) return;
         setSessions(Array.isArray(content) ? content : []);
 
-        // ⬇️ NEW: /user/{userId}/reservations để suy ra tên Station/Pillar/Connector
+        // reservations meta for pillar/station/connector
         try {
           const rres = await api.get<ReservationResponseBE[]>(
             `/user/${uid}/reservations`,
@@ -158,14 +245,29 @@ const ReportsPage = () => {
           });
           if (mounted) setPillarMeta(map);
         } catch {
-          // không có reservation meta → dùng fallback (#id)
           if (mounted) setPillarMeta(new Map());
+        }
+
+        // analytics
+        try {
+          setLoadingAnalytics(true);
+          const ares = await api.get<ApiResponse<UserAnalyticsResponse>>(
+            `/analytics/${uid}`,
+            { withCredentials: true }
+          );
+          if (mounted) setAnalytics(ares?.data?.data ?? null);
+        } catch (e: any) {
+          console.warn("Analytics load failed:", e?.response?.data || e?.message);
+          if (mounted) setAnalytics(null);
+        } finally {
+          if (mounted) setLoadingAnalytics(false);
         }
       } catch (e: any) {
         const msg = e?.response?.data?.message || e?.message || "Failed to load sessions.";
         setError(msg);
         setSessions([]);
         setPillarMeta(new Map());
+        setAnalytics(null);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -177,7 +279,7 @@ const ReportsPage = () => {
     };
   }, []);
 
-  // 2) Derive UI rows (dùng meta giống StatusCards)
+  /* ===================== Derive rows for session history ===================== */
   const rows = useMemo(() => {
     return (sessions || [])
       .slice()
@@ -211,14 +313,14 @@ const ReportsPage = () => {
           port: portText,
           connector: connectorText,
           duration: mins ? humanDuration(mins) : "—",
-          energy: typeof s.energyCount === "number" ? `${s.energyCount.toFixed(0)} kWh` : "—",
+          energy: typeof s.energyCount === "number" ? `${s.energyCount.toFixed(1)} kWh` : "—",
           cost: fmtMoney(s.chargedAmount ?? 0),
           status: isCompleted ? "Completed" : (s.status || "ACTIVE"),
         };
       });
   }, [sessions, pillarMeta]);
 
-  // 3) Lọc theo period & tính quick stats
+  /* ===================== Filters & quick stats (session list) ===================== */
   const filtered = useMemo(() => {
     if (!rows.length) return rows;
     const now = new Date();
@@ -266,7 +368,6 @@ const ReportsPage = () => {
     const avgCostPerSession = totalSessions ? +(totalCost / totalSessions).toFixed(2) : 0;
     const avgEnergyPerSession = totalSessions ? +(totalEnergy / totalSessions).toFixed(2) : 0;
 
-    // most used station
     const countByStation = new Map<string, number>();
     filtered.forEach((r) => countByStation.set(r.station, (countByStation.get(r.station) || 0) + 1));
     let mostUsedStation = "—";
@@ -297,7 +398,7 @@ const ReportsPage = () => {
       }
     });
 
-    // efficiency (ước lượng rất đơn giản)
+    // efficiency 
     const eff = totalEnergy ? `${Math.min(100, Math.round((totalEnergy / totalSessions) * 4))}%` : "—";
 
     return {
@@ -311,6 +412,39 @@ const ReportsPage = () => {
       efficiency: eff,
     };
   }, [filtered, sessions]);
+
+  /* ===================== Derived analytics for charts ===================== */
+  const monthlyChart = useMemo(() => {
+    if (!analytics?.monthlyTrends?.length) return [];
+    // hiển thị gần 6 tháng, đảo ngược để cột thời gian tăng dần
+    const items = [...analytics.monthlyTrends].sort(
+      (a, b) => (a.yearMonth > b.yearMonth ? 1 : -1)
+    );
+    return items.map((m) => ({
+      label: ymLabel(m.yearMonth),
+      cost: m.cost ?? 0,
+      energy: m.energyKwh ?? 0,
+      sessions: m.sessionCount ?? 0,
+      avgDuration: m.averageDuration ?? 0,
+    }));
+  }, [analytics]);
+
+  const connectorChart = useMemo(() => {
+    if (!analytics?.connectorUsage?.length) return [];
+    return analytics.connectorUsage.map((c) => ({
+      type: c.connectorType,
+      sessions: c.sessionCount,
+      energy: +(+c.totalEnergyKwh).toFixed(2),
+      usage: +(+c.usagePercentage).toFixed(2),
+    }));
+  }, [analytics]);
+
+  const hourlyChart = useMemo(() => {
+    if (!analytics?.hourlyUsage?.length) return [];
+    return [...analytics.hourlyUsage]
+      .sort((a, b) => a.hour - b.hour)
+      .map((h) => ({ hour: `${String(h.hour).padStart(2, "0")}:00`, sessions: h.sessionCount }));
+  }, [analytics]);
 
   /* ===================== UI ===================== */
   return (
@@ -396,17 +530,20 @@ const ReportsPage = () => {
 
           {/* ===== Overview ===== */}
           <TabsContent value="overview" className="space-y-6 animate-fade-in">
-            {/* Summary cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="shadow-card border-0 bg-gradient-card">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">This period’s cost</p>
-                      <p className="text-2xl font-bold text-primary">{fmtMoney(monthlyStats.totalCost)}</p>
-                      <p className="text-xs text-success flex items-center mt-1">
+                      <p className="text-sm text-muted-foreground">Total cost</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {fmtMoney(analytics?.overview?.totalCost ?? monthlyStats.totalCost)}
+                      </p>
+                      <p className={`text-xs mt-1 flex items-center ${((analytics?.overview?.percentChangeCost ?? 0) >= 0) ? "text-success" : "text-rose-500"}`}>
                         <TrendingUp className="w-3 h-3 mr-1" />
-                        Auto from sessions
+                        {analytics
+                          ? `${(analytics.overview.percentChangeCost ?? 0).toFixed(1)}% vs last month`
+                          : "Auto from sessions"}
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -421,10 +558,14 @@ const ReportsPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Energy used</p>
-                      <p className="text-2xl font-bold text-secondary">{monthlyStats.totalEnergy} kWh</p>
-                      <p className="text-xs text-success flex items-center mt-1">
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                        Auto from sessions
+                      <p className="text-2xl font-bold text-secondary">
+                        {fmtKwh(analytics?.overview?.totalEnergyKwh ?? monthlyStats.totalEnergy, 1)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Avg cost/kWh:&nbsp;
+                        <span className="font-medium">
+                          {fmtMoney(analytics?.overview?.avgCostPerKwh ?? 0)}
+                        </span>
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -439,9 +580,14 @@ const ReportsPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Total sessions</p>
-                      <p className="text-2xl font-bold text-foreground">{monthlyStats.totalSessions}</p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {analytics?.overview?.totalSessions ?? monthlyStats.totalSessions}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Avg {(monthlyStats.totalSessions / 30).toFixed(1)} sessions/day
+                        Avg duration:&nbsp;
+                        <span className="font-medium">
+                          {fmtMinute(analytics?.overview?.averageSessionDuration ?? 0)}
+                        </span>
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -456,10 +602,12 @@ const ReportsPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Charging efficiency</p>
-                      <p className="text-2xl font-bold text-success">{monthlyStats.efficiency}</p>
+                      <p className="text-2xl font-bold text-success">
+                        {monthlyStats.efficiency}
+                      </p>
                       <p className="text-xs text-success flex items-center mt-1">
                         <Battery className="w-3 h-3 mr-1" />
-                        Estimated
+                        Estimated (client)
                       </p>
                     </div>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
@@ -470,42 +618,51 @@ const ReportsPage = () => {
               </Card>
             </div>
 
-            {/* Insights */}
+            {/* Monthly trends (cost / energy / sessions) */}
             <Card className="shadow-card border-0 bg-gradient-card">
-              <CardHeader>
-                <CardTitle>Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Avg cost per session:</span>
-                      <span className="font-medium">{fmtMoney(monthlyStats.avgCostPerSession)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Avg energy per session:</span>
-                      <span className="font-medium">{monthlyStats.avgEnergyPerSession} kWh</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Most used station:</span>
-                      <span className="font-medium">{monthlyStats.mostUsedStation}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Favorite time window:</span>
-                      <span className="font-medium">{monthlyStats.preferredTime}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Average efficiency:</span>
-                      <Badge className="bg-success/10 text-success border-success/20">{monthlyStats.efficiency}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Usage trend:</span>
-                      <Badge className="bg-primary/10 text-primary border-primary/20">Auto</Badge>
-                    </div>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Monthly trends</CardTitle>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Activity className="w-3 h-3" />
+                    {loadingAnalytics ? "Loading analytics…" : "Last 6 months"}
                   </div>
                 </div>
+              </CardHeader>
+              <CardContent className="pt-2">
+                {analytics && monthlyChart.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer>
+                        <BarChart data={monthlyChart}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="label" />
+                          <YAxis yAxisId="left" />
+                          <YAxis yAxisId="right" orientation="right" />
+                          <Tooltip />
+                          <Legend />
+                          <Bar yAxisId="left" dataKey="energy" name="Energy (kWh)" />
+                          <Bar yAxisId="right" dataKey="sessions" name="Sessions" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer>
+                        <LineChart data={monthlyChart}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="label" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="cost" name="Cost" dot />
+                          <Line type="monotone" dataKey="avgDuration" name="Avg Duration (min)" dot />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-6 text-sm text-muted-foreground">No analytics yet.</div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -580,22 +737,160 @@ const ReportsPage = () => {
             </Card>
           </TabsContent>
 
-          {/* ===== Analytics (placeholder) ===== */}
+          {/* ===== Analytics ===== */}
           <TabsContent value="analytics" className="space-y-6 animate-fade-in">
+            {/* Top stations */}
             <Card className="shadow-card border-0 bg-gradient-card">
-              <CardHeader>
-                <CardTitle>Power preference analysis</CardTitle>
-                <p className="text-sm text-muted-foreground">Power choices & average cost</p>
+              <CardHeader className="pb-2">
+                <CardTitle>Top stations</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-sm text-muted-foreground">
-                  Coming soon — we’ll break down power tiers once pillar meta is exposed.
-                </div>
+              <CardContent className="pt-2">
+                {loadingAnalytics ? (
+                  <div className="p-6 text-sm text-muted-foreground">Loading analytics…</div>
+                ) : !analytics?.topStations?.length ? (
+                  <div className="p-6 text-sm text-muted-foreground">No station analytics.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {analytics.topStations.map((s) => (
+                      <Card key={s.stationId} className="border-0 shadow-card bg-white/70">
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between">
+                            <div className="text-3xl font-black bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
+                              #{s.rank}
+                            </div>
+                            <Badge className="bg-primary/10 text-primary border-primary/20">
+                              {s.sessionCount} sessions
+                            </Badge>
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-base font-semibold text-foreground">{s.stationName}</div>
+                            <div className="text-xs text-muted-foreground">{s.address}</div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm mt-4">
+                            <div>
+                              <div className="text-muted-foreground">Energy</div>
+                              <div className="font-medium">{fmtKwh(s.totalEnergyKwh, 1)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Cost</div>
+                              <div className="font-medium">{fmtMoney(s.totalCost)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Usage</div>
+                              <div className="font-medium">{s.usagePercentage.toFixed(1)}%</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Connector mix & Hourly usage */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="shadow-card border-0 bg-gradient-card">
+                <CardHeader className="pb-2">
+                  <CardTitle>Connector usage</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  {analytics?.connectorUsage?.length ? (
+                    <div className="h-72 w-full">
+                      <ResponsiveContainer>
+                        <BarChart data={connectorChart}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="type" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="sessions" name="Sessions" />
+                          <Bar dataKey="energy" name="Energy (kWh)" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-sm text-muted-foreground">No connector data.</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card border-0 bg-gradient-card">
+                <CardHeader className="pb-2">
+                  <CardTitle>Hourly usage</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  {analytics?.hourlyUsage?.length ? (
+                    <div className="h-72 w-full">
+                      <ResponsiveContainer>
+                        <AreaChart data={hourlyChart}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="hour" />
+                          <YAxis />
+                          <Tooltip />
+                          <Area type="monotone" dataKey="sessions" name="Sessions" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-sm text-muted-foreground">No hourly data.</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* KPI strip */}
+            {analytics && (
+              <Card className="shadow-card border-0 bg-gradient-card">
+                <CardHeader className="pb-2">
+                  <CardTitle>Key metrics</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
+                        <DollarSign className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Total cost</div>
+                        <div className="font-semibold">{fmtMoney(analytics.overview.totalCost)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Energy</div>
+                        <div className="font-semibold">{fmtKwh(analytics.overview.totalEnergyKwh, 1)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
+                        <Target className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Avg session</div>
+                        <div className="font-semibold">{fmtMinute(analytics.overview.averageSessionDuration)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
+                        <Activity className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Cost / kWh</div>
+                        <div className="font-semibold">{fmtMoney(analytics.overview.avgCostPerKwh)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
+
       <ChatBot />
     </div>
   );
