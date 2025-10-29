@@ -8,6 +8,4 @@ import java.util.Optional;
 
 @Repository
 public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPlan, Long> {
-
-    Optional<SubscriptionPlan> findById(Long aLong);
 }

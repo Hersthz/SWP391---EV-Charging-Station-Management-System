@@ -19,8 +19,6 @@ public interface UserService {
     User findByUsername(String username);
     UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request);
     ChangePasswordResponse changePassword(String userName ,ChangePasswordRequest changePasswordRequest);
-    User findByPhone(String phone);
-    void setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole);
     CreateStaffResponse adminAddStaff(CreateStaffRequest req);
 }
 

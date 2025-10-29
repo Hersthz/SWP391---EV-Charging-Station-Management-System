@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
 import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
+import com.pham.basis.evcharging.dto.response.SetUserRoleResponse;
 import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
@@ -99,11 +100,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User findByPhone(String phone) {
-        return userRepository.findByPhone(phone);
-    }
-
-    @Override
     public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request) {
         User user = userRepository.findUserByUsername(userName);
         if (user == null) {
@@ -166,7 +162,7 @@ public class UserServiceImpl implements UserService {
 
     }
 
-    public void setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole) {
+    public SetUserRoleResponse setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole) {
         User user = userRepository.findUserByUsername(username);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + username);
@@ -186,6 +182,7 @@ public class UserServiceImpl implements UserService {
                 newRoles.add(baseUser);
             }
         }
+        return new SetUserRoleResponse(username,targetRoleName,keepUserBaseRole);
     }
 
         @Override
@@ -228,6 +225,7 @@ public class UserServiceImpl implements UserService {
             res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
             return res;
         }
+
     }
 
 

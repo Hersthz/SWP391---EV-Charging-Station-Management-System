@@ -17,7 +17,7 @@ public class SubscriptionPlan {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "plan_id")
-    private Long id;
+    private Long planId;
 
     @Column(name = "name", nullable = false, length = 50, unique = true)
     private String name;
@@ -33,6 +33,12 @@ public class SubscriptionPlan {
 
     @Column(name = "description")
     private String description;
+
+    @Column(name = "discount_rate")
+    private double discountRate = 0.0;
+
+    @Column(name = "free_booking")
+    private Boolean freeBooking = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, columnDefinition = "datetime2")
