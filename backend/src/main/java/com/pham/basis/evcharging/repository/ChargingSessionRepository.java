@@ -10,7 +10,7 @@ import java.util.List;
 
 @Repository
 public interface ChargingSessionRepository extends JpaRepository<ChargingSession, Long> {
-    Page<ChargingSession> findByDriverId(Long driverId, Pageable pageable);
-    List<ChargingSession> findByDriverId(Long driverId);
-    Long countByDriverId(Long driverId);
+    Page<ChargingSession> findByDriver_Id(Long driverId, Pageable pageable);
+    List<ChargingSession> findByDriver_Id(Long driverId);
+    Long countByDriver_Id(Long driverId);
 }
