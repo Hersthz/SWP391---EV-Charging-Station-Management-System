@@ -12,6 +12,7 @@ public class StationRequest {
     private String address;
     private double latitude;
     private double longitude;
+    private boolean status;
     @Valid
     private List<PillarRequest> pillars;
 

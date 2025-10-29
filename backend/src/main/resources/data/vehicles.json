@@ -2,7 +2,7 @@
   {
     "make": "Tesla",
     "model": "Model 3 Long Range",
-    "socNow": 78,
+    "socNow": 0.78,
     "batteryCapacityKwh": 75,
     "acMaxKw": 11,
     "dcMaxKw": 250,
@@ -11,7 +11,7 @@
   {
     "make": "Tesla",
     "model": "Model Y Performance",
-    "socNow": 55,
+    "socNow": 0.55,
     "batteryCapacityKwh": 82,
     "acMaxKw": 11,
     "dcMaxKw": 250,
@@ -20,7 +20,7 @@
   {
     "make": "Hyundai",
     "model": "Ioniq 5",
-    "socNow": 65,
+    "socNow": 0.65,
     "batteryCapacityKwh": 77.4,
     "acMaxKw": 11,
     "dcMaxKw": 232,
@@ -29,7 +29,7 @@
   {
     "make": "Kia",
     "model": "EV6 GT-Line",
-    "socNow": 48,
+    "socNow": 0.48,
     "batteryCapacityKwh": 77.4,
     "acMaxKw": 11,
     "dcMaxKw": 240,
@@ -38,7 +38,7 @@
   {
     "make": "VinFast",
     "model": "VF8 Eco",
-    "socNow": 80,
+    "socNow": 0.80,
     "batteryCapacityKwh": 87.7,
     "acMaxKw": 11,
     "dcMaxKw": 160,
@@ -47,7 +47,7 @@
   {
     "make": "BYD",
     "model": "Atto 3",
-    "socNow": 72,
+    "socNow": 0.72,
     "batteryCapacityKwh": 60.5,
     "acMaxKw": 7.2,
     "dcMaxKw": 88,
@@ -56,7 +56,7 @@
   {
     "make": "Porsche",
     "model": "Taycan 4S",
-    "socNow": 40,
+    "socNow": 0.40,
     "batteryCapacityKwh": 79.2,
     "acMaxKw": 11,
     "dcMaxKw": 270,
@@ -65,7 +65,7 @@
   {
     "make": "Mercedes-Benz",
     "model": "EQE 350+",
-    "socNow": 67,
+    "socNow": 0.67,
     "batteryCapacityKwh": 90.6,
     "acMaxKw": 11,
     "dcMaxKw": 170,
@@ -74,7 +74,7 @@
   {
     "make": "BMW",
     "model": "i4 eDrive40",
-    "socNow": 52,
+    "socNow": 0.52,
     "batteryCapacityKwh": 83.9,
     "acMaxKw": 11,
     "dcMaxKw": 205,
@@ -83,7 +83,7 @@
   {
     "make": "Nissan",
     "model": "Leaf e+",
-    "socNow": 85,
+    "socNow": 0.85,
     "batteryCapacityKwh": 62,
     "acMaxKw": 6.6,
     "dcMaxKw": 100,

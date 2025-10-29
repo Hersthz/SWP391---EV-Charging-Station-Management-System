@@ -2,17 +2,16 @@ package com.pham.basis.evcharging.controller;
 
 
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
+import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
 import com.pham.basis.evcharging.dto.request.SetUserRoleRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
-import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
-import com.pham.basis.evcharging.dto.response.ReservationResponse;
-import com.pham.basis.evcharging.dto.response.SetUserRoleResponse;
-import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
+import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.service.ReservationService;
 import com.pham.basis.evcharging.service.ReservationServiceImpl;
 import com.pham.basis.evcharging.service.UserServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,7 +59,23 @@ public class UserController {
     }
 
     @PostMapping("/setRole")
-    public ResponseEntity<SetUserRoleResponse>  setUserRole(@RequestBody SetUserRoleResponse response) {
-        return ResponseEntity.ok(response);
+    public ResponseEntity<SetUserRoleResponse>  setUserRole(@RequestBody SetUserRoleRequest request) {
+        try {
+            SetUserRoleResponse response = userService.setRoleForUser(request.getUsername(), request.getRoleName(), request.isKeepUserBaseRole());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            SetUserRoleResponse response = userService.setRoleForUser(request.getUsername(), request.getRoleName(), request.isKeepUserBaseRole());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/add-staff")
+    public ResponseEntity<CreateStaffResponse> adminAddStaff(@RequestBody CreateStaffRequest request) {
+        try {
+            CreateStaffResponse response = userService.adminAddStaff(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }
