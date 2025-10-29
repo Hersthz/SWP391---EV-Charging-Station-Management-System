@@ -1,160 +1,125 @@
-import { Button } from "../ui/button";
-import { Card } from "../ui/card";
-import { MapPin, Navigation, Zap, Clock } from "lucide-react";
+"use client";
+import { motion } from "framer-motion";
+import { MapPin, Navigation2, Clock, Zap, Search } from "lucide-react";
+import { ThreeDImageRing } from "../lightswind/3d-image-ring";
+import { Button } from "../ui/button"; 
 
-const MapPreview = () => {
-  const nearbyStations = [
-    {
-      name: "Central Station #3",
-      distance: "0.2 km",
-      availability: "4/6 Available",
-      status: "Online",
-      charging: "150kW • Fast charge",
-      price: "$0.45/kWh"
-    },
-    {
-      name: "Mall Station #2",
-      distance: "0.8 km",
-      availability: "2/4 Available",
-      status: "Online",
-      charging: "250kW • Ultra fast",
-      price: "$0.52/kWh"
-    },
-    {
-      name: "Highway Station #7",
-      distance: "2.1 km",
-      availability: "6/8 Available",
-      status: "Online",
-      charging: "350kW • Hyper fast",
-      price: "$0.48/kWh"
-    }
-  ];
+const EV_RING_IMAGES = [
+  "https://greencharge.vn/wp-content/uploads/2023/04/greencharge-33.jpg",
+  "https://tse3.mm.bing.net/th/id/OIP.g4YsSzaUyvKvnlWnJdY6egHaE8?rs=1&pid=ImgDetMain&o=7&rm=3",
+  "https://storage.googleapis.com/f1-cms/2021/06/152fc08c-20210602_090454.jpg",
+  "https://static.automotor.vn/images/upload/2025/05/29/chinh-sach-tram-sac-xe-dien-vneconomyautomotive-1.jpg",
+  "https://static.automotor.vn/images/upload/2023/02/17/tram-sac-xe-dien-my-vneconomyautomotive4.jpeg",
+  "https://tse4.mm.bing.net/th/id/OIP.TRNeEUrakNOE3gHV7Gn-5wHaFj?rs=1&pid=ImgDetMain&o=7&rm=3",
+  "https://media-cdn-v2.laodong.vn/Storage/NewsPortal/2021/9/15/953777/PR1_Anh-1.jpg",
+  "https://evbattery.vn/wp-content/uploads/2023/04/tram-sac-xe-dien-4.jpg",
+  "https://storage.googleapis.com/vinfast-data-01/tim-hieu-he-sinh-thai-tram-sac-xe-dien-vinfast-tren-toan-quoc-2_1624502818.jpg",
+  "https://photo2.tinhte.vn/data/attachment-files/2022/10/6165471_E0E058FC-D632-4A72-AFD2-A5C875CCC2F8.jpeg",
+];
 
+const stations = [
+  { name: "Central Station #3", distance: "~ 0.2 km", available: "4/6 Available", speed: "150kW • Fast", price: "$0.45/kWh" },
+  { name: "Mall Station #2", distance: "~ 0.8 km", available: "2/4 Available", speed: "250kW • Ultra", price: "$0.52/kWh" },
+  { name: "Highway Station #7", distance: "~ 2.1 km", available: "6/8 Available", speed: "350kW • Hyper", price: "$0.48/kWh" },
+];
+
+export default function MapPreview() {
   return (
-    <section className="py-24 px-4 bg-background" id="map">
-      <div className="container mx-auto max-w-7xl">
+    <section id="map" className="py-20 bg-slate-100">
+      <div className="container mx-auto max-w-7xl px-4">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          {/* Map mock */}
-          <div className="relative animate-fade-in">
-            <div className="relative bg-gradient-to-br from-primary/5 to-accent/10 rounded-2xl p-8 shadow-card">
-              <div className="bg-primary/5 rounded-xl h-96 flex items-center justify-center relative overflow-hidden">
-                {/* Map pattern */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="grid grid-cols-8 h-full">
-                    {Array.from({ length: 64 }).map((_, i) => (
-                      <div key={i} className="border border-primary/20"></div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Pin */}
-                <div className="relative z-10 flex flex-col items-center animate-float">
-                  <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center shadow-glow">
-                    <MapPin className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="text-center mt-4">
-                    <p className="text-primary font-semibold">Interactive map</p>
-                    <p className="text-sm text-muted-foreground">Station locations and live status</p>
-                  </div>
-                </div>
-
-                {/* Station dots */}
-                <div className="absolute top-6 right-8 w-4 h-4 bg-accent rounded-full animate-pulse"></div>
-                <div className="absolute bottom-12 left-12 w-4 h-4 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.5s" }}></div>
-                <div className="absolute top-16 left-16 w-4 h-4 bg-accent rounded-full animate-pulse" style={{ animationDelay: "1s" }}></div>
-              </div>
-
-              {/* Search bar mock */}
-              <div className="mt-6 bg-white rounded-lg p-4 shadow-card flex items-center gap-3">
-                <Navigation className="w-5 h-5 text-primary" />
-                <span className="text-muted-foreground">Search by location, station name, or feature...</span>
-              </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="relative w-full h-[450px] flex items-center justify-center"
+          >
+            <div className="absolute -z-10 inset-0 opacity-20">
+              <div className="h-full w-full bg-[radial-gradient(ellipse_at_center_left,rgba(16,185,129,0.3),transparent_50%),radial-gradient(ellipse_at_center_right,rgba(6,182,212,0.3),transparent_50%)]" />
             </div>
-          </div>
+            
+            {/* 3D Ring  */}
+            <ThreeDImageRing
+              images={EV_RING_IMAGES}
+              width={400}
+              imageDistance={650} 
+              mobileScaleFactor={0.7}
+              backgroundColor="transparent" 
+              containerClassName="!h-[450px]"
+              imageClassName="rounded-2xl shadow-xl"
+            />
+          </motion.div>
 
-          {/* Content & list */}
-          <div className="space-y-8 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary mb-4">
-                <MapPin className="w-6 h-6" />
-                <span className="text-sm font-semibold uppercase tracking-wider">
-                  Stations near you
-                </span>
+          <div className="space-y-6">
+            {/* Tiêu đề */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-600 grid place-items-center text-white shadow-lg shadow-cyan-500/30">
+                  <MapPin />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-semibold text-slate-900">Stations near you</h3>
+                  <p className="text-slate-600">Live availability, pricing, and details to plan efficiently.</p>
+                </div>
               </div>
-
-              <h2 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
-                Find & Navigate to
-                <span className="block text-primary">Any Charging Station</span>
-              </h2>
-
-              <p className="text-xl text-muted-foreground leading-relaxed">
-                Discover nearby stations with real-time availability, pricing, and details to plan your trips efficiently.
-              </p>
-            </div>
+            </motion.div>
+            
+            {/* Search */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="flex items-center gap-3 rounded-2xl border border-slate-300 px-3 py-2 bg-white shadow-sm"
+            >
+              <Search className="size-5 text-slate-400" />
+              <input className="w-full outline-none text-base bg-transparent text-slate-800" placeholder="Search by station, location, or feature..." />
+              <Button className="rounded-xl shadow-lg shadow-cyan-500/30 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:brightness-110 text-white">
+                View map
+              </Button>
+            </motion.div>
 
             {/* Station list */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Found 7 stations within 10km</h3>
-                <div className="flex items-center gap-2 text-sm text-primary">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                  <span>Live data</span>
-                </div>
-              </div>
-
-              {nearbyStations.map((station, index) => (
-                <Card
-                  key={index}
-                  className="p-6 bg-gradient-card border-0 shadow-card hover:shadow-primary transition-all duration-300 group animate-fade-in"
-                  style={{ animationDelay: `${(index + 2) * 0.1}s` }}
+            <div className="space-y-4 pt-2">
+              {stations.map((s, idx) => (
+                <motion.div
+                  key={s.name}
+                  initial={{ opacity: 0, x: 24 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, amount: 0.5 }}
+                  transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {station.name}
-                        </h4>
-                        <span className="text-sm text-muted-foreground">~ {station.distance}</span>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1 text-primary">
-                          <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          <span>{station.availability}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-accent">
-                          <Zap className="w-3 h-3" />
-                          <span>{station.charging}</span>
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-muted-foreground">{station.price}</p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Clock className="w-4 h-4" />
-                        Reserve
-                      </Button>
-                      <Button variant="map" size="sm">
-                        <Navigation className="w-4 h-4" />
-                        Navigate
-                      </Button>
+                  <div>
+                    <div className="font-semibold text-lg text-slate-900">{s.name}</div>
+                    <div className="text-sm text-slate-500">{s.distance}</div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                      <span className="flex items-center gap-1.5 text-blue-600 font-medium"><Clock className="size-4" />{s.available}</span>
+                      <span className="flex items-center gap-1.5 text-emerald-600 font-medium"><Zap className="size-4" />{s.speed}</span>
+                      <span className="text-slate-600">{s.price}</span>
                     </div>
                   </div>
-                </Card>
+                  <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+                    <Button variant="outline" className="rounded-xl w-1/2 sm:w-auto border-slate-300 hover:bg-slate-50 text-slate-800">
+                      Reserve
+                    </Button>
+                    <Button className="rounded-xl w-1/2 sm:w-auto gap-2 shadow-lg shadow-cyan-500/30 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:brightness-110 text-white">
+                      <Navigation2 className="size-4" /> Navigate
+                    </Button>
+                  </div>
+                </motion.div>
               ))}
             </div>
-
-            <Button variant="hero" size="lg" className="w-full sm:w-auto">
-              <MapPin className="w-5 h-5" />
-              View full map
-            </Button>
           </div>
         </div>
       </div>
     </section>
   );
-};
-
-export default MapPreview;
+}

@@ -1,213 +1,305 @@
+"use client";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Zap, MapPin, Battery, Shield, Clock, Star, Users, TrendingUp, ArrowRight, Play } from "lucide-react";
+import { Zap, Battery, TrendingUp, Star, Play, ArrowRight } from "lucide-react";
 import heroImage from "../../assets/hero-charging.jpg";
 import heroBackground from "../../assets/hero-background.jpg";
+import { ScrollReveal } from "../lightswind/scroll-reveal";
+import { CountUp } from "../lightswind/count-up";
+import { TrustedUsers } from "../lightswind/trusted-users";
 
 const Hero = () => {
   return (
-    <>
-      {/* Main Hero */}
-      <section
-        className="min-h-screen flex items-center justify-center py-20 px-4 pt-36 relative overflow-hidden"
-        style={{
-          backgroundImage: `url(${heroBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
-      >
-        {/* Color overlays */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-secondary/60 to-accent/70 backdrop-blur-[1px]"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-tertiary/20 via-transparent to-primary-glow/30"></div>
+    <section
+      id="hero"
+      className="
+        relative isolate overflow-hidden overflow-x-clip
+        min-h-screen min-h-[100svh]
+        flex items-center pt-28 pb-12 px-4
+      "
+      style={{
+        backgroundImage: `url(${heroBackground})`, 
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+      aria-label="Hero"
+    >
+      <div
+        className="
+          absolute inset-0 -z-10
+          bg-[radial-gradient(1200px_600px_at_22%_32%,rgba(0,0,0,.48),transparent_60%)]
+          md:bg-[radial-gradient(1400px_700px_at_30%_35%,rgba(0,0,0,.44),transparent_66%)]
+        "
+      />
 
-        {/* Floating background effects */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-primary-glow/30 to-secondary/20 rounded-full blur-3xl animate-float"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-tl from-accent/25 to-tertiary/15 rounded-full blur-3xl animate-float" style={{ animationDelay: "2s" }}></div>
-          <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-gradient-to-r from-secondary/20 to-primary/15 rounded-full blur-2xl animate-float" style={{ animationDelay: "4s" }}></div>
-          <div className="absolute top-3/4 left-1/3 w-72 h-72 bg-gradient-to-bl from-tertiary/20 to-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "6s" }}></div>
-          <div className="absolute bottom-1/3 left-3/4 w-56 h-56 bg-gradient-to-tr from-success/25 to-primary-glow/15 rounded-full blur-2xl animate-float" style={{ animationDelay: "8s" }}></div>
-        </div>
-
-        <div className="container mx-auto max-w-7xl relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Copy */}
-            <div className="text-white space-y-8 animate-fade-in">
-              <div className="flex items-center gap-3 text-tertiary mb-6">
-                <div className="w-8 h-8 bg-gradient-rainbow rounded-lg flex items-center justify-center shadow-lg shadow-tertiary/30">
-                  <Zap className="w-5 h-5 text-white animate-pulse" />
-                </div>
-                <span className="text-sm font-semibold uppercase tracking-widest text-white/90">
-                  The future of EV charging
-                </span>
-                <Badge variant="secondary" className="bg-gradient-sunset text-white border-none shadow-lg">
-                  V3.0 ⚡
-                </Badge>
+      <div className="container mx-auto max-w-7xl relative z-10">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* LEFT */}
+          <div className="text-white space-y-8 min-w-0">
+            {/* Label line */}
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl grid place-items-center shadow-xl
+                              bg-gradient-to-tr from-emerald-500 to-cyan-600">
+                <Zap className="w-5 h-5 text-white" />
               </div>
 
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight">
-                <span className="block bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent drop-shadow-lg">
-                  Power Up
-                </span>
-                <span className="block bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent drop-shadow-lg">
-                  The Future
-                </span>
+              <span
+                className="
+                  font-extrabold uppercase tracking-[0.28em]
+                  text-[clamp(0.95rem,1.8vw,1.15rem)]
+                  text-white
+                  [text-shadow:0_0_34px_rgba(16,185,129,.55),0_0_18px_rgba(6,182,212,.45)]
+                "
+              >
+                The future of EV charging
+              </span>
+
+              <Badge
+                variant="secondary"
+                className="px-3 py-1.5 rounded-full border-none text-white
+                           bg-gradient-to-r from-emerald-500 to-cyan-600 shadow"
+              >
+                V3.0 ⚡
+              </Badge>
+            </div>
+
+            {/* Heading */}
+            <ScrollReveal size="2xl" align="left" variant="default">
+              <h1
+                className="
+                  font-extrabold tracking-tight leading-[1.05]
+                  text-[clamp(2.2rem,5.6vw,4rem)]
+                  [text-shadow:0_14px_44px_rgba(6,182,212,.36),0_4px_18px_rgba(0,0,0,.45)]
+                "
+              >
+                Real-time stations, reliable bookings & elegant dashboards
               </h1>
+            </ScrollReveal>
 
-              <p className="text-xl md:text-2xl text-white/95 leading-relaxed max-w-2xl font-light">
-                Join the revolution with our <span className="font-bold text-tertiary glow-text">AI-powered</span> charging network.
-                <span className="text-accent"> Smart routing</span>, <span className="text-secondary">availability prediction</span>, and <span className="text-primary-glow">frictionless payments</span>—all in one platform.
-              </p>
+            <p className="text-[clamp(1rem,1.6vw,1.25rem)] text-white/90 leading-relaxed max-w-2xl">
+              Live availability, queue-aware reservations, secure payments, and operations-grade
+              monitoring for drivers &amp; operators.
+            </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-8">
-                <Button
-                  variant="hero"
-                  size="xl"
-                  className="group relative overflow-hidden"
-                  onClick={() => (window.location.href = '/login')}
-                >
-                  <span className="relative z-10">Get started today</span>
-                  <Zap className="w-5 h-5 group-hover:animate-bounce relative z-10" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                </Button>
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-1">
+              <Button
+                variant="default"
+                size="lg"
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-r
+                           from-emerald-500 to-cyan-600 text-white shadow-lg hover:brightness-110"
+                onClick={() => (window.location.href = "/login")}
+              >
+                <span className="relative z-10">Get started today</span>
+                <Zap className="w-5 h-5 relative z-10 ml-2" />
+                <span className="pointer-events-none absolute inset-0 -translate-x-full
+                                  group-hover:translate-x-0 transition-transform duration-700
+                                  bg-white/20" />
+              </Button>
 
-                <Button
-                  variant="map"
-                  size="xl"
-                  className="group backdrop-blur-sm"
-                  onClick={() => (window.location.href = '/map')}
-                >
-                  <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  Explore the network
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="lg"
+                className="group rounded-2xl border-2 bg-white/85 backdrop-blur text-foreground"
+                onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
+              >
+                <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                Explore the network
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 pt-8">
-                <div className="text-center space-y-2">
-                  <div className="text-3xl font-bold text-primary-glow">500+</div>
-                  <div className="text-sm text-white/80">Charging stations</div>
+            {/* KPIs */}
+            <div
+              className="
+                mt-6 grid gap-4 md:gap-6 min-w-0
+                [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]
+              "
+            >
+              <Stat label="Charging sessions">
+                <CountUp
+                  value={2000000}
+                  duration={2.0}
+                  suffix=" +"
+                  numberClassName="
+                    font-extrabold tracking-tight leading-none
+                    text-[clamp(1.8rem,4.4vw,2.4rem)]
+                    whitespace-nowrap overflow-hidden
+                    [&>span:last-child]:text-[0.6em] [&>span:last-child]:ml-1 [&>span:last-child]:font-bold
+                  "
+                />
+              </Stat>
+
+              <Stat label="Average speed">
+                <CountUp
+                  value={150}
+                  duration={2.0}
+                  suffix=" kW"
+                  numberClassName="
+                    font-extrabold tracking-tight leading-none
+                    text-[clamp(1.8rem,4.4vw,2.4rem)]
+                    whitespace-nowrap overflow-hidden
+                    [&>span:last-child]:text-[0.58em] [&>span:last-child]:ml-1 [&>span:last-child]:font-semibold
+                  "
+                />
+              </Stat>
+
+              <Stat label="Setup time">
+                <CountUp
+                  value={30}
+                  duration={2.0}
+                  suffix=" s"
+                  numberClassName="
+                    font-extrabold tracking-tight leading-none
+                    text-[clamp(1.8rem,4.4vw,2.4rem)]
+                    whitespace-nowrap overflow-hidden
+                    [&>span:last-child]:text-[0.58em] [&>span:last-child]:ml-1 [&>span:last-child]:font-semibold
+                  "
+                />
+              </Stat>
+
+              <Stat label="Satisfaction">
+                <CountUp
+                  value={95}
+                  duration={2.0}
+                  suffix="%"
+                  numberClassName="
+                    font-extrabold tracking-tight leading-none
+                    text-[clamp(1.8rem,4.4vw,2.4rem)]
+                    whitespace-nowrap overflow-hidden
+                    [&>span:last-child]:text-[0.6em] [&>span:last-child]:ml-1 [&>span:last-child]:font-bold
+                  "
+                />
+              </Stat>
+            </div>
+
+            {/* Trusted users */}
+            <div className="inline-flex items-center rounded-full border border-white/15
+              bg-black/25 backdrop-blur px-4 py-2
+              shadow-[0_8px_30px_rgba(0,0,0,.35)]
+              text-white/95
+            ">
+              <TrustedUsers
+                avatars={[
+                  "https://i.pravatar.cc/60?img=32",
+                  "https://i.pravatar.cc/60?img=5",
+                  "https://i.pravatar.cc/60?img=8",
+                  "https://i.pravatar.cc/60?img=15",
+                ]}
+                rating={5}
+                totalUsersText={12000}
+                caption="Trusted by"
+                ringColors={[
+                  "ring-emerald-500",
+                  "ring-sky-500",
+                  "ring-fuchsia-500",
+                  "ring-amber-500",
+                ]}
+                className="
+                  [&_*]:text-white/95
+                  drop-shadow-[0_2px_10px_rgba(0,0,0,.65)]
+                  [text-shadow:0_0_22px_rgba(34,197,94,.28)]
+                "
+              />
+            </div>
+          </div>
+
+          {/* RIGHT media */}
+          <div className="relative min-w-0">
+            <div className="relative group">
+              <img
+                src={heroImage}
+                alt="Electric vehicle charging at a modern station"
+                className="w-full rounded-3xl shadow-xl transition-transform duration-700 will-change-transform group-hover:scale-[1.02]"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+
+            {/* Battery */}
+            <div className="absolute -top-6 -left-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-lg border">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-600 rounded-xl grid place-items-center">
+                  <Battery className="w-6 h-6 text-white" />
                 </div>
-                <div className="text-center space-y-2">
-                  <div className="text-3xl font-bold text-primary-glow">99.9%</div>
-                  <div className="text-sm text-white/80">Uptime guaranteed</div>
-                </div>
-                <div className="text-center space-y-2">
-                  <div className="text-3xl font-bold text-primary-glow">24/7</div>
-                  <div className="text-sm text-white/80">Smart support</div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">Battery status</p>
+                  <p className="text-2xl font-bold text-primary">85%</p>
+                  <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="w-4/5 h-full bg-emerald-500 rounded-full" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Hero image */}
-            <div className="relative animate-fade-in" style={{ animationDelay: "0.3s" }}>
-              <div className="relative">
-                <div className="relative group">
-                  <img
-                    src={heroImage}
-                    alt="Electric vehicle charging at a modern station"
-                    className="w-full rounded-3xl shadow-glow animate-float group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-3xl"></div>
+            {/* Network */}
+            <div className="absolute -bottom-6 -right-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-lg border">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-cyan-600 rounded-xl grid place-items-center">
+                  <TrendingUp className="w-6 h-6 text-white" />
                 </div>
-
-                {/* Floating cards */}
-                <div className="absolute -top-6 -left-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-glow animate-float border border-primary/10" style={{ animationDelay: "1s" }}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-hero rounded-xl flex items-center justify-center">
-                      <Battery className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground font-medium">Battery status</p>
-                      <p className="text-2xl font-bold text-primary">85%</p>
-                      <div className="w-20 h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="w-4/5 h-full bg-gradient-hero rounded-full"></div>
-                      </div>
-                    </div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">Network status</p>
+                  <p className="text-2xl font-bold text-cyan-600">Online</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    All systems operational
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="absolute -bottom-6 -right-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-glow animate-float border border-accent/10" style={{ animationDelay: "1.5s" }}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground font-medium">Network status</p>
-                      <p className="text-2xl font-bold text-accent">Online</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        All systems operational
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="absolute top-1/2 -left-4 bg-gradient-hero/90 backdrop-blur-md rounded-xl p-3 shadow-glow animate-float" style={{ animationDelay: "2s" }}>
-                  <div className="flex items-center gap-2 text-white">
-                    <Star className="w-4 h-4" />
-                    <span className="text-sm font-bold">4.9</span>
-                  </div>
-                </div>
+            {/* Rating */}
+            <div className="absolute top-1/2 -left-4 bg-emerald-600/90 text-white rounded-xl px-3 py-2 shadow">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4" />
+                <span className="text-sm font-bold">4.9</span>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-white/50 rounded-full mt-2 animate-pulse"></div>
-          </div>
+      {/* Scroll indicator */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
+        <div className="w-6 h-10 border-2 border-white/40 rounded-full flex justify-center">
+          <div className="w-1 h-3 bg-white/60 rounded-full mt-2 animate-pulse" />
         </div>
-      </section>
+      </div>
 
-      {/* Trust section */}
-      <section className="py-16 bg-white border-b">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="text-center mb-12">
-            <h3 className="text-2xl font-bold text-foreground mb-4">Trusted by thousands of drivers worldwide</h3>
-            <div className="flex items-center justify-center gap-12 opacity-60">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                <span className="font-semibold">50K+ Users</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                <span className="font-semibold">Secure</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                <span className="font-semibold">Always on</span>
-              </div>
-            </div>
-          </div>
-
-          {/* KPI grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-2">
-              <div className="text-3xl font-bold text-primary">2M+</div>
-              <div className="text-sm text-muted-foreground">Charging sessions</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold text-primary">150kW</div>
-              <div className="text-sm text-muted-foreground">Average speed</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold text-primary">30s</div>
-              <div className="text-sm text-muted-foreground">Setup time</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold text-primary">95%</div>
-              <div className="text-sm text-muted-foreground">Satisfaction rate</div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
+      <style>{`
+        @media (prefers-reduced-motion: reduce) {
+          #hero * { animation: none !important; transition: none !important; }
+        }
+      `}</style>
+    </section>
   );
 };
+
+/* ======= KPI Card ======= */
+function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="
+        group relative min-w-0 w-full rounded-3xl px-6 py-6
+        border border-white/16 bg-white/12 backdrop-blur
+        supports-[backdrop-filter]:bg-white/10
+        shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]
+      "
+    >
+      <span
+        className="
+          pointer-events-none absolute inset-0 rounded-3xl
+          bg-[linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0)_40%)]
+          opacity-70"
+        aria-hidden
+      />
+      <div className="relative min-w-0 w-full flex items-baseline gap-2 whitespace-nowrap overflow-hidden leading-none">
+        {children}
+      </div>
+      <div className="relative mt-2 text-sm text-white/85">{label}</div>
+    </div>
+  );
+}
 
 export default Hero;

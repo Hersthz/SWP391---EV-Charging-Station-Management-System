@@ -124,7 +124,13 @@ export default {
           "50%": {
             boxShadow: "0 0 40px hsl(var(--primary) / 0.6)"
           }
-        }
+        },
+        slidein: { from: { width: '0%' }, to: { width: 'var(--tw-width,100%)' } },
+        grow: { '0%': { transform:'scaleY(.2)' }, '100%': { transform:'scaleY(1)' } },
+        shine: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+        barin: { from: { width: '0%' }, to: { } },
+        'spin-slow': { to: { transform: 'rotate(360deg)' } },
+         'spin-slower': { to: { transform: 'rotate(360deg)' } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -132,7 +138,14 @@ export default {
         "fade-in": "fade-in 0.6s ease-out",
         "float": "float 3s ease-in-out infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        grow: 'grow 0.7s ease-out forwards',
+        slidein: 'slidein .7s ease-out',
+        shine: 'shine 1.4s ease-in-out infinite',
+        barin: 'barin .7s ease-out',
+        'spin-slow': 'spin-slow 10s linear infinite',    
+        'spin-slower': 'spin-slower 12s linear infinite',
       },
+      grow: { '0%': { transform: 'scaleY(0.2)' }, '100%': { transform: 'scaleY(1)' } },
     },
   },
   plugins: [],

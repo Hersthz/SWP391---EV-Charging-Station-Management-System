@@ -1,6 +1,6 @@
+// src/components/dashboard/StatusCards.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
-  Battery,
   Calendar,
   MapPin,
   Zap,
@@ -11,6 +11,11 @@ import {
   RefreshCw,
   Lock,
   ShieldCheck,
+  CheckCircle2,
+  ArrowRight,
+  ShieldAlert,
+  Check,
+  PlugZap
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -45,7 +50,7 @@ type EstimateResp = {
   advice?: string;
 };
 
-type ReservationStatus =
+export type ReservationStatus =
   | "CONFIRMED"
   | "SCHEDULED"
   | "PENDING_PAYMENT"
@@ -55,7 +60,7 @@ type ReservationStatus =
   | "VERIFIED"
   | "PLUGGED"
   | "CHARGING"
-  | "COMPLETED"; // ⬅️ NEW
+  | "COMPLETED";
 
 interface ReservationItem {
   reservationId: number;
@@ -162,7 +167,7 @@ function mapApiVehicle(v: any): Vehicle {
     acMaxKw: v?.acMaxKw ?? v?.ac_max_kw,
     dcMaxKw: v?.dcMaxKw ?? v?.dc_max_kw,
     efficiency: v?.efficiency,
-    socNow: socPct, // %
+    socNow: socPct,
   };
 }
 
@@ -175,7 +180,7 @@ function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   if (s === "VERIFIED") return "VERIFIED";
   if (s === "PLUGGED") return "PLUGGED";
   if (s === "CHARGING") return "CHARGING";
-  if (s === "COMPLETED") return "COMPLETED"; // ⬅️ NEW
+  if (s === "COMPLETED") return "COMPLETED";
 
   if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
     return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
@@ -217,22 +222,162 @@ function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefine
   return { stationName: n.stationName, pillarCode: n.pillarCode, connectorType: n.connectorType, startTime: n.startTime };
 }
 
-/** ===== Component ===== */
-const StatusCards = () => {
-  const batteryPct = 85;
-  const batteryRangeKm = 425;
+/** ===== UI palette per status (stripe + card + badge + button) ===== */
+type UIConf = {
+  stripe: string;   // gradient for the left stripe
+  ring: string;     // ring color
+  glow: string;     // shadow color
+  badge: string;    // badge chip
+  text: string;     // accent text
+  btn: string;      // primary button gradient
+  btnGlow: string;  // button glow
+  halo: string;     // animated border halo
+  icon: React.ReactNode;
+  label: string;
+};
+const Icon = {
+  ready: <PlugZap className="w-4 h-4" />,
+  scheduled: <Clock className="w-4 h-4" />,
+  pay: <CreditCard className="w-4 h-4" />,
+  verifying: <QrCode className="w-4 h-4" />,
+  verified: <Check className="w-4 h-4" />,
+  danger: <ShieldAlert className="w-4 h-4" />,
+  done: <CheckCircle2 className="w-4 h-4" />,
+};
 
+const UI: Record<ReservationStatus, UIConf> = {
+  CONFIRMED: {
+    stripe: "from-emerald-500 to-emerald-600",
+    ring: "ring-emerald-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(16,185,129,.70)]",
+    badge: "bg-emerald-600 text-white border-0",
+    text: "text-emerald-700",
+    btn: "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:to-emerald-600 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(16,185,129,.7)]",
+    halo: "from-emerald-400/60 via-emerald-500/30 to-emerald-400/60",
+    icon: Icon.ready,
+    label: "Ready",
+  },
+  SCHEDULED: {
+    stripe: "from-amber-500 to-amber-600",
+    ring: "ring-amber-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(245,158,11,.70)]",
+    badge: "bg-amber-500 text-white border-0",
+    text: "text-amber-700",
+    btn: "bg-gradient-to-r from-amber-500 to-amber-600 hover:to-amber-500 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(245,158,11,.7)]",
+    halo: "from-amber-300/60 via-amber-500/30 to-amber-300/60",
+    icon: Icon.scheduled,
+    label: "Scheduled",
+  },
+  PENDING_PAYMENT: {
+    stripe: "from-rose-600 to-rose-700",
+    ring: "ring-rose-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(244,63,94,.70)]",
+    badge: "bg-rose-600 text-white border-0",
+    text: "text-rose-700",
+    btn: "bg-gradient-to-r from-rose-600 to-rose-500 hover:to-rose-600 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(244,63,94,.7)]",
+    halo: "from-rose-400/60 via-rose-500/30 to-rose-400/60",
+    icon: Icon.pay,
+    label: "Payment required",
+  },
+  CANCELLED: {
+    stripe: "from-rose-700 to-rose-800",
+    ring: "ring-rose-300/60",
+    glow: "shadow-[0_22px_58px_-24px_rgba(190,18,60,.55)]",
+    badge: "bg-rose-700 text-white border-0",
+    text: "text-rose-800",
+    btn: "bg-white hover:bg-slate-50 text-slate-900 border",
+    btnGlow: "shadow-[0_8px_24px_-10px_rgba(2,6,23,.12)]",
+    halo: "from-rose-400/50 via-rose-500/20 to-rose-400/50",
+    icon: Icon.danger,
+    label: "Cancelled",
+  },
+  EXPIRED: {
+    stripe: "from-zinc-500 to-zinc-600",
+    ring: "ring-zinc-300/60",
+    glow: "shadow-[0_22px_58px_-24px_rgba(24,24,27,.45)]",
+    badge: "bg-zinc-600 text-white border-0",
+    text: "text-zinc-700",
+    btn: "bg-white hover:bg-slate-50 text-slate-900 border",
+    btnGlow: "shadow-[0_8px_24px_-10px_rgba(2,6,23,.12)]",
+    halo: "from-zinc-400/50 via-zinc-500/20 to-zinc-400/50",
+    icon: Icon.danger,
+    label: "Expired",
+  },
+  VERIFYING: {
+    stripe: "from-amber-600 to-amber-700",
+    ring: "ring-amber-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(245,158,11,.70)]",
+    badge: "bg-amber-600 text-white border-0",
+    text: "text-amber-700",
+    btn: "bg-gradient-to-r from-amber-600 to-amber-500 hover:to-amber-600 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(245,158,11,.7)]",
+    halo: "from-amber-400/60 via-amber-500/30 to-amber-400/60",
+    icon: Icon.verifying,
+    label: "Verifying",
+  },
+  VERIFIED: {
+    stripe: "from-teal-600 to-teal-700",
+    ring: "ring-teal-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(13,148,136,.70)]",
+    badge: "bg-teal-600 text-white border-0",
+    text: "text-teal-700",
+    btn: "bg-gradient-to-r from-teal-600 to-teal-500 hover:to-teal-600 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(13,148,136,.7)]",
+    halo: "from-teal-400/60 via-teal-500/30 to-teal-400/60",
+    icon: Icon.verified,
+    label: "Verified",
+  },
+  PLUGGED: {
+    stripe: "from-sky-600 to-sky-700",
+    ring: "ring-sky-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(2,132,199,.70)]",
+    badge: "bg-sky-600 text-white border-0",
+    text: "text-sky-700",
+    btn: "bg-gradient-to-r from-sky-600 to-sky-500 hover:to-sky-600 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(2,132,199,.7)]",
+    halo: "from-sky-400/60 via-sky-500/30 to-sky-400/60",
+    icon: Icon.ready,
+    label: "Plugged",
+  },
+  CHARGING: {
+    stripe: "from-emerald-600 to-emerald-700",
+    ring: "ring-emerald-300/70",
+    glow: "shadow-[0_26px_70px_-26px_rgba(16,185,129,.70)]",
+    badge: "bg-emerald-600 text-white border-0",
+    text: "text-emerald-700",
+    btn: "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:to-emerald-600 text-white",
+    btnGlow: "shadow-[0_8px_28px_-8px_rgba(16,185,129,.7)]",
+    halo: "from-emerald-400/60 via-emerald-500/30 to-emerald-400/60",
+    icon: Icon.ready,
+    label: "Charging",
+  },
+  COMPLETED: {
+    stripe: "from-zinc-500 to-zinc-600",
+    ring: "ring-zinc-300/70",
+    glow: "shadow-[0_22px_58px_-24px_rgba(24,24,27,.45)]",
+    badge: "bg-zinc-600 text-white border-0",
+    text: "text-zinc-700",
+    btn: "bg-white hover:bg-slate-50 text-slate-900 border",
+    btnGlow: "shadow-[0_8px_24px_-10px_rgba(2,6,23,.12)]",
+    halo: "from-zinc-400/60 via-zinc-500/30 to-zinc-400/60",
+    icon: Icon.done,
+    label: "Completed",
+  },
+};
+
+const StatusCards = () => {
+  // GIỮ LẠI TẤT CẢ state và logic cũ (chỉ thay UI/layout)
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
   const [currentUserId, setCurrentUserId] = useState<number | undefined>();
 
-  /** KYC 3 trạng thái */
   const [kycStatus, setKycStatus] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
-  /** snapshot KYC tại thời điểm mở popup */
   const [kycAtOpen, setKycAtOpen] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
 
-  // QR dialog state
   const [qrOpen, setQrOpen] = useState(false);
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -241,7 +386,6 @@ const StatusCards = () => {
   const [qrStation, setQrStation] = useState<string>("");
   const [lastResId, setLastResId] = useState<number | null>(null);
 
-  // Payment dialog state
   const [pmOpen, setPmOpen] = useState(false);
   const [pmResId, setPmResId] = useState<number | null>(null);
   const [payFlow, setPayFlow] = useState<"prepaid" | "postpaid">("prepaid");
@@ -251,19 +395,16 @@ const StatusCards = () => {
   const [est, setEst] = useState<EstimateResp | null>(null);
   const [estimating, setEstimating] = useState<boolean>(false);
 
-  // SOC (current)
   const [currentSoc, setCurrentSoc] = useState<number>(() => {
     const v = Number(localStorage.getItem("soc_now"));
     return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
   });
-
-  // Target luôn FULL = 100 (không cho chỉnh)
   const TARGET_SOC_FIXED = 100;
 
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Load reservations (+ KYC status)
+  // Load reservations + KYC
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -273,7 +414,7 @@ const StatusCards = () => {
           setItems(mapBEToFE(MOCK_RESERVATIONS.items as any));
           setNext(MOCK_RESERVATIONS.nextBooking);
           setCurrentUserId(1);
-          setKycStatus("APPROVED"); // mock: cho phép Postpaid
+          setKycStatus("APPROVED");
           return;
         }
 
@@ -287,39 +428,28 @@ const StatusCards = () => {
         if (!userId) throw new Error("Cannot determine current user id.");
         setCurrentUserId(userId);
 
-        // lấy reservation list
-        const { data } = await api.get<ReservationResponseBE[]>(`/user/${userId}/reservations`, {
-          withCredentials: true,
-        });
+        const { data } = await api.get<ReservationResponseBE[]>(`/user/${userId}/reservations`, { withCredentials: true });
         if (!mounted) return;
         const feItems = mapBEToFE(Array.isArray(data) ? data : []);
         setItems(feItems);
         setNext(pickNext(feItems));
 
-        // lấy KYC status từ /kyc/{userId}
         try {
           const kycRes = await api.get(`/kyc/${userId}`, { withCredentials: true });
           const payload = kycRes?.data ?? {};
-          const kyc =
-            payload?.data ??
-            payload?.result ??
-            payload;
-
+          const kyc = payload?.data ?? payload?.result ?? payload;
           const raw = String(kyc?.status ?? "").toUpperCase().trim();
           const norm: "PENDING" | "APPROVED" | "REJECTED" =
             raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
-
-          console.debug("[KYC] response raw =", payload, "parsed status =", norm);
           setKycStatus(norm);
-        } catch (err) {
-          console.warn("[KYC] fetch failed", err);
+        } catch {
           setKycStatus("PENDING");
         }
       } catch (e: any) {
         setItems(mapBEToFE((MOCK_RESERVATIONS.items as any) ?? []));
         setNext(MOCK_RESERVATIONS.nextBooking);
         setCurrentUserId(1);
-        setKycStatus("APPROVED"); // fallback mock
+        setKycStatus("APPROVED");
         toast({
           title: "Showing mock data",
           description: e?.response?.data?.message || e?.message || "Could not reach backend.",
@@ -356,7 +486,7 @@ const StatusCards = () => {
     [items]
   );
 
-  // ====== Actions ======
+  // ====== Actions (logic giữ nguyên) ======
   const gotoReview = (r: ReservationItem) => {
     navigate(`/stations/${r.stationId}/review`, {
       state: { stationName: r.stationName, pillarCode: r.pillarCode },
@@ -381,7 +511,7 @@ const StatusCards = () => {
         pillarId: r.pillarId,
         driverId: currentUserId,
         vehicleId: vehicleId,
-        targetSoc: 1, // luôn FULL
+        targetSoc: 1,
         paymentMethod: payChannel === "wallet" ? "WALLET" : "VNPAY",
       };
 
@@ -393,7 +523,7 @@ const StatusCards = () => {
       toast({ title: "Charging session started" });
 
       const initialSocFrac = (Number(currentSoc) || 0) / 100;
-      const targetSocFrac = 1; // luôn FULL
+      const targetSocFrac = 1;
       localStorage.setItem(
         `session_meta_${sid}`,
         JSON.stringify({ vehicleId, initialSoc: initialSocFrac, targetSoc: targetSocFrac, reservationId })
@@ -439,7 +569,6 @@ const StatusCards = () => {
     });
   };
 
-  /** Create one-time token & open QR dialog */
   const openQrFor = async (r: ReservationItem) => {
     if (USE_MOCK) {
       const token = "MOCK-" + r.reservationId;
@@ -502,11 +631,10 @@ const StatusCards = () => {
     }
   };
 
-  // mở popup Start Charging để chọn payment
   const openPayment = async (r: ReservationItem) => {
     setPmResId(r.reservationId);
 
-    // 1) Lấy KYC đồng bộ vào biến cục bộ
+    // Snapshot KYC tại thời điểm mở popup
     let effectiveKyc = kycStatus;
     if (currentUserId) {
       try {
@@ -517,12 +645,11 @@ const StatusCards = () => {
         effectiveKyc = raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
         setKycStatus(effectiveKyc);
       } catch {
-        // giữ nguyên effectiveKyc 
+        // giữ nguyên
       }
     }
     setKycAtOpen(effectiveKyc);
 
-    // 2) Quyết định flow dựa trên biến cục bộ
     const initialFlow: "prepaid" | "postpaid" = effectiveKyc === "APPROVED" ? "postpaid" : "prepaid";
     setPayFlow(initialFlow);
     setPayChannel(initialFlow === "prepaid" ? "wallet" : "vnpay");
@@ -541,7 +668,7 @@ const StatusCards = () => {
       };
       setItems(xs => xs.map(x => x.reservationId === r.reservationId ? { ...x, ...enriched } : x));
     } catch {
-      // fetchEstimateFor sẽ tự bỏ qua nếu thiếu connectorId
+      // ignore
     }
 
     if (currentUserId) {
@@ -564,7 +691,6 @@ const StatusCards = () => {
     setPmOpen(true);
   };
 
-  // estimate (target luôn 100%)
   async function fetchEstimateFor(r?: ReservationItem, vehId?: number, socNowOverride?: number) {
     if (!r || !vehId || !r.pillarId || !r.connectorId) {
       setEst(null);
@@ -579,7 +705,7 @@ const StatusCards = () => {
         pillarId: r.pillarId,
         connectorId: r.connectorId,
         socNow: isFinite(socToUse) ? socToUse / 100 : undefined,
-        socTarget: 1, // FULL
+        socTarget: 1,
       };
       const { data } = await api.post("/estimate/estimate-kw", payload, { withCredentials: true });
       if (typeof data?.estimatedMinutes === "number") {
@@ -598,7 +724,6 @@ const StatusCards = () => {
     }
   }
 
-  // helpers
   const copyToken = async () => {
     try {
       await navigator.clipboard.writeText(qrToken || "");
@@ -612,193 +737,181 @@ const StatusCards = () => {
     if (r) await openQrFor(r);
   };
 
-  /** Row renderer */
+  /** ===== Row renderer: phiên bản “wow” ===== */
   const renderReservation = (r: ReservationItem) => {
     const ready = r.status === "CONFIRMED";
     const scheduled = r.status === "SCHEDULED";
     const pending = r.status === "PENDING_PAYMENT";
-
-    const bgClass = pending
-      ? "bg-rose-50/60 border-rose-200"
-      : r.status === "VERIFYING" || scheduled
-      ? "bg-amber-50/60 border-amber-200"
-      : r.status === "VERIFIED"
-      ? "bg-teal-50/60 border-teal-200"
-      : r.status === "PLUGGED"
-      ? "bg-sky-50/60 border-sky-200"
-      : r.status === "CHARGING"
-      ? "bg-emerald-50/60 border-emerald-200"
-      : r.status === "COMPLETED"
-      ? "bg-zinc-50/60 border-zinc-200" // ⬅️ NEW color for completed
-      : ready
-      ? "bg-emerald-50/60 border-emerald-200"
-      : "bg-emerald-50/60 border-emerald-200";
-
-    const toneClass = pending
-      ? "text-rose-700"
-      : r.status === "VERIFYING" || scheduled
-      ? "text-amber-700"
-      : r.status === "VERIFIED"
-      ? "text-teal-700"
-      : r.status === "PLUGGED"
-      ? "text-sky-700"
-      : r.status === "CHARGING"
-      ? "text-emerald-700"
-      : r.status === "COMPLETED"
-      ? "text-zinc-700"
-      : ready
-      ? "text-emerald-700"
-      : "text-emerald-700";
-
-    const iconBg =
-      pending
-        ? "bg-rose-500"
-        : r.status === "VERIFYING" || scheduled
-        ? "bg-amber-500"
-        : r.status === "VERIFIED"
-        ? "bg-teal-500"
-        : r.status === "PLUGGED"
-        ? "bg-sky-500"
-        : r.status === "CHARGING"
-        ? "bg-emerald-600"
-        : r.status === "COMPLETED"
-        ? "bg-zinc-500" 
-        : "bg-emerald-500";
+    const ui = UI[r.status];
 
     return (
       <div
         key={r.reservationId}
         className={[
-          "group relative overflow-hidden flex items-center justify-between rounded-2xl border",
-          "p-4 sm:p-5 transition-all duration-200",
-          "hover:shadow-lg hover:-translate-y-[1px]",
-          bgClass,
+          "group relative grid grid-cols-[10px_1fr_auto] items-stretch gap-0 rounded-2xl",
+          "bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/75",
+          "border border-white/40 ring-1", ui.ring,
+          "transition-all duration-300",
+          "hover:-translate-y-[2px] hover:shadow-[0_28px_90px_-34px_rgba(2,6,23,.35)]",
+          ui.glow
         ].join(" ")}
-        style={{ minHeight: 92 }}
+        style={{ minHeight: 104 }}
       >
-        {/* left info */}
-        <div className="flex items-center space-x-4 flex-1 min-w-0">
-          <div className={["size-12 rounded-2xl flex items-center justify-center shadow-inner text-white", iconBg].join(" ")}>
-            {pending ? <CreditCard className="size-6" /> : <Calendar className="size-6" />}
+        {/* Animated border halo (conic gradient runs on hover) */}
+        <span
+          aria-hidden
+          className={[
+            "pointer-events-none absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+            "bg-[conic-gradient(var(--tw-gradient-stops))] animate-[spin_8s_linear_infinite]",
+            `from-transparent via-transparent to-transparent`
+          ].join(" ")}
+          style={{
+            WebkitMask:
+              "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor",
+            maskComposite: "exclude",
+            padding: 1,
+            // @ts-ignore
+            ["--tw-gradient-from" as any]: "transparent",
+            ["--tw-gradient-stops" as any]: `var(--tw-gradient-from), theme(colors.transparent), theme(colors.transparent)`,
+          }}
+        />
+        {/* left stripe with animated gradient */}
+        <div className={`rounded-l-2xl bg-gradient-to-b ${ui.stripe} relative overflow-hidden`}>
+          <span className="absolute inset-0 bg-[linear-gradient(transparent,rgba(255,255,255,.25),transparent)] animate-[shine_2.4s_ease-in-out_infinite]" />
+        </div>
+
+        {/* content */}
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <div className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${ui.badge} shadow-sm`}>
+              {ui.icon}
+              <span className="font-medium">{ui.label}</span>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold truncate text-base">{r.stationName}</h4>
-            <div className="flex flex-wrap gap-2 my-1">
-              <Badge variant="outline" className="text-xs rounded-full border-dashed">{`Port ${r.pillarCode}`}</Badge>
-              <Badge variant="outline" className="text-xs rounded-full border-dashed">{r.connectorType}</Badge>
-            </div>
-            <p className={["text-xs sm:text-[13px] font-medium", toneClass].join(" ")}>
-              {fmtDateTime(r.startTime)}
-              {ready && r.holdFee ? ` • Deposit ${fmtVnd(r.holdFee)}` : null}
-              {pending ? " • Waiting for payment" : null}
-            </p>
+          <h4 className="mt-2 font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 tracking-tight">
+            {r.stationName}
+          </h4>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline" className="text-xs rounded-full border-dashed">{`Port ${r.pillarCode}`}</Badge>
+            <Badge variant="outline" className="text-xs rounded-full border-dashed">{r.connectorType}</Badge>
           </div>
+
+          <p className={`mt-2 text-[13.5px] font-medium ${ui.text}`}>
+            {fmtDateTime(r.startTime)}
+            {ready && r.holdFee ? ` • Deposit ${fmtVnd(r.holdFee)}` : null}
+            {pending ? " • Waiting for payment" : null}
+          </p>
         </div>
 
         {/* actions */}
-        <div className="text-right flex flex-col gap-2 shrink-0">
-          {/* READY */}
+        <div className="pr-4 sm:pr-5 py-4 flex flex-col items-end justify-center gap-2">
           {ready && (
-            <>
-              <Badge className="bg-emerald-600 text-white border-0 rounded-full">Ready</Badge>
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => openPayment(r)}
-              >
+            <Button
+              size="sm"
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9", ui.btn, ui.btnGlow,
+                "transition-all active:scale-[.98]"
+              ].join(" ")}
+              onClick={() => openPayment(r)}
+            >
+              <span className="relative z-10 flex items-center">
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
-              </Button>
-            </>
+              </span>
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
+            </Button>
           )}
 
-          {/* SCHEDULED */}
           {scheduled && (
-            <>
-              <Badge className="rounded-full bg-amber-100 text-amber-700 border-amber-200">Scheduled</Badge>
-              {isArrivableNow(r.startTime) ? (
-                <Button
-                  size="sm"
-                  className="rounded-full px-4 bg-amber-500 hover:bg-amber-600 text-white"
-                  onClick={() => openQrFor(r)}
-                  title="Generate QR to check-in"
-                >
-                  <QrCode className="w-4 h-4 mr-1" /> Arrived
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" className="rounded-full px-4 border-amber-200 text-amber-700" disabled>
-                  <Clock className="w-4 h-4 mr-1" /> Not yet
-                </Button>
-              )}
-            </>
-          )}
-
-          {/* VERIFYING → Verify  */}
-          {r.status === "VERIFYING" && (
-            <>
-              <Badge className="rounded-full bg-amber-600 text-white border-0">Verifying</Badge>
+            isArrivableNow(r.startTime) ? (
               <Button
                 size="sm"
-                className="rounded-full px-4 bg-amber-600 hover:bg-amber-700 text-white"
+                className={["relative overflow-hidden rounded-full px-4 h-9", UI.SCHEDULED.btn, UI.SCHEDULED.btnGlow].join(" ")}
                 onClick={() => openQrFor(r)}
                 title="Generate QR to check-in"
               >
+                <span className="relative z-10 flex items-center">
+                  <QrCode className="w-4 h-4 mr-1" /> Arrived
+                </span>
+                <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" className="rounded-full px-4 h-9 border-amber-200 text-amber-700" disabled>
+                <Clock className="w-4 h-4 mr-1" /> Not yet
+              </Button>
+            )
+          )}
+
+          {r.status === "VERIFYING" && (
+            <Button
+              size="sm"
+              className={["relative overflow-hidden rounded-full px-4 h-9", UI.VERIFYING.btn, UI.VERIFYING.btnGlow].join(" ")}
+              onClick={() => openQrFor(r)}
+            >
+              <span className="relative z-10 flex items-center">
                 <QrCode className="w-4 h-4 mr-1" /> Verify
-              </Button>
-            </>
+              </span>
+              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+            </Button>
           )}
 
-          {/* VERIFIED → Plug */}
           {r.status === "VERIFIED" && (
-            <>
-              <Badge className="rounded-full bg-teal-600 text-white border-0">Verified</Badge>
-              <Button size="sm" className="rounded-full px-4 bg-teal-600 hover:bg-teal-700 text-white" onClick={() => markPlugged(r)}>
-                Plug
-              </Button>
-            </>
+            <Button
+              size="sm"
+              className={["relative overflow-hidden rounded-full px-4 h-9", UI.VERIFIED.btn, UI.VERIFIED.btnGlow].join(" ")}
+              onClick={() => markPlugged(r)}
+            >
+              <span className="relative z-10 flex items-center">
+                <CheckCircle2 className="w-4 h-4 mr-1" /> Plug
+              </span>
+              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+            </Button>
           )}
 
-          {/* PLUGGED → Start Charging (open payment) */}
           {r.status === "PLUGGED" && (
-            <>
-              <Badge className="rounded-full bg-sky-600 text-white border-0">Plugged</Badge>
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => openPayment(r)}
-              >
+            <Button
+              size="sm"
+              className={["relative overflow-hidden rounded-full px-4 h-9", UI.PLUGGED.btn, UI.PLUGGED.btnGlow].join(" ")}
+              onClick={() => openPayment(r)}
+            >
+              <span className="relative z-10 flex items-center">
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
-              </Button>
-            </>
+              </span>
+              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+            </Button>
           )}
 
-          {/* CHARGING */}
-          {r.status === "CHARGING" && (
-            <Badge className="rounded-full bg-emerald-600 text-white border-0">Charging</Badge>
-          )}
-
-          {/* PENDING_PAYMENT */}
-          {pending && (
-            <>
-              <Badge className="rounded-full bg-rose-500 text-white border-0 animate-pulse">Payment required</Badge>
-              <Button size="sm" className="rounded-full px-4 bg-rose-500 hover:bg-rose-600" onClick={() => onPayNow(r)}>
+          {r.status === "PENDING_PAYMENT" && (
+            <Button
+              size="sm"
+              className={["relative overflow-hidden rounded-full px-4 h-9", UI.PENDING_PAYMENT.btn, UI.PENDING_PAYMENT.btnGlow, "animate-[pulse_2.5s_ease-in-out_infinite]"].join(" ")}
+              onClick={() => onPayNow(r)}
+            >
+              <span className="relative z-10 flex items-center">
                 <CreditCard className="w-4 h-4 mr-1" /> Pay now
-              </Button>
-            </>
+              </span>
+              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+            </Button>
           )}
 
-          {/* COMPLETED */}
           {r.status === "COMPLETED" && (
-            <>
-              <Badge className="rounded-full bg-zinc-600 text-white border-0">Completed</Badge>
-              <Button
-                size="sm"
-                className="rounded-full px-4"
-                onClick={() => gotoReview(r)}
-              >
-                Review
-              </Button>
-            </>
+            <Button
+              size="sm"
+              variant="outline"
+              className={["relative overflow-hidden rounded-full px-4 h-9", UI.COMPLETED.btn, UI.COMPLETED.btnGlow].join(" ")}
+              onClick={() => gotoReview(r)}
+            >
+              Review <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+
+          {(r.status === "CANCELLED" || r.status === "EXPIRED") && (
+            <div className={`text-xs px-2 py-1 rounded-full ${ui.badge}`}>{ui.label}</div>
           )}
         </div>
       </div>
@@ -806,108 +919,69 @@ const StatusCards = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold tracking-tight">Today’s Overview</h2>
+    <section className="space-y-6">
+      {/* === Header row === */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">Today’s Overview</h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT: Battery + Next booking */}
-        <div className="space-y-6 lg:col-span-1">
-          <Card className="overflow-hidden border-0 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 opacity-90">
-                  <Battery className="w-5 h-5" />
-                  <span className="text-sm font-medium">Current Battery Level</span>
-                </div>
-                <span className="text-xs/5 bg-white/15 px-2 py-1 rounded-full">Live</span>
-              </div>
-
-              <div className="mt-4 flex items-end gap-2">
-                <span className="text-4xl font-extrabold drop-shadow">85%</span>
-                <span className="text-sm opacity-90 mb-1">425 km</span>
-              </div>
-
-              <div className="mt-3">
-                <div className="h-2 w-full rounded-full bg-white/30 overflow-hidden">
-                  <div className="h-2 rounded-full bg-white" style={{ width: `85%` }} />
-                </div>
-                <p className="text-xs mt-2 opacity-90">Enough for a long trip</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Next Booking */}
-          <Card className="rounded-2xl border-2 border-primary/15">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-primary">
-                <Calendar className="w-5 h-5" />
-                <span className="font-semibold">Next Booking</span>
-              </div>
-
-              {next?.startTime ? (
-                <div className="mt-4 space-y-2">
-                  <div className="text-2xl font-bold">
-                    {new Date(next.startTime).toLocaleDateString()}
-                    <span className="text-base text-muted-foreground ml-2">
-                      {new Date(next.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-
-                  {next.stationName && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4" />
-                      <span>{next.stationName}</span>
-                    </div>
-                  )}
-
-                  {next.pillarCode && (
-                    <div className="mt-2 inline-flex items-center gap-2">
-                      <Badge variant="secondary" className="rounded-full">{`Port ${next.pillarCode}`}</Badge>
-                      <Badge variant="secondary" className="rounded-full">{next.connectorType}</Badge>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-4 text-sm text-muted-foreground">No upcoming booking</div>
+        {/* Next Booking compact pill */}
+        <div className="hidden sm:flex items-center gap-3">
+          <span className="text-sm text-slate-600">Next Booking</span>
+          {next?.startTime ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 backdrop-blur px-3 py-1.5 shadow-sm">
+              <Calendar className="w-4 h-4 text-slate-600" />
+              <span className="text-[13px] text-slate-800">
+                {new Date(next.startTime).toLocaleDateString()}{" "}
+                <span className="text-slate-500">
+                  {new Date(next.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </span>
+              {next.stationName && (
+                <span className="hidden md:inline-flex items-center gap-1 text-[12px] text-slate-600">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {next.stationName}
+                </span>
               )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* RIGHT: Reservations list */}
-        <div className="lg:col-span-2">
-          <Card className="rounded-2xl border-2 border-primary/15">
-            <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent rounded-t-2xl">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Calendar className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-lg">My Reservations</span>
-                  <Badge variant="outline" className="ml-2 border-primary/30 text-primary rounded-full">
-                    Core
-                  </Badge>
-                </div>
-                {!loading && <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>}
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="pt-4">
-              {loading ? (
-                <div className="p-6 text-sm text-muted-foreground">Loading…</div>
-              ) : items.length === 0 ? (
-                <div className="p-6 text-sm text-muted-foreground">You have no reservations yet.</div>
-              ) : (
-                <div className="space-y-3 max-h-[430px] overflow-y-auto pr-1 nice-scroll">
-                  {items.map(renderReservation)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <Badge variant="outline" className="rounded-full text-slate-600">No upcoming</Badge>
+          )}
         </div>
       </div>
 
-      {/* QR Dialog */}
+      {/* === My Reservations === */}
+      <Card className="rounded-2xl border border-slate-200/70 shadow-[0_22px_60px_-20px_rgba(2,6,23,.15)]">
+        <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent rounded-t-2xl">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Calendar className="w-5 h-5 text-primary" />
+              </div>
+              <span className="text-lg">My Reservations</span>
+              <Badge variant="outline" className="ml-2 border-primary/30 text-primary rounded-full">Core</Badge>
+            </div>
+            {!loading && <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>}
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="pt-4">
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-[104px] rounded-2xl bg-slate-100/70 animate-pulse" />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">You have no reservations yet.</div>
+          ) : (
+            <div className="space-y-4 max-h-[560px] overflow-y-auto pr-1 nice-scroll">
+              {items.map(renderReservation)}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* === QR Dialog === */}
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -960,7 +1034,7 @@ const StatusCards = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Payment Dialog khi Start Charging */}
+      {/* === Payment Dialog === */}
       <Dialog open={pmOpen} onOpenChange={setPmOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -968,7 +1042,6 @@ const StatusCards = () => {
               <CreditCard className="w-5 h-5" />
               Select Payment Method
             </DialogTitle>
-            {/* ⬇️ dùng kycAtOpen thay vì kycStatus */}
             <DialogDescription>
               {kycAtOpen === "APPROVED"
                 ? "Choose payment flow. Channel is auto-selected by flow."
@@ -977,12 +1050,11 @@ const StatusCards = () => {
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* Method (segmented) */}
+            {/* Method */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Method</div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  //  chọn Prepaid sẽ tự set Wallet
                   variant={payFlow === "prepaid" ? "default" : "outline"}
                   className="rounded-xl"
                   onClick={() => {
@@ -993,7 +1065,6 @@ const StatusCards = () => {
                   Prepaid
                 </Button>
                 <Button
-                  //  chọn Postpaid sẽ tự set VNPay — disable nếu KYC không APPROVED
                   variant={payFlow === "postpaid" ? "default" : "outline"}
                   className="rounded-xl disabled:opacity-60"
                   disabled={kycAtOpen !== "APPROVED"}
@@ -1007,10 +1078,9 @@ const StatusCards = () => {
               </div>
             </div>
 
-            {/* Payment channel – hiển thị duy nhất 1 lựa chọn tương ứng flow */}
+            {/* Channel */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Payment</div>
-
               {payFlow === "prepaid" ? (
                 <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2">
                   <span className="inline-flex items-center gap-2">
@@ -1046,8 +1116,8 @@ const StatusCards = () => {
                   const picked = vehicles.find((x) => x.id === v);
                   const socPct = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc;
                   setCurrentSoc(socPct);
-                  const r = items.find((x) => x.reservationId === pmResId!);
-                  if (r) fetchEstimateFor(r, v!, socPct);
+                  const rr = items.find((x) => x.reservationId === pmResId!);
+                  if (rr) fetchEstimateFor(rr, v!, socPct);
                 }}
               >
                 <option value="" disabled>
@@ -1055,31 +1125,22 @@ const StatusCards = () => {
                 </option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.make || ""} {v.model || ""} 
+                    {v.make || ""} {v.model || ""}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Current SOC (read-only) */}
+            {/* SOC (read-only) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Current SOC</div>
                 <div className="text-sm font-semibold">{currentSoc}%</div>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={currentSoc}
-                disabled
-                readOnly
-                className="w-full opacity-70 cursor-not-allowed"
-              />
+              <input type="range" min={0} max={100} step={1} value={currentSoc} disabled readOnly className="w-full opacity-70 cursor-not-allowed" />
             </div>
 
-            {/* Target SOC – luôn 100%, read-only */}
+            {/* Target SOC – 100% */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">SOC Target</div>
@@ -1098,7 +1159,7 @@ const StatusCards = () => {
                 <div className="text-sm space-y-1">
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
-                  </div>                
+                  </div>
                   {est.advice && <div className="text-xs text-amber-600">{est.advice}</div>}
                 </div>
               ) : (
@@ -1113,7 +1174,6 @@ const StatusCards = () => {
               <Button
                 onClick={() => {
                   if (!pmResId) return;
-                  // dùng snapshot KYC tại thời điểm mở popup để kiểm tra Postpaid
                   if (payFlow === "postpaid" && kycAtOpen !== "APPROVED") {
                     toast({
                       title: "KYC required",
@@ -1133,8 +1193,10 @@ const StatusCards = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </section>
   );
 };
 
 export default StatusCards;
+
+
