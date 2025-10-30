@@ -24,6 +24,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Autowired
     private SubscriptionMapper mapper;
 
+
+    @Override
     public SubscriptionResponse createSubscription(SubscriptionRequest request) {
         SubscriptionPlan plan = planRepository.findById(request.getPlanId())
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
@@ -44,7 +46,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         return mapper.toResponse(subscriptionRepository.save(subscription));
     }
-
+    @Override
     public List<SubscriptionResponse> getUserSubscriptions(Long userId) {
         return subscriptionRepository.findByUserId(userId)
                 .stream().map(mapper::toResponse)
