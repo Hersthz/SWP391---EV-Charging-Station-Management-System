@@ -317,15 +317,15 @@ public class PaymentServiceImpl implements PaymentService {
 
         switch (req.getType()) {
             case TYPE_RESERVATION:
-                return "Thanh toán đặt chỗ #" + req.getReferenceId();
+                return "Reservation payment #" + req.getReferenceId();
             case TYPE_WALLET:
-                return "Nạp tiền ví";
+                return "Wallet top-up";
             case TYPE_SESSION:
-                return "Thanh toán charging session #" + req.getReferenceId();
+                return "Charging session payment #" + req.getReferenceId();
             case TYPE_MEMBERSHIP:
-                return "Gia hạn thành viên #" + req.getReferenceId();
+                return "Membership renewal #" + req.getReferenceId();
             default:
-                return "Thanh toán EV Charging";
+                return "EV Charging payment";
         }
     }
 
@@ -442,7 +442,7 @@ public class PaymentServiceImpl implements PaymentService {
         notificationService.createNotification(
                 tx.getUser().getId(),
                 "PAYMENT",
-                "Thanh toán đặt chỗ #" + tx.getReferenceId() + " thành công!"
+                "Reservation payment #" + tx.getReferenceId() + " successful!"
         );
 
         log.info("Reservation payment successful - Reference: {}", tx.getReferenceId());
@@ -457,7 +457,7 @@ public class PaymentServiceImpl implements PaymentService {
         notificationService.createNotification(
                 tx.getUser().getId(),
                 "WALLET_TOPUP",
-                "Nạp ví thành công " + amount.toPlainString() + " VND"
+                "Wallet top-up successful: " + amount.toPlainString() + " VND"
         );
         log.info("Wallet top-up successful - User: {}, Amount: {}",
                 tx.getUser().getId(), amount);
@@ -490,7 +490,7 @@ public class PaymentServiceImpl implements PaymentService {
             notificationService.createNotification(
                     tx.getUser().getId(),
                     "CHARGING_SESSION",
-                    "Thanh toán phiên sạc #" + sessionId + " thành công!"
+                    "Charging session #" + sessionId + " payment successful!"
             );
             log.info("Reservation save");
         }
@@ -501,7 +501,7 @@ public class PaymentServiceImpl implements PaymentService {
         notificationService.createNotification(
                 tx.getUser().getId(),
                 "MEMBERSHIP",
-                "Gia hạn thành viên thành công!"
+                "Membership renewal successful!"
         );
         log.info("Membership payment successful - User: {}, Reference: {}",
                 tx.getUser().getId(), tx.getReferenceId());
@@ -532,7 +532,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (!vnpayConfig.verifySignature(fields, vnp_SecureHash)) {
             return PaymentResultResponse.builder()
                     .status("INVALID_SIGNATURE")
-                    .message("Chữ ký không hợp lệ")
+                    .message("Invalid signature")
                     .build();
         }
 
@@ -553,14 +553,12 @@ public class PaymentServiceImpl implements PaymentService {
                 .status("00".equals(responseCode) ? "SUCCESS" : "FAILED")
                 .orderId(txnRef)
                 .transactionNo(transNo)
-                .message("00".equals(responseCode) ? "Giao dịch thành công" : "Giao dịch không thành công (mã: " + responseCode + ")")
+                .message("00".equals(responseCode) ? "Transaction successful" : "Transaction failed (code: " + responseCode + ")")
                 .amount(amt)
                 .type(opt.map(PaymentTransaction::getType).orElse(null))
                 .referenceId(opt.map(PaymentTransaction::getReferenceId).orElse(null))
                 .build();
     }
-
-
 
     @Override
     public Page<PaymentTransactionResponse> getPaymentTransactionByUserId(Long userId, Pageable pageable) {
