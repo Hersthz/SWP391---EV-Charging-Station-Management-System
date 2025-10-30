@@ -10,7 +10,7 @@ import api from "../../api/axios";
 type Me = {
   id?: number;
   user_id?: number;
-  full_name?: string;
+  fullName?: string;
   email?: string;
   role?: string;
   createdAt?: string;
@@ -44,7 +44,7 @@ export default function ProfileSection() {
             ? (res.data as any).data
             : res?.data) ?? {};
         const name =
-          (raw.full_name as string) ?? localStorage.getItem("full_name") ?? "Unknown User";
+          (raw.fullName as string) ?? localStorage.getItem("fullName") ?? "Unknown User";
         const role =
           (raw.role as string) ??
           localStorage.getItem("role") ??
@@ -62,7 +62,7 @@ export default function ProfileSection() {
           setMe({
             id: (raw.user_id as number) ?? (raw.id as number),
             user_id: (raw.user_id as number) ?? (raw.id as number),
-            full_name: name,
+            fullName: name,
             email: (raw.email as string) ?? "",
             role,
             member_since: created,
@@ -77,7 +77,7 @@ export default function ProfileSection() {
     };
   }, []);
 
-  const initials = useMemo(() => initialsOf(me?.full_name), [me?.full_name]);
+  const initials = useMemo(() => initialsOf(me?.fullName), [me?.fullName]);
 
   return (
     <div className="group [perspective:1200px]">
@@ -123,7 +123,7 @@ export default function ProfileSection() {
               <div>
                 <div className="flex items-center gap-1">
                   <span className="font-semibold text-slate-900">
-                    {loading ? "Loading…" : me?.full_name ?? "—"}
+                    {loading ? "Loading…" : me?.fullName ?? "—"}
                   </span>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-in fade-in" />
                 </div>

@@ -118,7 +118,7 @@ const Profile = () => {
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
 
   // ===== user state =====
-  const [fullName, setFullName] = useState(localStorage.getItem("full_name") || "UserRandom");
+  const [fullName, setFullName] = useState(localStorage.getItem("fullName") || "UserRandom");
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
   const [date, setDate] = useState(localStorage.getItem("date") || "");
@@ -190,7 +190,7 @@ const Profile = () => {
       try {
         // profile
         const { data } = await api.get("/auth/me", { withCredentials: true });
-        setFullName(data.full_name ?? fullName);
+        setFullName(data.fullName ?? fullName);
         setEmail(data.email ?? email);
         setPhone(data.phone ?? phone);
         setDate(data.date ?? date);
@@ -259,14 +259,14 @@ const Profile = () => {
       setIsSavingProfile(true);
       setIsEditing(false);
       const payload = {
-        full_name: fullName.trim(),
+        fullName: fullName.trim(),
         email,
         phone,
         date,
       };
       const { data } = await api.post("/user/update-profile", payload, { withCredentials: true });
 
-      localStorage.setItem("full_name", data.full_name ?? fullName);
+      localStorage.setItem("fullName", data.fullName ?? fullName);
       localStorage.setItem("email", data.email ?? email);
       localStorage.setItem("phone", data.phone ?? phone);
       localStorage.setItem("date", data.date ?? date);

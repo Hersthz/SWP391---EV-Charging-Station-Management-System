@@ -20,7 +20,7 @@ const DashboardHeader = () => {
     Number(localStorage.getItem("user_id") ||
           localStorage.getItem("userId") ||
           localStorage.getItem("id") || "");
-  const fullName = (localStorage.getItem("full_name") || "Unknown User").toString();
+  const fullName = (localStorage.getItem("fullName") || "Unknown User").toString();
   const initials = useMemo(
     () =>
       fullName

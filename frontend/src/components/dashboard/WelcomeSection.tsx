@@ -22,7 +22,7 @@ const WelcomeSection = () => {
   });
   const timeString = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
-  const fullName = String(localStorage.getItem("full_name") || "Guest");
+  const fullName = String(localStorage.getItem("fullName") || "Guest");
   const initials = fullName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
 
   // Motion variants (type-safe)

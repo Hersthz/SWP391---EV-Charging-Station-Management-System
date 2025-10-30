@@ -21,7 +21,7 @@ const Dashboard = () => {
     id: number;
     username: string;
     role: string;
-    full_name: string;
+    fullName: string;
   }
 
   useEffect(() => {
@@ -34,7 +34,7 @@ const Dashboard = () => {
             Number(data.id ?? data.userId ?? data.user_id ?? data?.user?.id ?? data?.profile?.id);
         const username = data.username ?? data.email ?? data.user_id;
         const role = data.role ?? data.roleName ?? data.role_name ?? data.roleName?.toString();
-        const full_name = data.full_name ?? data.fullName ?? data.fullname ?? data.full_name;
+        const fullName = data.full_name ?? data.fullName ?? data.fullname ?? data.fullName;
 
         if (Number.isFinite(id)) {
           localStorage.setItem("userId", String(id));   
@@ -43,7 +43,7 @@ const Dashboard = () => {
         }
         if (username) localStorage.setItem("currentUser", String(username));
         if (role) localStorage.setItem("role", String(role));
-        if (full_name) localStorage.setItem("full_name", String(full_name));
+        if (fullName) localStorage.setItem("fullName", String(fullName));
       } catch {
         localStorage.clear();
         navigate("/login");
