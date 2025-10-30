@@ -56,7 +56,6 @@ public class PaymentController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>("401", "Invalid user identity", null));
         }
-       // Long userId = 10L;
         String clientIp = vnPayConfig.getClientIp(servletRequest);
 
         logger.info("Create payment request: reservationId={}, userId={}, amount={}",

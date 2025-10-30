@@ -52,4 +52,8 @@ public class PaymentTransaction {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "session_id", nullable = true)
+    private ChargingSession session;
+
 }

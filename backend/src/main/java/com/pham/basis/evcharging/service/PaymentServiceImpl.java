@@ -334,6 +334,7 @@ public class PaymentServiceImpl implements PaymentService {
     private PaymentResponse buildPaymentResponse(PaymentTransaction tx, String paymentUrl) {
         BigDecimal amount = tx.getAmount();
         return PaymentResponse.builder()
+                .paymentId(tx.getId())
                 .txnRef(tx.getTxnRef())
                 .paymentUrl(paymentUrl)
                 .amount(amount)
@@ -511,6 +512,7 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal amount = tx.getAmount();
 
         return PaymentResponse.builder()
+                .paymentId(tx.getId())
                 .txnRef(tx.getTxnRef())
                 .paymentUrl(null)
                 .amount(amount)
@@ -560,7 +562,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
-
+    public PaymentTransaction getPaymentEntity(Long paymentId) {
+        return txRepo.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+    }
 
     @Override
     public Page<PaymentTransactionResponse> getPaymentTransactionByUserId(Long userId, Pageable pageable) {
