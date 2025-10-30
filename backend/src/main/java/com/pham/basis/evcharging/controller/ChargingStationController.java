@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.controller;
 
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
 import com.pham.basis.evcharging.dto.request.StationRequest;
+import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationDetailResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStationSummaryResponse;
 import com.pham.basis.evcharging.service.ChargingStationService;
@@ -62,6 +63,10 @@ public class ChargingStationController {
         return ResponseEntity.ok(resp);
     }
 
-
+    @GetMapping("/getAll")
+    public ResponseEntity<ApiResponse<Page<ChargingStationDetailResponse>>> getAllStations(@RequestParam Integer page, @RequestParam Integer size) {
+        Page<ChargingStationDetailResponse> chargingStationDetailResponses = chargingStationService.getAllStation(size, page);
+        return ResponseEntity.ok(new ApiResponse<>("200", "Get all staion detail success", chargingStationDetailResponses));
+    }
 
 }

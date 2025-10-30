@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface SubscriptionService {
     SubscriptionResponse createSubscription(SubscriptionRequest request);
     List<SubscriptionResponse> getUserSubscriptions(Long userId);
-    Optional<Subscription> getActiveSubscriptionByUserId(Integer userId);
+    Optional<Subscription> getActiveSubscriptionByUserId(Long userId);
 }

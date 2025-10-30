@@ -7,6 +7,7 @@ import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.service.PaymentService;
@@ -108,17 +109,24 @@ public class PaymentController {
     }
 
     @GetMapping("/getPaymentU")
-    public ResponseEntity<Page<PaymentTransaction>> getPaymentU(GetPaymentRequest request) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize());
-        Page<PaymentTransaction> page= paymentService.getPaymentTransactionByUserId(request.getUserid(), pageable);
-        return ResponseEntity.ok(page);
+    public ResponseEntity<Page<PaymentTransactionResponse>> getPaymentU(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Page<PaymentTransactionResponse> result = paymentService.getPaymentTransactionByUserId(userId, pageable);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/getPayment")
-    public ResponseEntity<Page<PaymentTransaction>> getPayment(GetPaymentRequest request) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize());
-        Page<PaymentTransaction> page= paymentService.getAllPaymentTransaction(pageable);
-        return ResponseEntity.ok(page);
+    public ResponseEntity<Page<PaymentTransactionResponse>> getPayment(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Page<PaymentTransactionResponse> result = paymentService.getAllPaymentTransaction(pageable);
+        return ResponseEntity.ok(result);
     }
 
 }

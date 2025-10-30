@@ -34,8 +34,8 @@ public class AuthService {
 
         return UserResponse.builder()
                 .email(user.getEmail())
-                .full_name(user.getFull_name())
-                .user_id(user.getId())
+                .fullName(user.getFull_name())
+                .id(user.getId())
                 .username(user.getUsername())
                 .phone(user.getPhone())
                 .roleName(user.getRole().getName())
@@ -68,11 +68,15 @@ public class AuthService {
         if (user == null)
             return ResponseEntity.status(404).body(Map.of("message", "User not found"));
 
-        UserResponse resp = new UserResponse(
-                user.getId(), user.getFull_name(), user.getUsername(),
-                user.getEmail(), user.getPhone(),
-                user.getRole() != null ? user.getRole().getName() : null
-        );
+        UserResponse resp = UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .phone(user.getPhone())
+                .roleName(user.getRole().getName())
+                .isVerified(user.getIs_verified())
+                .email(user.getEmail())
+                .dateOfBirth(user.getDate_of_birth())
+                .build();
         return ResponseEntity.ok(resp);
     }
 }

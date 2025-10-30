@@ -4,6 +4,7 @@ package com.pham.basis.evcharging.service;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
@@ -17,8 +18,8 @@ public interface PaymentService {
 
     PaymentResultResponse vnpReturn(HttpServletRequest request);
 
-    Page<PaymentTransaction> getPaymentTransactionByUserId(Long userId, Pageable pageable);
-    Page<PaymentTransaction> getAllPaymentTransaction(Pageable pageable);
+    Page<PaymentTransactionResponse> getPaymentTransactionByUserId(Long userId, Pageable pageable);
+    Page<PaymentTransactionResponse> getAllPaymentTransaction(Pageable pageable);
 
 }
 

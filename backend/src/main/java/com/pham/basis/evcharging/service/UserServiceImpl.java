@@ -4,10 +4,7 @@ import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
-import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
-import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
-import com.pham.basis.evcharging.dto.response.SetUserRoleResponse;
-import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
+import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.repository.SubscriptionPlanRepository;
@@ -22,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -226,6 +224,25 @@ public class UserServiceImpl implements UserService {
             return res;
         }
 
+    @Override
+    public List<UserResponse> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .map(user -> UserResponse.builder()
+                        .id(user.getId())
+                        .fullName(user.getFull_name())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .phone(user.getPhone())
+                        .status(user.getStatus())
+                        .isVerified(user.getIs_verified())
+                        .roleName(user.getRole().getName())
+                        .dateOfBirth(user.getDate_of_birth())
+                        .createdAt(user.getCreated_at())
+                        .build())
+                .toList();
     }
+
+}
 
 

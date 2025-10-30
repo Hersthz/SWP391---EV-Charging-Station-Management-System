@@ -4,7 +4,9 @@ import com.pham.basis.evcharging.config.VNPayConfig;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
+import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
 import com.pham.basis.evcharging.exception.AppException;
+import com.pham.basis.evcharging.mapper.PaymentTransactionMapper;
 import com.pham.basis.evcharging.model.ChargingSession;
 import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.model.Reservation;
@@ -42,6 +44,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final ReservationRepository reservationRepo;
     private final ChargingSessionRepository  chargingSessionRepo;
     private final NotificationService notificationService;
+    private final PaymentTransactionMapper mapper;
 
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
 
@@ -533,10 +536,6 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
         }
 
-        // Đồng bộ với IPN: cập nhật transaction + cộng ví nếu SUCCESS (idempotent)
-        // Lưu ý: processIpnTransaction sẽ update status & gọi handlePaymentSuccess(tx)
-        processIpnTransaction(new HashMap<>(fields));
-
         String responseCode = fields.get("vnp_ResponseCode");
         String txnRef = fields.get("vnp_TxnRef");
         String transNo = fields.get("vnp_TransactionNo");
@@ -564,13 +563,14 @@ public class PaymentServiceImpl implements PaymentService {
 
 
     @Override
-    public Page<PaymentTransaction> getPaymentTransactionByUserId(Long userId, Pageable pageable) {
-        return txRepo.findByUserIdOrderByCreatedAtDesc(userId,pageable);
+    public Page<PaymentTransactionResponse> getPaymentTransactionByUserId(Long userId, Pageable pageable) {
+        return txRepo.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(mapper::toResponse);
     }
 
     @Override
-    public Page<PaymentTransaction> getAllPaymentTransaction(Pageable pageable) {
-        return txRepo.findAll(pageable);
+    public Page<PaymentTransactionResponse> getAllPaymentTransaction(Pageable pageable) {
+        return txRepo.findAll(pageable)
+                .map(mapper::toResponse);
     }
-
 }

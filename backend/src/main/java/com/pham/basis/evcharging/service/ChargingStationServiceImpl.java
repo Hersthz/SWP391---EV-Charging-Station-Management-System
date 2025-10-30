@@ -150,22 +150,6 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         return stationMapper.toDetailResponse(savedStation);
     }
 
-    private void validateAddStationRequest(StationRequest request) {
-        if (request.getStationName() == null || request.getStationName().trim().isEmpty()) {
-            throw new ValidationException("Station name is required");
-        }
-        if (request.getAddress() == null || request.getAddress().trim().isEmpty()) {
-            throw new ValidationException("Address is required");
-        }
-        if (request.getLatitude() < -90 || request.getLatitude() > 90) {
-            throw new ValidationException("Invalid latitude value");
-        }
-        if (request.getLongitude() < -180 || request.getLongitude() > 180) {
-            throw new ValidationException("Invalid longitude value");
-        }
-    }
-
-
     @Override
     public ChargingStationDetailResponse addPillarsWithConnectors(Long stationId, List<StationRequest.PillarRequest> pillarRequests) {
         if (stationId == null) {
@@ -216,6 +200,35 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         return stationMapper.toDetailResponse(saved);
     }
 
+    @Override
+    public Page<ChargingStationDetailResponse> getAllStation(Integer size, Integer page) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ChargingStation> stations = stationRepository.findAll(pageable);
+        return stations.map(station -> ChargingStationDetailResponse.builder()
+                .id(station.getId())
+                .name(station.getName())
+                .address(station.getAddress())
+                .latitude(station.getLatitude())
+                .longitude(station.getLongitude())
+                .status(station.getStatus())
+                .availablePillars((int)station.getPillars().stream().filter(p-> "AVAILABLE".equals(p.getStatus())).count())
+                .totalPillars((int) station.getPillars().size())
+                .pillars(station.getPillars().stream().map(pillar -> ChargingStationDetailResponse.PillarDto.builder()
+                        .id(pillar.getId())
+                        .code(pillar.getCode())
+                        .status(pillar.getStatus())
+                        .power(pillar.getPower())
+                        .pricePerKwh(pillar.getPricePerKwh())
+                        .connectors(pillar.getConnectors().stream().map(connector -> new ChargingStationDetailResponse.ConnectorDto(
+                                connector.getId(), connector.getType()
+                        )).toList())
+                        .build()
+                ).toList())
+                .build()
+        );
+    }
+
+    //-------------helper-------
     private void validatePillarRequest(StationRequest.PillarRequest pillarReq) {
         if (pillarReq.getCode() == null || pillarReq.getCode().trim().isEmpty()) {
             throw new ValidationException("Pillar code is required");
@@ -231,6 +244,21 @@ public class ChargingStationServiceImpl implements ChargingStationService {
     private void validateConnectorRequest(StationRequest.ConnectorRequest connReq) {
         if (connReq.getConnectorType() == null || connReq.getConnectorType().trim().isEmpty()) {
             throw new ValidationException("Connector type is required");
+        }
+    }
+
+    private void validateAddStationRequest(StationRequest request) {
+        if (request.getStationName() == null || request.getStationName().trim().isEmpty()) {
+            throw new ValidationException("Station name is required");
+        }
+        if (request.getAddress() == null || request.getAddress().trim().isEmpty()) {
+            throw new ValidationException("Address is required");
+        }
+        if (request.getLatitude() < -90 || request.getLatitude() > 90) {
+            throw new ValidationException("Invalid latitude value");
+        }
+        if (request.getLongitude() < -180 || request.getLongitude() > 180) {
+            throw new ValidationException("Invalid longitude value");
         }
     }
 
