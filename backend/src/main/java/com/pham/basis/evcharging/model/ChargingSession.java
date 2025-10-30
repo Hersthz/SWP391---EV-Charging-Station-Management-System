@@ -39,6 +39,9 @@ public class ChargingSession {
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
+    @OneToOne(mappedBy = "session", fetch = FetchType.LAZY)
+    private PaymentTransaction payment;
+
     // --- Thời gian ---
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;

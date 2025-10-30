@@ -91,6 +91,6 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
             Pageable pageable
     );
 
-    Optional<ChargingStation> findChargingStationById(Long id);
+
     Optional<ChargingStation> findByManagerId(Long managerId);
 }

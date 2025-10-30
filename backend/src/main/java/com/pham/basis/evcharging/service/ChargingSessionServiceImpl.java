@@ -3,7 +3,6 @@ package com.pham.basis.evcharging.service;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
 import com.pham.basis.evcharging.dto.response.AdjustTargetSocResponse;
-import com.pham.basis.evcharging.dto.response.ChargingSessionResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.model.*;
@@ -140,7 +139,9 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
         if (!"COMPLETED".equals(session.getStatus()))
             throw new IllegalArgumentException("Only completed sessions can be paid");
-
+        if (session.getPayment() != null) {
+            throw new IllegalArgumentException("Payment already exists for this session");
+        }
         PaymentCreateRequest paymentRequest = PaymentCreateRequest.builder()
                 .amount(session.getChargedAmount())
                 .type("CHARGING-SESSION")
@@ -153,7 +154,9 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         PaymentResponse paymentResponse = paymentService.createPayment(
                 paymentRequest, session.getDriver().getId(), clientIp
         );
-
+        PaymentTransaction payment = paymentService.getPaymentEntity(paymentResponse.getPaymentId());
+        session.setPayment(payment);
+        sessionRepo.save(session);
         log.info("Payment created for session {}: {}", session.getId(), paymentResponse.getStatus());
         return paymentResponse;
     }

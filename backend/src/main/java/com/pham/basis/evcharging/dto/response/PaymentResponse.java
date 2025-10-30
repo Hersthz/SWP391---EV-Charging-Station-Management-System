@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 @Data
 @Builder
 public class PaymentResponse {
+    private Long paymentId;
     private String paymentUrl;
     private String txnRef;
     private BigDecimal amount;

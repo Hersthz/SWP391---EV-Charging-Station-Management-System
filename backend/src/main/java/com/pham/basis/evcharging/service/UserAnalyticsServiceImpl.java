@@ -38,8 +38,6 @@ public class UserAnalyticsServiceImpl implements  UserAnalyticsService {
         //
         List<ChargingSession> sessions = chargingSessionRepository.findByDriver_Id(user.getId());
         //
-        System.out.println("Sessions: " + sessions.size());
-        System.out.println("Sessions: -------------------------------------------------");
         Long totalSessions = chargingSessionRepository.countByDriver_Id(user.getId());
         double getTotalEnergy = sessions.stream()
                 .map(s-> s.getEnergyCount() != null ? s.getEnergyCount(): BigDecimal.ZERO)
@@ -86,7 +84,7 @@ public class UserAnalyticsServiceImpl implements  UserAnalyticsService {
                 .percentChangeCost(percentChangeCost)
                 .build();
         //
-        List<UserAnalyticsResponse.MonthlyAnalytics> monthlyAnalytics = IntStream.range(0, 5)
+        List<UserAnalyticsResponse.MonthlyAnalytics> monthlyAnalytics = IntStream.range(0, 6)
                 .mapToObj(i-> {
                     YearMonth yearMonth = currentMonth.minusMonths(i);
                     return UserAnalyticsResponse.MonthlyAnalytics.builder()
