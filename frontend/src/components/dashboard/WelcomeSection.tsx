@@ -160,25 +160,6 @@ const WelcomeSection = () => {
                   </span>
                 </motion.div>
               </div>
-
-              {/* Right: battery with shimmer */}
-              <motion.div variants={item} className="flex items-center gap-4">
-                <div className="relative text-center">
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-white/15 ring-1 ring-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner overflow-hidden">
-                    <Battery className="w-7 h-7 md:w-8 md:h-8 text-white" />
-                    {!prefersReduce && (
-                      <motion.span
-                        aria-hidden
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                        initial={{ x: "-100%" }}
-                        animate={{ x: "100%" }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 2.2 }}
-                      />
-                    )}
-                  </div>
-                  <div className="text-[12px] mt-1 text-white/85">85% Battery</div>
-                </div>
-              </motion.div>
             </motion.div>
           </CardContent>
         </Card>

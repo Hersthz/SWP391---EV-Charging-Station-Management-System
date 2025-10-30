@@ -156,33 +156,12 @@ const VehicleSection = () => {
                     <Plug className="w-3.5 h-3.5" /> {t}
                   </Badge>
                 ))}
-                <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200 rounded-full">
-                  <IdCard className="w-3.5 h-3.5 mr-1" />
-                  {maskVIN(veh?.vin)}
-                </Badge>
               </div>
             </div>
-            <Button size="sm" variant="outline" className="rounded-full border-slate-200 bg-white/70 hover:bg-white/90">
-              <MapPin className="w-4 h-4 mr-1" /> Find stations
-            </Button>
           </div>
 
           {/* Battery + Charge */}
           <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-600">Battery Health</span>
-              <span className="font-semibold text-slate-900">{healthPct ?? "—"}%</span>
-            </div>
-            <div className="relative">
-              <Progress
-                value={healthPct ?? 0}
-                className="h-2.5 rounded-full overflow-hidden bg-slate-100"
-              />
-              {/* shimmer */}
-              <div className="pointer-events-none absolute inset-0 [mask-image:linear-gradient(90deg,transparent,white,transparent)]
-                              bg-white/60 animate-[shine_1.4s_ease-in-out_infinite]" />
-            </div>
-
             <div className="flex justify-between text-sm">
               <span className="text-slate-600">Current Charge</span>
               <span className="font-semibold text-slate-900">{socNowPct ?? "—"}%</span>
@@ -193,34 +172,6 @@ const VehicleSection = () => {
                            animate-[barin_700ms_ease-out]"
                 style={{ width: `${socNowPct ?? 0}%` }}
               />
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div className="glass-tile">
-              <div className="flex items-center gap-2 text-xs text-slate-600">
-                <Gauge className="w-4 h-4" /> Range (EPA)
-              </div>
-              <div className="mt-1 font-semibold text-slate-900">
-                {loading ? "…" : `${veh?.range ?? "—"} km`}
-              </div>
-            </div>
-            <div className="glass-tile">
-              <div className="flex items-center gap-2 text-xs text-slate-600">
-                <Zap className="w-4 h-4" /> Max Power
-              </div>
-              <div className="mt-1 font-semibold text-slate-900">
-                {loading ? "…" : `${veh?.maxPower ?? "—"} kW`}
-              </div>
-            </div>
-            <div className="glass-tile">
-              <div className="flex items-center gap-2 text-xs text-slate-600">
-                <Battery className="w-4 h-4" /> Battery
-              </div>
-              <div className="mt-1 font-semibold text-slate-900">
-                {loading ? "…" : `${veh?.battery ?? "—"} kWh`}
-              </div>
             </div>
           </div>
         </CardContent>

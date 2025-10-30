@@ -2,14 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
-
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
-
 import {
   ArrowLeft,
   BarChart3,
@@ -40,9 +39,12 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
-/* ===================== Backend types (relaxed) ===================== */
+/* ===================== Backend types ===================== */
 type ApiResponse<T> = { code?: string; message?: string; data?: T };
 
 type PageResp<T> = {
@@ -60,13 +62,13 @@ type ChargingSessionResponse = {
   driverUserId?: number | null;
   vehicleId?: number | null;
   status?: string | null;
-  energyCount?: number | null;   // kWh
+  energyCount?: number | null;   // kWh
   chargedAmount?: number | null; // money
   ratePerKwh?: number | null;
   targetSoc?: number | null;
   socNow?: number | null;
-  startTime?: string | null;     // ISO
-  endTime?: string | null;       // ISO
+  startTime?: string | null;     // ISO
+  endTime?: string | null;       // ISO
 };
 
 type ReservationResponseBE = {
@@ -86,7 +88,7 @@ type ReservationResponseBE = {
   payment?: { paid?: boolean; depositTransactionId?: string };
 };
 
-/* ---------- Analytics mirror (numbers are optional to be defensive) ---------- */
+/* ---------- Analytics mirror ---------- */
 type AnalyticsOverview = {
   totalSessions?: number;
   totalEnergyKwh?: number;
@@ -97,7 +99,7 @@ type AnalyticsOverview = {
 };
 
 type MonthlyAnalytics = {
-  yearMonth: string;      // normalized to "yyyy-MM"
+  yearMonth: string;      // normalized to "yyyy-MM"
   cost?: number;
   energyKwh?: number;
   sessionCount?: number;
@@ -144,8 +146,8 @@ const fmtTime = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
 const fmtMoney = (n?: number | null) =>
   typeof n === "number" && Number.isFinite(n)
-    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n)
-    : "$0.00";
+    ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n) 
+    : "0 ₫";
 const fmtKwh = (n?: number | null, d = 1) =>
   typeof n === "number" && Number.isFinite(n) ? `${n.toFixed(d)} kWh` : "—";
 const fmtMinute = (m?: number | null) =>
@@ -159,9 +161,11 @@ const minutesBetween = (a?: string | null, b?: string | null) => {
   return Math.max(0, Math.round(ms / 60000));
 };
 const humanDuration = (mins: number) => {
+  if (mins < 1) return "< 1m";
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return `${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 };
 
 // Accept both "yyyy-MM" string or {year,month} object
@@ -184,6 +188,41 @@ const ymLabel = (ym: string) => {
   return d.toLocaleString(undefined, { month: "short", year: "numeric" });
 };
 
+// === Màu sắc cho biểu đồ Doughnut ===
+const PIE_COLORS = ["#10b981", "#0ea5e9", "#f59e0b", "#ef4444", "#6366f1"];
+
+// === Component Tooltip tùy chỉnh cho Recharts ===
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="p-3 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg">
+        <p className="label text-sm font-bold text-slate-900">{label}</p>
+        {payload.map((pld: any, index: number) => (
+          <p key={index} style={{ color: pld.color }} className="text-sm">
+            {pld.name}: <span className="font-semibold">{pld.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// === Variants cho animation của Framer Motion ===
+const kpiContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const kpiCardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
+
 /* ===================== Component ===================== */
 const ReportsPage = () => {
   const [selectedPeriod, setSelectedPeriod] =
@@ -202,7 +241,7 @@ const ReportsPage = () => {
   const [analytics, setAnalytics] = useState<UserAnalyticsResponse | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
-  /* ===================== Data load ===================== */
+  /* ===================== Data load  ===================== */
   useEffect(() => {
     let mounted = true;
 
@@ -267,9 +306,9 @@ const ReportsPage = () => {
         try {
           console.log("Loading analytics for user:", uid);
           setLoadingAnalytics(true);
-          const ares = await api.get<ApiResponse<UserAnalyticsResponse>>(       
+          const ares = await api.get<ApiResponse<UserAnalyticsResponse>>(
             "/analytics/" + uid,
-            { withCredentials: true  }
+            { withCredentials: true }
           );
           console.log("Analytics response:", uid);
           // Normalize YearMonth before using in charts
@@ -392,7 +431,7 @@ const ReportsPage = () => {
       };
     }
 
-    const totalCost = filtered.reduce((acc, r) => acc + (Number((r.cost || "").replace(/[^0-9.]/g, "")) || 0), 0);
+    const totalCost = filtered.reduce((acc, r) => acc + (Number((r.cost || "").replace(/[^0-9.,₫\s]/g, "").replace(",", ".")) || 0), 0);
     const totalEnergy = filtered.reduce((acc, r) => acc + (Number((r.energy || "").replace(/[^0-9.]/g, "")) || 0), 0);
     const totalSessions = filtered.length;
 
@@ -477,20 +516,26 @@ const ReportsPage = () => {
   }, [analytics]);
 
   /* ===================== UI ===================== */
+  const [currentTab, setCurrentTab] = useState("overview");
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 text-slate-900">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link to="/dashboard">
-            <Button variant="ghost" size="sm" className="hover:bg-sky-50">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
           </Link>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm bg-gradient-to-br from-sky-500 to-emerald-500">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/30 bg-gradient-to-br from-sky-500 to-emerald-500">
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-semibold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
@@ -500,10 +545,10 @@ const ReportsPage = () => {
 
           <div className="flex items-center gap-3">
             <Select value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-36 bg-white/70 border-slate-300 text-slate-900 hover:bg-slate-50">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/90 backdrop-blur-md border-slate-200 text-slate-900">
                 <SelectItem value="week">This week</SelectItem>
                 <SelectItem value="month">This month</SelectItem>
                 <SelectItem value="quarter">This quarter</SelectItem>
@@ -511,7 +556,7 @@ const ReportsPage = () => {
               </SelectContent>
             </Select>
 
-            <Button className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
+            <Button className="shadow-lg shadow-cyan-500/30 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:brightness-110 transition-all">
               <Download className="w-4 h-4 mr-2" />
               Export report
             </Button>
@@ -522,19 +567,19 @@ const ReportsPage = () => {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Title */}
         <div className="mb-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
             Reports
           </h1>
-          <p className="text-muted-foreground">Insights, trends & cost analysis</p>
+          <p className="text-slate-600 text-lg">Insights, trends & cost analysis</p>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="overview" onValueChange={setCurrentTab} className="space-y-6">
           {/* Tabs */}
           <TabsList
             className="
-              grid w-full grid-cols-3 rounded-2xl bg-[#F7FAFD] p-1.5
-              ring-1 ring-slate-200/70 h-auto gap-1
-            "
+              grid w-full grid-cols-3 rounded-2xl bg-white/80 backdrop-blur-md p-1.5
+              shadow-2xl shadow-slate-900/15 h-auto gap-1
+            "
           >
             {[
               { v: "overview", label: "Overview" },
@@ -545,382 +590,464 @@ const ReportsPage = () => {
                 key={t.v}
                 value={t.v}
                 className="
-                  group w-full rounded-xl px-6 py-3
-                  text-slate-600 font-medium hover:text-slate-700
-                  data-[state=active]:text-white
-                  data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                  data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                  transition-all flex items-center justify-center
-                "
+                  group w-full rounded-xl px-6 py-3
+                  text-slate-600 font-medium hover:text-slate-900
+                  data-[state=active]:text-white
+                  data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
+                  data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
+                  transition-all flex items-center justify-center
+                "
               >
                 {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {/* ===== Overview ===== */}
-          <TabsContent value="overview" className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total cost</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {fmtMoney(analytics?.overview?.totalCost ?? monthlyStats.totalCost)}
-                      </p>
-                      <p className={`text-xs mt-1 flex items-center ${((analytics?.overview?.percentChangeCost ?? 0) >= 0) ? "text-success" : "text-rose-500"}`}>
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                        {analytics
-                          ? `${(analytics.overview?.percentChangeCost ?? 0).toFixed(1)}% vs last month`
-                          : "Auto from sessions"}
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                      <DollarSign className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Energy used</p>
-                      <p className="text-2xl font-bold text-secondary">
-                        {fmtKwh(analytics?.overview?.totalEnergyKwh ?? monthlyStats.totalEnergy, 1)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Avg cost/kWh:&nbsp;
-                        <span className="font-medium">
-                          {fmtMoney(analytics?.overview?.avgCostPerKwh ?? 0)}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                      <Zap className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total sessions</p>
-                      <p className="text-2xl font-bold text-foreground">
-                        {analytics?.overview?.totalSessions ?? monthlyStats.totalSessions}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Avg duration:&nbsp;
-                        <span className="font-medium">
-                          {fmtMinute(analytics?.overview?.averageSessionDuration ?? 0)}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                      <Clock className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Charging efficiency</p>
-                      <p className="text-2xl font-bold text-success">
-                        {monthlyStats.efficiency}
-                      </p>
-                      <p className="text-xs text-success flex items-center mt-1">
-                        <Battery className="w-3 h-3 mr-1" />
-                        Estimated (client)
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                      <Battery className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Monthly trends */}
-            <Card className="shadow-card border-0 bg-gradient-card">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle>Monthly trends</CardTitle>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Activity className="w-3 h-3" />
-                    {loadingAnalytics ? "Loading analytics…" : "Last 6 months"}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-2">
-                {analytics && monthlyChart.length > 0 ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="h-64 w-full">
-                      <ResponsiveContainer>
-                        <BarChart data={monthlyChart}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                          <XAxis dataKey="label" />
-                          <YAxis yAxisId="left" />
-                          <YAxis yAxisId="right" orientation="right" />
-                          <Tooltip />
-                          <Legend />
-                          <Bar yAxisId="left" dataKey="energy" name="Energy (kWh)" />
-                          <Bar yAxisId="right" dataKey="sessions" name="Sessions" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="h-64 w-full">
-                      <ResponsiveContainer>
-                        <LineChart data={monthlyChart}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                          <XAxis dataKey="label" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="cost" name="Cost" dot />
-                          <Line type="monotone" dataKey="avgDuration" name="Avg Duration (min)" dot />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 text-sm text-muted-foreground">No analytics yet.</div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* ===== Sessions ===== */}
-          <TabsContent value="sessions" className="space-y-6 animate-fade-in">
-            <Card className="shadow-card border-0 bg-gradient-card">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Session history</span>
-                  <Button variant="outline" size="sm" className="hover:bg-sky-50">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filter
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="p-6 text-sm text-muted-foreground">Loading…</div>
-                ) : error ? (
-                  <div className="p-6 text-sm text-rose-600">{error}</div>
-                ) : rows.length === 0 ? (
-                  <div className="p-6 text-sm text-muted-foreground">No sessions yet.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {rows.map((session, index) => (
-                      <div key={session.id}>
-                        <div className="flex items-center justify-between p-4 rounded-lg transition-colors hover:bg-white">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-                              <Zap className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-foreground">{session.station}</h4>
-                              <p className="text-sm text-muted-foreground flex items-center">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {`Port ${session.port}`}{session.connector ? ` • ${session.connector}` : ""}
-                              </p>
-                              <p className="text-sm text-muted-foreground flex items-center mt-1">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {session.date} • {session.time}
-                              </p>
-                            </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* ===== Overview ===== */}
+              <TabsContent value="overview" className="space-y-6 mt-0">
+                <motion.div
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                  variants={kpiContainerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {/* === Card 1: Total Cost === */}
+                  <motion.div variants={kpiCardVariants}>
+                    <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600">Total cost</p>
+                            <p className="text-4xl font-extrabold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
+                              {fmtMoney(analytics?.overview?.totalCost ?? monthlyStats.totalCost)}
+                            </p>
+                            <p
+                              className={`text-xs mt-1 flex items-center ${(analytics?.overview?.percentChangeCost ?? 0) >= 0
+                                ? "text-emerald-600"
+                                : "text-rose-600"
+                                }`}
+                            >
+                              <TrendingUp className="w-3 h-3 mr-1" />
+                              {analytics
+                                ? `${(analytics.overview?.percentChangeCost ?? 0).toFixed(1)}% vs last month`
+                                : "Auto from sessions"}
+                            </p>
                           </div>
-
-                          <div className="text-right">
-                            <div className="grid grid-cols-3 gap-4 text-sm mb-2">
-                              <div>
-                                <div className="text-muted-foreground">Duration</div>
-                                <div className="font-medium">{session.duration}</div>
-                              </div>
-                              <div>
-                                <div className="text-muted-foreground">Energy</div>
-                                <div className="font-medium">{session.energy}</div>
-                              </div>
-                              <div>
-                                <div className="text-muted-foreground">Cost</div>
-                                <div className="font-medium text-primary">{session.cost}</div>
-                              </div>
-                            </div>
-                            <Badge className="bg-success/10 text-success border-success/20">
-                              {session.status}
-                            </Badge>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
+                            <DollarSign className="w-6 h-6 text-white" />
                           </div>
                         </div>
-                        {index < rows.length - 1 && <Separator />}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  {/* === Card 2: Energy Used === */}
+                  <motion.div variants={kpiCardVariants}>
+                    <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600">Energy used</p>
+                            <p className="text-4xl font-extrabold text-slate-900">
+                              {fmtKwh(analytics?.overview?.totalEnergyKwh ?? monthlyStats.totalEnergy, 1)}
+                            </p>
+                            <p className="text-xs text-slate-600 mt-1">
+                              Avg cost/kWh:&nbsp;
+                              <span className="font-medium text-slate-800">
+                                {fmtMoney(analytics?.overview?.avgCostPerKwh ?? 0)}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
+                            <Zap className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  {/* === Card 3: Total Sessions === */}
+                  <motion.div variants={kpiCardVariants}>
+                    <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600">Total sessions</p>
+                            <p className="text-4xl font-extrabold text-slate-900">
+                              {analytics?.overview?.totalSessions ?? monthlyStats.totalSessions}
+                            </p>
+                            <p className="text-xs text-slate-600 mt-1">
+                              Avg duration:&nbsp;
+                              <span className="font-medium text-slate-800">
+                                {fmtMinute(analytics?.overview?.averageSessionDuration ?? 0)}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
+                            <Clock className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  {/* === Card 4: Efficiency === */}
+                  <motion.div variants={kpiCardVariants}>
+                    <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600">Charging efficiency</p>
+                            <p className="text-4xl font-extrabold text-emerald-600">
+                              {monthlyStats.efficiency}
+                            </p>
+                            <p className="text-xs text-emerald-600 flex items-center mt-1">
+                              <Battery className="w-3 h-3 mr-1" />
+                              Estimated (client)
+                            </p>
+                          </div>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
+                            <Battery className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </motion.div>
+
+                {/* Monthly trends */}
+                <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xl font-bold text-slate-900">Monthly trends</CardTitle>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Activity className="w-3 h-3" />
+                        {loadingAnalytics ? "Loading analytics…" : "Last 6 months"}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    {analytics && monthlyChart.length > 0 ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="h-64 w-full">
+                          <ResponsiveContainer>
+                            <BarChart data={monthlyChart}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
+                              <YAxis yAxisId="left" stroke="#64748b" fontSize={12} />
+                              <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={12} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: "14px", color: "#334155" }} />
+                              <Bar yAxisId="left" dataKey="energy" name="Energy (kWh)" fill="#10b981" />
+                              <Bar yAxisId="right" dataKey="sessions" name="Sessions" fill="#0ea5e9" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="h-64 w-full">
+                          <ResponsiveContainer>
+                            <LineChart data={monthlyChart}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
+                              <YAxis stroke="#64748b" fontSize={12} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: "14px", color: "#334155" }} />
+                              <Line type="monotone" dataKey="cost" name="Cost (VND)" stroke="#8884d8" dot />
+                              <Line type="monotone" dataKey="avgDuration" name="Avg Duration (min)" stroke="#f59e0b" dot />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-6 text-sm text-slate-500">No analytics yet.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ===== Sessions ===== */}
+              <TabsContent value="sessions" className="space-y-6 mt-0">
+                <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between text-slate-900 text-xl font-bold">
+                      <span>Session history</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-white/70 border-slate-300 hover:bg-slate-100 hover:text-slate-900"
+                      >
+                        <Filter className="w-4 h-4 mr-2" />
+                        Filter
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="p-6 text-sm text-slate-500">Loading…</div>
+                    ) : error ? (
+                      <div className="p-6 text-sm text-rose-600">{error}</div>
+                    ) : rows.length === 0 ? (
+                      <div className="p-6 text-sm text-slate-500">No sessions yet.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {rows.map((session, index) => (
+                          <motion.div
+                            key={session.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            whileHover={{ scale: 1.01 }}
+                          >
+                            <div className="flex items-center justify-between p-4 rounded-xl transition-all duration-300 hover:bg-white/60 hover:shadow-lg">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
+                                  <Zap className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-slate-900">{session.station}</h4>
+                                  <p className="text-sm text-slate-600 flex items-center">
+                                    <MapPin className="w-3 h-3 mr-1" />
+                                    {`Port ${session.port}`}{session.connector ? ` • ${session.connector}` : ""}
+                                  </p>
+                                  <p className="text-sm text-slate-500 flex items-center mt-1">
+                                    <Calendar className="w-3 h-3 mr-1" />
+                                    {session.date} • {session.time}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="text-right">
+                                <div className="grid grid-cols-3 gap-4 text-sm mb-2">
+                                  <div>
+                                    <div className="text-slate-600">Duration</div>
+                                    <div className="font-medium text-slate-900">{session.duration}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-slate-600">Energy</div>
+                                    <div className="font-medium text-slate-900">{session.energy}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-slate-600">Cost</div>
+                                    <div className="font-medium text-cyan-600">{session.cost}</div>
+                                  </div>
+                                </div>
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                  {session.status}
+                                </Badge>
+                              </div>
+                            </div>
+                            {index < rows.length - 1 && <Separator className="bg-slate-200/80" />}
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ===== Analytics  ===== */}
+              <TabsContent value="analytics" className="space-y-6 mt-0">
+                {/* KPI strip */}
+                {analytics && (
+                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl font-bold text-slate-900">Key metrics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200/80">
+                            <DollarSign className="w-5 h-5 text-cyan-600" />
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-600">Total cost</div>
+                            <div className="font-semibold text-slate-900">
+                              {fmtMoney(analytics.overview?.totalCost ?? 0)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200/80">
+                            <Zap className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-600">Energy</div>
+                            <div className="font-semibold text-slate-900">
+                              {fmtKwh(analytics.overview?.totalEnergyKwh ?? 0, 1)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200/80">
+                            <Target className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-600">Avg session</div>
+                            <div className="font-semibold text-slate-900">
+                              {fmtMinute(analytics.overview?.averageSessionDuration ?? 0)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200/80">
+                            <Activity className="w-5 h-5 text-indigo-600" />
+                          </div>
+                          <div>
+                            <div className="text-xs text-slate-600">Cost / kWh</div>
+                            <div className="font-semibold text-slate-900">
+                              {fmtMoney(analytics.overview?.avgCostPerKwh ?? 0)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                {/* Top stations */}
+                <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl font-bold text-slate-900">Top stations</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-2 px-0">
+                    {loadingAnalytics ? (
+                      <div className="p-6 text-sm text-slate-500">Loading analytics…</div>
+                    ) : !analytics?.topStations?.length ? (
+                      <div className="p-6 text-sm text-slate-500">No station analytics.</div>
+                    ) : (
+                      <div className="h-96 w-full">
+                        <ResponsiveContainer>
+                          <BarChart
+                            data={analytics.topStations.slice(0, 5).sort((a, b) => b.totalCost - a.totalCost)}
+                            layout="vertical"
+                            margin={{ left: 4, right: 12, top: 8, bottom: 0 }}
+                            barGap={6}
+                            barCategoryGap="20%"
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            {/* Trục cho COST */}
+                            <XAxis
+                              type="number"
+                              xAxisId="cost"
+                              stroke="#64748b"
+                              fontSize={12}
+                              domain={[0, "dataMax"]}
+                              tickFormatter={(v) => new Intl.NumberFormat("vi-VN").format(Number(v))}
+                            />
+                            {/* Trục cho SESSIONS */}
+                            <XAxis
+                              type="number"
+                              xAxisId="sessions"
+                              orientation="top"
+                              stroke="#64748b"
+                              fontSize={12}
+                              domain={[0, "dataMax"]}
+                            />
+                            <YAxis
+                              type="category"
+                              dataKey="stationName"
+                              stroke="#64748b"
+                              width={120}
+                              tick={{ fontSize: 12, fill: "#334155" }}
+                              tickMargin={6}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend wrapperStyle={{ fontSize: "14px", color: "#334155" }} />
 
-          {/* ===== Analytics ===== */}
-          <TabsContent value="analytics" className="space-y-6 animate-fade-in">
-            {/* Top stations */}
-            <Card className="shadow-card border-0 bg-gradient-card">
-              <CardHeader className="pb-2">
-                <CardTitle>Top stations</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-2">
-                {loadingAnalytics ? (
-                  <div className="p-6 text-sm text-muted-foreground">Loading analytics…</div>
-                ) : !analytics?.topStations?.length ? (
-                  <div className="p-6 text-sm text-muted-foreground">No station analytics.</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {analytics.topStations.map((s) => (
-                      <Card key={s.stationId} className="border-0 shadow-card bg-white/70">
-                        <CardContent className="p-5">
-                          <div className="flex items-center justify-between">
-                            <div className="text-3xl font-black bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
-                              #{s.rank}
-                            </div>
-                            <Badge className="bg-primary/10 text-primary border-primary/20">
-                              {s.sessionCount} sessions
-                            </Badge>
-                          </div>
-                          <div className="mt-3">
-                            <div className="text-base font-semibold text-foreground">{s.stationName}</div>
-                            <div className="text-xs text-muted-foreground">{s.address}</div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm mt-4">
-                            <div>
-                              <div className="text-muted-foreground">Energy</div>
-                              <div className="font-medium">{fmtKwh(s.totalEnergyKwh, 1)}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Cost</div>
-                              <div className="font-medium">{fmtMoney(s.totalCost)}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Usage</div>
-                              <div className="font-medium">{(s.usagePercentage ?? 0).toFixed(1)}%</div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                            {/* Mỗi Bar gắn vào trục X tương ứng */}
+                            <Bar xAxisId="cost" dataKey="totalCost" name="Cost (VND)" fill="#10b981" />
+                            <Bar xAxisId="sessions" dataKey="sessionCount" name="Sessions" fill="#0ea5e9" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {/* Connector mix & Hourly usage */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader className="pb-2">
-                  <CardTitle>Connector usage</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  {analytics?.connectorUsage?.length ? (
-                    <div className="h-72 w-full">
-                      <ResponsiveContainer>
-                        <BarChart data={connectorChart}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                          <XAxis dataKey="type" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="sessions" name="Sessions" />
-                          <Bar dataKey="energy" name="Energy (kWh)" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="p-6 text-sm text-muted-foreground">No connector data.</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader className="pb-2">
-                  <CardTitle>Hourly usage</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  {analytics?.hourlyUsage?.length ? (
-                    <div className="h-72 w-full">
-                      <ResponsiveContainer>
-                        <AreaChart data={hourlyChart}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                          <XAxis dataKey="hour" />
-                          <YAxis />
-                          <Tooltip />
-                          <Area type="monotone" dataKey="sessions" name="Sessions" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="p-6 text-sm text-muted-foreground">No hourly data.</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* KPI strip */}
-            {analytics && (
-              <Card className="shadow-card border-0 bg-gradient-card">
-                <CardHeader className="pb-2">
-                  <CardTitle>Key metrics</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
-                        <DollarSign className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Total cost</div>
-                        <div className="font-semibold">{fmtMoney(analytics.overview?.totalCost ?? 0)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
-                        <Zap className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Energy</div>
-                        <div className="font-semibold">{fmtKwh(analytics.overview?.totalEnergyKwh ?? 0, 1)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
-                        <Target className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Avg session</div>
-                        <div className="font-semibold">{fmtMinute(analytics.overview?.averageSessionDuration ?? 0)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center">
-                        <Activity className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Cost / kWh</div>
-                        <div className="font-semibold">{fmtMoney(analytics.overview?.avgCostPerKwh ?? 0)}</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+                {/* Connector mix & Hourly usage */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl font-bold text-slate-900">Connector usage</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      {analytics?.connectorUsage?.length ? (
+                        <div className="h-72 w-full">
+                          <ResponsiveContainer>
+                            <PieChart>
+                              <Pie
+                                data={connectorChart}
+                                dataKey="sessions"
+                                nameKey="type"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={100}
+                                paddingAngle={5}
+                                labelLine={false}
+                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                              >
+                                {connectorChart.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: "14px", color: "#334155" }} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="p-6 text-sm text-slate-500">No connector data.</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl font-bold text-slate-900">Hourly usage</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      {analytics?.hourlyUsage?.length ? (
+                        <div className="h-72 w-full">
+                          <ResponsiveContainer>
+                            <AreaChart data={hourlyChart}>
+                              <defs>
+                                <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="hour" stroke="#64748b" fontSize={12} />
+                              <YAxis stroke="#64748b" fontSize={12} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Area
+                                type="monotone"
+                                dataKey="sessions"
+                                name="Sessions"
+                                stroke="#10b981"
+                                fillOpacity={1}
+                                fill="url(#colorSessions)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="p-6 text-sm text-slate-500">No hourly data.</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
       </div>
-
       <ChatBot />
     </div>
   );

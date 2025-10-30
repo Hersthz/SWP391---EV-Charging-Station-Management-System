@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.dto.response.ChargingSessionResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.model.ChargingSession;
+import com.pham.basis.evcharging.model.User;
 import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;

@@ -5,12 +5,10 @@ import {
   User,
   Mail,
   Phone,
-  MapPin,
   Shield,
   Key,
   Bell,
   Globe,
-  Moon,
   Sun,
   Car,
   Plus,
@@ -22,7 +20,7 @@ import {
   ArrowLeft,
   Camera,
   CreditCard,
-  Gauge
+  Gauge,
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -60,18 +58,55 @@ import { useToast } from "../hooks/use-toast";
 import api from "../api/axios";
 import { ChatBot } from "./ChatBot";
 
+/* =========================
+   Types
+========================= */
 type Vehicle = {
   id: number;
   make: string;
   model: string;
   year: string;
   variant?: string;
+
+  /** NEW: map từ soc_now (0..1 hoặc %) -> % */
+  socNowPct?: number;
+
+  /** NEW: chuẩn chân sạc (connector type) */
+  connectorType?: string;
+
+  /** NEW: dung lượng pin kWh (battery_capacity_kwh) – dùng để hiển thị “Max power” theo yêu cầu */
+  batteryCapacityKwh?: number;
+
+  /** Giữ lại để không phá UI/logic thêm mới (local only) */
   battery?: number;
   range?: number;
-  chargerType?: string;
-  maxPower?: number;
   isPrimary?: boolean;
 };
+
+type VehicleBE = {
+  id: number;
+  make?: string;
+  model?: string;
+  year?: string | number;
+  variant?: string;
+
+  // BE fields có thể trả snake_case
+  soc_now?: number;               // 0..1 (fraction) hoặc % (0..100)
+  socNow?: number;
+
+  connectorStandard?: string;     // ví dụ: "Type 2 / CCS"
+  connectorType?: string;
+
+  battery_capacity_kwh?: number;
+  batteryCapacityKwh?: number;
+
+  // Các field cũ (không dùng hiển thị nữa)
+  range?: number;
+  battery?: number;
+  isPrimary?: boolean;
+};
+
+type UserMe = { id?: number; user_id?: number };
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -87,54 +122,122 @@ const Profile = () => {
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
   const [date, setDate] = useState(localStorage.getItem("date") || "");
-  // ===== vehicle state =====
-  const [vehicleMake, setVehicleMake] = useState(localStorage.getItem("vehicle_make") || "Tesla");
-  const [vehicleModel, setVehicleModel] = useState(localStorage.getItem("vehicle_model") || "Model 3");
-  const [vehicleYear, setVehicleYear] = useState(localStorage.getItem("vehicle_year") || "2023");
-  const [batteryCapacity, setBatteryCapacity] = useState(localStorage.getItem("battery_capacity") || "75");
 
   // ===== security state =====
-  const [passwords, setPasswords] = useState({
-    current: "",
-    new: "",
-    confirm: "",
-  });
+  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [isChangingPwd, setIsChangingPwd] = useState(false);
 
+  // ===== vehicles =====
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState<boolean>(false);
+
+  // Staging for Add dialog (giữ nguyên UI thêm mới – local only)
+  const [newVehicle, setNewVehicle] = useState<Partial<Vehicle>>({
+    make: "",
+    model: "",
+    year: "",
+    variant: "",
+    battery: undefined,
+    range: undefined,
+  });
+
+  /* =========================
+     Helpers
+  ========================= */
+  const initials =
+    (fullName || "")
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
+
+  function toPercent(raw?: number): number | undefined {
+    if (typeof raw !== "number" || Number.isNaN(raw)) return undefined;
+    const v = raw <= 1 ? raw * 100 : raw; // BE có thể trả 0..1
+    const pct = Math.max(0, Math.min(100, Math.round(v)));
+    return pct;
+  }
+
+  function mapVehicleBEToUI(v: VehicleBE): Vehicle {
+    const socRaw = typeof v.soc_now === "number" ? v.soc_now : v.socNow;
+    const cap = typeof v.battery_capacity_kwh === "number" ? v.battery_capacity_kwh : v.batteryCapacityKwh;
+
+    return {
+      id: v.id,
+      make: v.make ?? "—",
+      model: v.model ?? "",
+      year: String(v.year ?? ""),
+      variant: v.variant,
+
+      socNowPct: toPercent(socRaw),
+      connectorType: v.connectorStandard ?? v.connectorType ?? "",
+
+      batteryCapacityKwh: typeof cap === "number" ? cap : undefined,
+
+      // giữ lại cho form thêm mới/local preview
+      range: typeof v.range === "number" ? v.range : undefined,
+      battery: typeof v.battery === "number" ? v.battery : undefined,
+      isPrimary: !!v.isPrimary,
+    };
+  }
+
+  /* =========================
+     Fetch profile + vehicles (BE)
+  ========================= */
+  useEffect(() => {
+    (async () => {
+      try {
+        // profile
+        const { data } = await api.get("/auth/me", { withCredentials: true });
+        setFullName(data.full_name ?? fullName);
+        setEmail(data.email ?? email);
+        setPhone(data.phone ?? phone);
+        setDate(data.date ?? date);
+
+        // vehicles
+        setLoadingVehicles(true);
+        const uid = (data?.user_id ?? data?.id) as number | undefined;
+        if (!uid) throw new Error("No userId");
+
+        const vRes = await api.get(`/vehicle/${uid}`, { withCredentials: true });
+        // có thể là { data: [...] } hoặc array trực tiếp
+        const raw = (vRes?.data?.data ?? vRes?.data ?? []) as VehicleBE[];
+        const list = raw.map(mapVehicleBEToUI);
+
+        // nếu BE không gắn isPrimary, đánh dấu chiếc đầu tiên
+        if (list.length && !list.some((x) => x.isPrimary)) list[0].isPrimary = true;
+
+        setVehicles(list);
+      } catch {
+        setVehicles([]);
+      } finally {
+        setLoadingVehicles(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount once
+
+  /* =========================
+     Password change
+  ========================= */
   const handleChangePassword = async () => {
     if (!passwords.current || !passwords.new || !passwords.confirm) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill all password fields.",
-        variant: "destructive",
-      });
+      toast({ title: "Missing fields", description: "Please fill all password fields.", variant: "destructive" });
       return;
     }
     if (passwords.new !== passwords.confirm) {
-      toast({
-        title: "Mismatch",
-        description: "New password and confirmation do not match.",
-        variant: "destructive",
-      });
+      toast({ title: "Mismatch", description: "New password and confirmation do not match.", variant: "destructive" });
       return;
     }
 
     try {
       setIsChangingPwd(true);
-
-      // Gọi API đổi mật khẩu — chỉnh endpoint nếu backend của bạn khác
-      // Ví dụ payload phổ biến:
-      // { current_password: "...", new_password: "..." }
       await api.post("/users/change-password", {
         current_password: passwords.current,
         new_password: passwords.new,
       });
-
-      toast({
-        title: "Password changed",
-        description: "Your password has been updated successfully.",
-      });
-
+      toast({ title: "Password changed", description: "Your password has been updated successfully." });
       setPasswords({ current: "", new: "", confirm: "" });
     } catch (err: any) {
       const message =
@@ -147,99 +250,40 @@ const Profile = () => {
     }
   };
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([
-    {
-      id: 1,
-      make: vehicleMake,
-      model: vehicleModel,
-      year: vehicleYear,
-      battery: Number(batteryCapacity) || 75,
-      range: 400,
-      chargerType: "Type 2 / CCS",
-      maxPower: 250,
-      isPrimary: true,
-    },
-  ]);
-
-  const [newVehicle, setNewVehicle] = useState<Partial<Vehicle>>({
-    make: "",
-    model: "",
-    year: "",
-    variant: "",
-    battery: undefined,
-    range: undefined,
-    chargerType: "",
-    maxPower: undefined,
-  });
-
-  // ===== notifications / preferences =====
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [pushNotif, setPushNotif] = useState(true);
-  const [promotionNotif, setPromotionNotif] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState("vi");
-  const [currency, setCurrency] = useState("VND");
-  const [autoBooking, setAutoBooking] = useState(false);
-
-  // ===== fetch profile =====
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get("/auth/me");
-        setFullName(data.full_name ?? "");
-        setEmail(data.email ?? "");
-        setPhone(data.phone ?? "");
-        setDate(data.date ?? "");
-        setVehicleMake(data.vehicle_make ?? vehicleMake);
-        setVehicleModel(data.vehicle_model ?? vehicleModel);
-        setVehicleYear(data.vehicle_year ?? vehicleYear);
-        setVehicles((prev) => {
-          const primary = {
-            ...(prev[0] || {}),
-            make: data.vehicle_make ?? vehicleMake,
-            model: data.vehicle_model ?? vehicleModel,
-            year: data.vehicle_year ?? vehicleYear,
-          };
-          const rest = prev.slice(1);
-          return [primary as Vehicle, ...rest];
-        });
-      } catch {
-        // ignore
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ===== save profile =====
+  /* =========================
+     Save profile
+  ========================= */
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const handleSave = async () => {
     try {
+      setIsSavingProfile(true);
       setIsEditing(false);
       const payload = {
         full_name: fullName.trim(),
         email,
         phone,
         date,
-        vehicle_make: vehicleMake,
-        vehicle_model: vehicleModel,
-        vehicle_year: vehicleYear,
       };
-      const { data } = await api.post("/user/update-profile", payload);
-      localStorage.setItem("full_name", data.full_name);
-      localStorage.setItem("email", data.email);
-      localStorage.setItem("phone", data.phone);
-      localStorage.setItem("date", data.date ?? "");
-      localStorage.setItem("vehicle_make", data.vehicle_make ?? "");
-      localStorage.setItem("vehicle_model", data.vehicle_model ?? "");
-      localStorage.setItem("vehicle_year", data.vehicle_year ?? "");
+      const { data } = await api.post("/user/update-profile", payload, { withCredentials: true });
+
+      localStorage.setItem("full_name", data.full_name ?? fullName);
+      localStorage.setItem("email", data.email ?? email);
+      localStorage.setItem("phone", data.phone ?? phone);
+      localStorage.setItem("date", data.date ?? date);
+
       toast({ title: "Profile updated", description: "Saved to server." });
     } catch (err: any) {
       setIsEditing(true);
       const message = err?.response?.data?.message ?? "Update failed";
       toast({ title: "Error", description: message, variant: "destructive" });
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
-  // ===== vehicles handlers (UI only) =====
+  /* =========================
+     Vehicles handlers 
+  ========================= */
   const handleAddVehicle = () => {
     if (!newVehicle.make || !newVehicle.model || !newVehicle.year) {
       toast({
@@ -250,15 +294,14 @@ const Profile = () => {
       return;
     }
     const v: Vehicle = {
-      id: vehicles.length + 1,
+      id: Math.max(0, ...vehicles.map((x) => x.id)) + 1,
       make: newVehicle.make!,
       model: newVehicle.model!,
-      year: newVehicle.year!,
+      year: String(newVehicle.year!),
       variant: newVehicle.variant || "",
-      battery: Number(newVehicle.battery) || undefined,
-      range: Number(newVehicle.range) || undefined,
-      chargerType: newVehicle.chargerType || "",
-      maxPower: Number(newVehicle.maxPower) || undefined,
+      // các field hiển thị chính sẽ lấy từ BE; thêm mới chỉ preview
+      battery: typeof newVehicle.battery === "number" ? newVehicle.battery : undefined,
+      range: typeof newVehicle.range === "number" ? newVehicle.range : undefined,
       isPrimary: vehicles.length === 0,
     };
     setVehicles((prev) => [...prev, v]);
@@ -270,8 +313,6 @@ const Profile = () => {
       variant: "",
       battery: undefined,
       range: undefined,
-      chargerType: "",
-      maxPower: undefined,
     });
     toast({ title: "Vehicle added", description: `${v.make} ${v.model} was added to your garage.` });
   };
@@ -285,14 +326,6 @@ const Profile = () => {
     setVehicles((prev) => prev.map((x) => ({ ...x, isPrimary: x.id === id })));
     toast({ title: "Primary vehicle set", description: "This vehicle is now the default one." });
   };
-
-  const initials =
-    (fullName || "")
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "U";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
@@ -345,75 +378,26 @@ const Profile = () => {
               h-auto gap-1
             "
           >
-            <TabsTrigger
-              value="profile"
-              className="
-                group w-full rounded-xl px-6 py-3
-                text-slate-600 font-medium
-                hover:text-slate-700
-                data-[state=active]:text-white
-                data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                transition-all
-                flex items-center justify-center gap-2
-              "
-            >
+            <TabsTrigger value="profile" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
               <User className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
               <span className="text-sm font-medium">Profile</span>
             </TabsTrigger>
 
-            <TabsTrigger
-              value="vehicles"
-              className="
-                group w-full rounded-xl px-6 py-3
-                text-slate-600 font-medium
-                hover:text-slate-700
-                data-[state=active]:text-white
-                data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                transition-all
-                flex items-center justify-center gap-2
-              "
-            >
+            <TabsTrigger value="vehicles" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
               <Car className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
               <span className="text-sm font-medium">My EV</span>
             </TabsTrigger>
 
-            <TabsTrigger
-              value="security"
-              className="
-                group w-full rounded-xl px-6 py-3
-                text-slate-600 font-medium
-                hover:text-slate-700
-                data-[state=active]:text-white
-                data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                transition-all
-                flex items-center justify-center gap-2
-              "
-            >
+            <TabsTrigger value="security" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
               <Shield className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
               <span className="text-sm font-medium">Security</span>
             </TabsTrigger>
 
-            <TabsTrigger
-              value="preferences"
-              className="
-                group w-full rounded-xl px-6 py-3
-                text-slate-600 font-medium
-                hover:text-slate-700
-                data-[state=active]:text-white
-                data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                transition-all
-                flex items-center justify-center gap-2
-              "
-            >
+            <TabsTrigger value="preferences" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
               <Bell className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
-              <span className="text-sm font-medium">Custom</span>
+              <span className="text-sm font-medium">Setting</span>
             </TabsTrigger>
           </TabsList>
-
 
           {/* ===== Profile ===== */}
           <TabsContent value="profile" className="space-y-6 animate-fade-in">
@@ -456,104 +440,37 @@ const Profile = () => {
                 <div className="grid gap-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fullName" className="flex items-center gap-2">Full name</Label>
-                      <Input
-                        id="fullName"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-slate-50" : ""}
-                      />
+                      <Label htmlFor="fullName">Full name</Label>
+                      <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={!isEditing} className={!isEditing ? "bg-slate-50" : ""} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="flex items-center gap-2">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-slate-50" : ""}
-                      />
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!isEditing} className={!isEditing ? "bg-slate-50" : ""} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="flex items-center gap-2">Phone</Label>
-                      <Input
-                        id="phone"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-slate-50" : ""}
-                      />
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!isEditing} className={!isEditing ? "bg-slate-50" : ""} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="date" className="flex items-center gap-2">Date</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-slate-50" : ""}
-                      />
+                      <Label htmlFor="date">Date</Label>
+                      <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!isEditing} className={!isEditing ? "bg-slate-50" : ""} />
                     </div>
                   </div>
 
                   <div className="flex justify-end gap-3">
                     {isEditing ? (
-                      <Button
-                        onClick={handleSave}
-                        className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white"
-                      >
+                      <Button onClick={handleSave} disabled={isSavingProfile} className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
                         <Save className="w-4 h-4 mr-2" />
-                        Save changes
+                        {isSavingProfile ? "Saving..." : "Save changes"}
                       </Button>
                     ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                        className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white"
-                      >
+                      <Button variant="outline" onClick={() => setIsEditing(true)} className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment */}
-            <Card className="border border-sky-100 bg-white shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-sky-600" />
-                  Payment methods
-                </CardTitle>
-                <CardDescription>Manage your cards</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg border-2 border-dashed border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg flex items-center justify-center shadow-sm bg-gradient-to-br from-sky-500 to-emerald-500">
-                        <CreditCard className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">•••• •••• •••• 4242</p>
-                        <p className="text-sm text-muted-foreground">Expires 12/25</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-sky-100 text-sky-700 border-sky-200">Default</Badge>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full border-primary/20 text-primary hover:bg-primary/10"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add payment method
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -586,79 +503,34 @@ const Profile = () => {
                         <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center gap-2">
                           Add new EV
                         </DialogTitle>
-                        <DialogDescription>
-                          Enter your vehicle details
-                        </DialogDescription>
+                        <DialogDescription>Enter your vehicle details</DialogDescription>
                       </DialogHeader>
 
                       <div className="space-y-6 pt-2">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Make *</Label>
-                            <Input
-                              value={newVehicle.make || ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
-                              placeholder="Tesla, Nissan, VinFast..."
-                            />
+                            <Input value={newVehicle.make || ""} onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })} placeholder="Tesla, Nissan, VinFast..." />
                           </div>
                           <div className="space-y-2">
                             <Label>Model *</Label>
-                            <Input
-                              value={newVehicle.model || ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
-                              placeholder="Model 3, Leaf, VF8..."
-                            />
+                            <Input value={newVehicle.model || ""} onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })} placeholder="Model 3, Leaf, VF8..." />
                           </div>
                           <div className="space-y-2">
                             <Label>Year *</Label>
-                            <Input
-                              value={newVehicle.year || ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })}
-                              placeholder="2023"
-                            />
+                            <Input value={newVehicle.year || ""} onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })} placeholder="2023" />
                           </div>
                           <div className="space-y-2">
                             <Label>Variant</Label>
-                            <Input
-                              value={newVehicle.variant || ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, variant: e.target.value })}
-                              placeholder="Long Range, e+, Plus..."
-                            />
+                            <Input value={newVehicle.variant || ""} onChange={(e) => setNewVehicle({ ...newVehicle, variant: e.target.value })} placeholder="Long Range, e+, Plus..." />
                           </div>
                           <div className="space-y-2">
                             <Label>Battery (kWh)</Label>
-                            <Input
-                              type="number"
-                              value={newVehicle.battery ?? ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, battery: Number(e.target.value) })}
-                              placeholder="75"
-                            />
+                            <Input type="number" value={newVehicle.battery ?? ""} onChange={(e) => setNewVehicle({ ...newVehicle, battery: Number(e.target.value) })} placeholder="75" />
                           </div>
                           <div className="space-y-2">
                             <Label>Range (km)</Label>
-                            <Input
-                              type="number"
-                              value={newVehicle.range ?? ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, range: Number(e.target.value) })}
-                              placeholder="400"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Charger type</Label>
-                            <Input
-                              value={newVehicle.chargerType || ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, chargerType: e.target.value })}
-                              placeholder="Type 2 / CCS"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Max power (kW)</Label>
-                            <Input
-                              type="number"
-                              value={newVehicle.maxPower ?? ""}
-                              onChange={(e) => setNewVehicle({ ...newVehicle, maxPower: Number(e.target.value) })}
-                              placeholder="250"
-                            />
+                            <Input type="number" value={newVehicle.range ?? ""} onChange={(e) => setNewVehicle({ ...newVehicle, range: Number(e.target.value) })} placeholder="400" />
                           </div>
                         </div>
 
@@ -667,15 +539,11 @@ const Profile = () => {
                           <p className="font-semibold text-slate-800">
                             {(newVehicle.make || "Make")} {(newVehicle.model || "Model")} {(newVehicle.year || "Year")}
                           </p>
-                          {newVehicle.variant && (
-                            <p className="text-sm text-slate-500">{newVehicle.variant}</p>
-                          )}
+                          {newVehicle.variant && <p className="text-sm text-slate-500">{newVehicle.variant}</p>}
                         </div>
 
                         <div className="flex justify-end gap-3 pt-2">
-                          <Button variant="outline" onClick={() => setIsAddVehicleOpen(false)}>
-                            Cancel
-                          </Button>
+                          <Button variant="outline" onClick={() => setIsAddVehicleOpen(false)}>Cancel</Button>
                           <Button onClick={handleAddVehicle} className="h-9 px-4 rounded-lg bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90">
                             <Plus className="w-4 h-4 mr-2" />
                             Add
@@ -688,12 +556,13 @@ const Profile = () => {
               </CardHeader>
 
               <CardContent className="space-y-4">
+                {loadingVehicles && <div className="text-sm text-slate-500">Loading vehicles…</div>}
+                {!loadingVehicles && vehicles.length === 0 && (
+                  <div className="text-sm text-slate-500">No vehicles found. Click “Add vehicle” to add one.</div>
+                )}
+
                 {vehicles.map((v) => (
-                  <Card
-                    key={v.id}
-                    className={`rounded-xl bg-white shadow-sm border ${v.isPrimary ? "border-sky-400" : "border-slate-200"
-                      }`}
-                  >
+                  <Card key={v.id} className={`rounded-xl bg-white shadow-sm border ${v.isPrimary ? "border-sky-400" : "border-slate-200"}`}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4 flex-1">
@@ -714,30 +583,24 @@ const Profile = () => {
                               {v.year} {v.variant ? `• ${v.variant}` : ""}
                             </p>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            {/* Grid thông số */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                               <div>
                                 <div className="flex items-center gap-1 text-slate-500">
                                   <Battery className="w-3 h-3" /> Battery
                                 </div>
-                                <p className="font-semibold text-slate-800">{v.battery ?? "-"} kWh</p>
+                                <p className="font-semibold text-slate-800">
+                                  {typeof v.socNowPct === "number" ? `${v.socNowPct} %` : "-"}
+                                </p>
                               </div>
-                              <div>
-                                <div className="flex items-center gap-1 text-slate-500">
-                                  <Gauge className="w-3 h-3" /> Range
-                                </div>
-                                <p className="font-semibold text-slate-800">{v.range ?? "-"} km</p>
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1 text-slate-500">
-                                  <Zap className="w-3 h-3" /> Charger
-                                </div>
-                                <p className="font-semibold text-slate-800">{v.chargerType || "-"}</p>
-                              </div>
+
                               <div>
                                 <div className="flex items-center gap-1 text-slate-500">
                                   <Zap className="w-3 h-3" /> Max power
                                 </div>
-                                <p className="font-semibold text-slate-800">{v.maxPower ?? "-"} kW</p>
+                                <p className="font-semibold text-slate-800">
+                                  {typeof v.batteryCapacityKwh === "number" ? `${v.batteryCapacityKwh} kWh` : "- kWh"}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -839,7 +702,6 @@ const Profile = () => {
                       onClick={handleChangePassword}
                       className="bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-2 focus-visible:ring-sky-400 shadow-md"
                     >
-                      <Shield className="w-4 h-4 mr-2" />
                       Change password
                     </Button>
                   </div>
@@ -869,9 +731,7 @@ const Profile = () => {
                   <div className="p-4 rounded-lg bg-muted/30">
                     <div className="flex items-center justify-between mb-2">
                       <p className="font-medium">Windows - Chrome</p>
-                      <Badge className="bg-success/10 text-success border-success/20">
-                        Active
-                      </Badge>
+                      <Badge className="bg-success/10 text-success border-success/20">Active</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">Hanoi, Vietnam • Today 2:30 PM</p>
                   </div>
@@ -880,7 +740,7 @@ const Profile = () => {
                   </Button>
                 </div>
 
-                {/* ===== KYC Card ===== */}
+                {/* KYC Card */}
                 <Card className="border border-sky-100 bg-white shadow-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -890,7 +750,6 @@ const Profile = () => {
                     <CardDescription>Verify once to unlock bookings & payments</CardDescription>
                   </CardHeader>
                   <CardContent className="flex items-center justify-between">
-                    {/* TODO: khi có /kyc/me -> hiển thị status thật */}
                     <div className="text-sm text-muted-foreground">
                       Status: <span className="font-medium">Unknown / Pending</span>
                     </div>
@@ -899,11 +758,9 @@ const Profile = () => {
                     </Button>
                   </CardContent>
                 </Card>
-                {/* ===== hết KYC Card ===== */}
               </CardContent>
             </Card>
           </TabsContent>
-
 
           {/* ===== Preferences ===== */}
           <TabsContent value="preferences" className="space-y-6 animate-fade-in">
@@ -918,7 +775,6 @@ const Profile = () => {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Email */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <Mail className="w-5 h-5 text-primary" />
@@ -927,10 +783,9 @@ const Profile = () => {
                       <p className="text-sm text-muted-foreground">Receive alerts by email</p>
                     </div>
                   </div>
-                  <Switch checked={emailNotif} onCheckedChange={setEmailNotif} />
+                  <Switch defaultChecked />
                 </div>
 
-                {/* Push */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <Bell className="w-5 h-5 text-primary" />
@@ -939,10 +794,9 @@ const Profile = () => {
                       <p className="text-sm text-muted-foreground">Get browser/device notifications</p>
                     </div>
                   </div>
-                  <Switch checked={pushNotif} onCheckedChange={setPushNotif} />
+                  <Switch defaultChecked />
                 </div>
 
-                {/* SMS / Promotions */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <Phone className="w-5 h-5 text-primary" />
@@ -951,7 +805,7 @@ const Profile = () => {
                       <p className="text-sm text-muted-foreground">Receive information about discounts</p>
                     </div>
                   </div>
-                  <Switch checked={promotionNotif} onCheckedChange={setPromotionNotif} />
+                  <Switch />
                 </div>
               </CardContent>
             </Card>
@@ -967,29 +821,23 @@ const Profile = () => {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Dark mode */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
                   <div className="flex items-center gap-3">
-                    {darkMode ? (
-                      <Moon className="w-5 h-5 text-primary" />
-                    ) : (
-                      <Sun className="w-5 h-5 text-primary" />
-                    )}
+                    <Sun className="w-5 h-5 text-primary" />
                     <div>
                       <p className="font-medium">Dark mode</p>
                       <p className="text-sm text-muted-foreground">Switch the theme between light/dark</p>
                     </div>
                   </div>
-                  <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+                  <Switch />
                 </div>
 
-                {/* Language */}
                 <div className="space-y-2">
                   <Label htmlFor="language" className="flex items-center gap-2">
                     <Globe className="w-4 h-4 text-primary" />
                     Language
                   </Label>
-                  <Select value={language} onValueChange={setLanguage}>
+                  <Select defaultValue="vi">
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="vi">Tiếng Việt</SelectItem>
@@ -999,13 +847,12 @@ const Profile = () => {
                   </Select>
                 </div>
 
-                {/* Currency */}
                 <div className="space-y-2">
                   <Label htmlFor="currency" className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-primary" />
                     Currency
                   </Label>
-                  <Select value={currency} onValueChange={setCurrency}>
+                  <Select defaultValue="VND">
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="VND">VND (₫)</SelectItem>
@@ -1017,7 +864,6 @@ const Profile = () => {
 
                 <Separator />
 
-                {/* Auto booking */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
                   <div>
                     <p className="font-medium">Auto booking</p>
@@ -1025,10 +871,9 @@ const Profile = () => {
                       Automatically book when battery lower than 20%
                     </p>
                   </div>
-                  <Switch checked={autoBooking} onCheckedChange={setAutoBooking} />
+                  <Switch />
                 </div>
 
-                {/* Save */}
                 <div className="flex justify-end pt-4">
                   <Button
                     onClick={() =>

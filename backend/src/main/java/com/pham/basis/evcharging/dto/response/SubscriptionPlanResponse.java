@@ -14,5 +14,7 @@ public class SubscriptionPlanResponse {
     private String billingCycle;
     private double includedKwh;
     private String description;
+    private double discountRate;
+    private Boolean freeBooking;
     private LocalDateTime createdAt;
 }
