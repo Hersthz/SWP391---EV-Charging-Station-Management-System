@@ -163,7 +163,7 @@ export default function WalletPaymentPage() {
     setLoadingTx(true);
     try {
       const { data } = await api.get<PageResp<PaymentTx>>("/api/payment/getPaymentU", {
-        params: { userid: userId, page: 0, pageSize: 50 },
+        params: { userId: userId, page: 0, pageSize: 50 },
       });
 
       const items: TxItem[] = (data?.content ?? []).map((t) => ({
@@ -601,7 +601,7 @@ export default function WalletPaymentPage() {
 
                     {/* === Thẻ 2: VNPAY === */}
                     <motion.div variants={kpiCardVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
-                      <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15 h-full">
+                      <Card className="relative bg-white/80 backdrop-blur-md border-2 border-emerald-500 shadow-2xl shadow-emerald-500/20 h-full">
                         <CardContent className="p-6 flex flex-col items-center text-center justify-between h-full">
                           <div>
                             <div className="p-3 inline-block rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
