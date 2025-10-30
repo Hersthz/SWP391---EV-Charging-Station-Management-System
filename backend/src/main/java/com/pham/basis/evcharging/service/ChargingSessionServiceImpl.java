@@ -34,6 +34,8 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
     private final VehicleRepository vehicleRepo;
     private final WalletService walletService;
     private final PaymentService paymentService;
+    private final SubscriptionService subscriptionService;
+    private final SubscriptionRepository subscriptionRepo;
 
     private static final Logger log = LoggerFactory.getLogger(ChargingSessionServiceImpl.class);
 
@@ -265,6 +267,22 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
             throw new IllegalArgumentException("Target SOC must be greater than current SOC");
 
         Double energyNeeded = (targetSoc - currentSoc) * vehicle.getBatteryCapacityKwh();
-        return BigDecimal.valueOf(energyNeeded * pillar.getPricePerKwh());
+        BigDecimal baseAmount = BigDecimal.valueOf(energyNeeded * pillar.getPricePerKwh());
+        return applySubscriptionDiscount(vehicle.getUser().getId(), baseAmount);
+    }
+
+    private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseAmount) {
+        Subscription subscription = subscriptionRepo.findByUserId(userId).orElse(null);
+        if (subscription == null || subscription.getPlan() == null) {
+            return baseAmount; // không có subscription => không giảm
+        }
+
+        String planName = subscription.getPlan().getName().toUpperCase();
+
+        return switch (planName) {
+            case "PRO" -> baseAmount.multiply(BigDecimal.valueOf(0.9));      // Giảm 10%
+            case "PREMIUM" -> baseAmount.multiply(BigDecimal.valueOf(0.8));  // Giảm 20%
+            default -> baseAmount; // FREE hoặc gói khác => không giảm
+        };
     }
 }

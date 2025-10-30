@@ -27,6 +27,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final ChargingStationRepository chargingStationRepository;
     private final ChargerPillarRepository chargerPillarRepository;
     private final ConnectorRepository connectorRepository;
+    private final SubscriptionRepository subscriptionRepository;
     @Override
     public ReservationResponse createReservation(ReservationRequest request) {
 
@@ -54,7 +55,10 @@ public class ReservationServiceImpl implements ReservationService {
 
         //tinhs holdFee 300d/p
         long minutes = ChronoUnit.MINUTES.between(request.getStartTime(), request.getEndTime());
-        BigDecimal holdFee = BigDecimal.valueOf(minutes).multiply(BigDecimal.valueOf(300));
+        BigDecimal baseFee = BigDecimal.valueOf(minutes).multiply(BigDecimal.valueOf(300));
+
+        // ap dụng giảm giá đăng ký gói Subscription (nếu có)
+        BigDecimal holdFee = applySubscriptionDiscount(user.getId(), baseFee);
 
         //lưu db với status pending
         Reservation reservation = Reservation.builder()
@@ -180,5 +184,17 @@ public class ReservationServiceImpl implements ReservationService {
         }
     }
 
+    private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseFee) {
+        return subscriptionRepository.findByUserId(userId)
+                .map(subscription -> {
+                    String planName = subscription.getPlan().getName().toUpperCase();
+                    return switch (planName) {
+                        case "PREMIUM" -> BigDecimal.ZERO; // miễn phí hoàn toàn
+                        case "PRO" -> baseFee.multiply(BigDecimal.valueOf(0.5)); // giảm 50%
+                        default -> baseFee; // FREE hoặc không có gói
+                    };
+                })
+                .orElse(baseFee);
+    }
 
 }
