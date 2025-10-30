@@ -18,6 +18,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   interface UserResponse {
+    id: number;
     username: string;
     role: string;
     full_name: string;
@@ -29,10 +30,17 @@ const Dashboard = () => {
         const response = await api.get<UserResponse>("/auth/me", { withCredentials: true });
         const data = response.data as any;
 
+        const id =
+            Number(data.id ?? data.userId ?? data.user_id ?? data?.user?.id ?? data?.profile?.id);
         const username = data.username ?? data.email ?? data.user_id;
         const role = data.role ?? data.roleName ?? data.role_name ?? data.roleName?.toString();
         const full_name = data.full_name ?? data.fullName ?? data.fullname ?? data.full_name;
 
+        if (Number.isFinite(id)) {
+          localStorage.setItem("userId", String(id));   
+          localStorage.setItem("user_id", String(id));    
+          localStorage.setItem("id", String(id));
+        }
         if (username) localStorage.setItem("currentUser", String(username));
         if (role) localStorage.setItem("role", String(role));
         if (full_name) localStorage.setItem("full_name", String(full_name));
