@@ -163,25 +163,59 @@ public class ReservationServiceImpl implements ReservationService {
     @Scheduled(fixedRate = 60000)
     public void autoUpdatePillarStatus() {
         LocalDateTime now = LocalDateTime.now();
-        List<Reservation> reservations = reservationRepository.findByStatusAndStartTimeBefore("SCHEDULED",now);
-        for (Reservation r : reservations) {
-            r.setStatus("VERIFYING");
-            reservationRepository.save(r);
+        // 1) PENDING > 10 phút -> EXPIRED
+        reservationRepository.findByStatus("PENDING").stream()
+                .filter(r -> r.getCreatedAt().isBefore(now.minusMinutes(10)))
+                .forEach(r -> {
+                    r.setStatus("EXPIRED");
+                    reservationRepository.save(r);
+                    if (r.getPillar() != null) {
+                        r.getPillar().setStatus("AVAILABLE");
+                        chargerPillarRepository.save(r.getPillar());
+                    }
+                });
 
-            ChargerPillar p = r.getPillar();
-            p.setStatus("OCCUPIED");
-            chargerPillarRepository.save(p);
-        }
+        // 2) SCHEDULED tới giờ -> VERIFYING + OCCUPIED
+        reservationRepository.findByStatus("SCHEDULED").stream()
+                .filter(r -> r.getStartTime().isBefore(now))
+                .forEach(r -> {
+                    r.setStatus("VERIFYING");
+                    reservationRepository.save(r);
 
-        List<Reservation> ended = reservationRepository.findByStatusAndEndTimeBefore("CHARGING", now);
-        for (Reservation r : ended) {
-            r.setStatus("COMPLETED");
-            reservationRepository.save(r);
+                    if (r.getPillar() != null) {
+                        r.getPillar().setStatus("OCCUPIED");
+                        chargerPillarRepository.save(r.getPillar());
+                    }
+                });
 
-            ChargerPillar pillar = r.getPillar();
-            pillar.setStatus("AVAILABLE");
-            chargerPillarRepository.save(pillar);
-        }
+        // 3) VERIFYING quá endTime -> EXPIRED
+        reservationRepository.findByStatus("VERIFYING").stream()
+                .filter(r -> r.getEndTime().isBefore(now))
+                .forEach(r -> {
+                    r.setStatus("EXPIRED");
+                    reservationRepository.save(r);
+
+                    if (r.getPillar() != null) {
+                        r.getPillar().setStatus("AVAILABLE");
+                        chargerPillarRepository.save(r.getPillar());
+                    }
+                });
+
+        // 4) VERIFIED / PLUGGED quá endTime -> EXPIRED
+        List<String> expiringStates = List.of("VERIFIED", "PLUGGED");
+        expiringStates.forEach(st ->
+                reservationRepository.findByStatus(st).stream()
+                        .filter(r -> r.getEndTime().isBefore(now))
+                        .forEach(r -> {
+                            r.setStatus("EXPIRED");
+                            reservationRepository.save(r);
+
+                            if (r.getPillar() != null) {
+                                r.getPillar().setStatus("AVAILABLE");
+                                chargerPillarRepository.save(r.getPillar());
+                            }
+                        })
+        );
     }
 
     private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseFee) {

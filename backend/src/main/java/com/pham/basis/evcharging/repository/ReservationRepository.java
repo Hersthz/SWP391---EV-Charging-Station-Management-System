@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -33,5 +34,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findByStatusAndStartTimeBefore(String status, LocalDateTime time);
     List<Reservation> findByStatusAndEndTimeBefore(String status, LocalDateTime time);
+
+    List<Reservation> findByStatus(String status);
 }
 
