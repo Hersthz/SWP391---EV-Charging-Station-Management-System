@@ -49,6 +49,8 @@ public class User{
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
+
+
     @Column(name = "created_at")
     private LocalDateTime created_at ;
 

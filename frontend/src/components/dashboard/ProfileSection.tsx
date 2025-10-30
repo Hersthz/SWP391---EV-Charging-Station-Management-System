@@ -140,10 +140,6 @@ export default function ProfileSection() {
                 </div>
               </div>
             </div>
-
-            <Button size="sm" variant="outline" className="rounded-full border-slate-200 bg-white/70 hover:bg-white/90">
-              Edit Profile
-            </Button>
           </div>
 
           {/* Basic info */}

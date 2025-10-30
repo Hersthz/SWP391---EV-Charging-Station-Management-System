@@ -1,747 +1,705 @@
-import { useState } from "react";
+// src/pages/admin/AdminUsers.tsx
+import { useEffect, useMemo, useState, useCallback, ReactNode } from "react";
+import AdminLayout from "./AdminLayout";
+import api from "../../api/axios";
+
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { Card, CardContent } from "../../components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
+import { useToast } from "../../hooks/use-toast";
 import {
   Search,
-  UserPlus,
+  Shield,
   Edit,
   UserX,
+  UserPlus,
   Mail,
   Phone,
-  Filter,
-  MoreHorizontal,
-  Shield,
   Calendar,
-  CheckCircle
+  CheckCircle,
+  Loader2,
+  Users,
+  UserCheck,
+  Star,
+  Truck,
 } from "lucide-react";
-import AdminLayout from "./AdminLayout";
-import { toast } from "../../components/ui/use-toast";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
+
+
+/* =========================
+  Types: khớp BE hiện có
+========================= */
+type UserResponse = {
+  id: number;
+  fullName: string;
+  username: string;
+  email: string;
+  phone: string;
+  status: boolean;
+  isVerified: boolean;
+  roleName: string;
+  dateOfBirth?: string | null;
+  createdAt?: string | null;
+};
+
+type PageResp<T> = {
+  code: string;
+  message: string;
+  data: {
+    content: T[];
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+  };
+};
+
+/* =========================
+  Helpers
+========================= */
+const roleUiToBackend: Record<string, string> = {
+  "Basic User": "ROLE_USER",
+  "Premium User": "ROLE_PREMIUM",
+  "Fleet Manager": "ROLE_FLEET_MANAGER",
+};
+
+const backendToRoleUi: Record<string, string> = {
+  ROLE_USER: "Basic User",
+  ROLE_PREMIUM: "Premium User",
+  ROLE_FLEET_MANAGER: "Fleet Manager",
+  USER: "Basic User",
+  PREMIUM: "Premium User",
+  FLEET_MANAGER: "Fleet Manager",
+  STAFF: "Fleet Manager",
+  ADMIN: "Admin",
+};
+
+const formatDate = (iso?: string | null) => {
+  if (!iso) return "-";
+  try {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  } catch {
+    return iso;
+  }
+};
+
+const kpiContainerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const kpiCardVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.42, 0, 0.58, 1],
+    },
+  },
+};
+
+/* =========================
+  Component
+========================= */
 const AdminUsers = () => {
+  const { toast } = useToast();
+
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
+  const [sessionsMap, setSessionsMap] = useState<Record<number, number>>({});
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all-roles");
-  const [statusFilter, setStatusFilter] = useState("all-status");
+  const [roleFilter, setRoleFilter] = useState<"all" | "basic" | "premium" | "fleet">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
+
   const [roleEditorOpen, setRoleEditorOpen] = useState(false);
-  const [editUserOpen, setEditUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  // Role Editor selections
-  const [roleEditorSelectedUserId, setRoleEditorSelectedUserId] = useState<string>("");
-  const [roleEditorSelectedRole, setRoleEditorSelectedRole] = useState<string>("");
-  const [newUser, setNewUser] = useState({
-    name: "",
+  const [editOpen, setEditOpen] = useState(false);
+
+  const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [addPayload, setAddPayload] = useState({
+    fullName: "",
+    username: "",
     email: "",
     phone: "",
-    role: "basic",
-    subscription: "pay-per-use"
   });
-  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [submittingAdd, setSubmittingAdd] = useState(false);
 
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.phone) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
+  /* =========================
+    Fetch users
+  ========================= */
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await api.get<UserResponse[]>("/user/getAll");
+        if (!isMounted) return;
+        const list = (res.data || []).sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+        setUsers(list);
 
-    // map role/subscription sang format hiển thị trong bảng
-    const roleMap: Record<string, string> = {
-      basic: "Basic User",
-      premium: "Premium User",
-      fleet: "Fleet Manager",
-    };
-    const subscriptionMap: Record<string, string> = {
-      "pay-per-use": "Pay-per-use",
-      basic: "Basic Monthly",
-      premium: "Premium Monthly",
-      enterprise: "Enterprise",
-    };
-
-    const nextId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
-    const now = new Date();
-    const joinDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
-    const newRow = {
-      id: nextId,
-      name: newUser.name.trim(),
-      email: newUser.email.trim(),
-      phone: newUser.phone.trim(),
-      joinDate,
-      role: roleMap[newUser.role] ?? "Basic User",
-      status: "Active",
-      sessions: 0,
-      subscription: subscriptionMap[newUser.subscription] ?? "Pay-per-use",
-    };
-
-    setUsers(prev => [newRow, ...prev]);
-
-    toast({
-      title: "User Created Successfully",
-      description: `${newRow.name} has been added to the system`,
-    });
-
-    setAddUserOpen(false);
-    setNewUser({
-      name: "",
-      email: "",
-      phone: "",
-      role: "basic",
-      subscription: "pay-per-use",
-    });
-  };
-
-  const handleToggleStatus = (userId: number) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.status === "Active" ? "Suspended" : "Active";
+        Promise.all(
+          list.map(async (u) => {
+            try {
+              const page = await api.get<PageResp<any>>(`/session/user/${u.id}`, {
+                params: { page: 0, size: 1 },
+              });
+              const total = page.data?.data?.totalElements ?? 0;
+              setSessionsMap((m) => ({ ...m, [u.id]: total }));
+            } catch {
+              // bỏ qua
+            }
+          })
+        ).catch(() => undefined);
+      } catch (e: any) {
         toast({
-          title: `User ${newStatus}`,
-          description: `${u.name} has been ${newStatus.toLowerCase()}`,
+          title: "Load users failed",
+          description: e?.response?.data?.message || "Không thể tải danh sách người dùng",
+          variant: "destructive",
         });
-        return { ...u, status: newStatus };
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      return u;
-    }));
-  };
+    })();
 
-  const openEditDialog = (user: any) => {
-    setSelectedUser({ ...user });
-    setEditUserOpen(true);
-  };
-
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@email.com",
-      phone: "+1 (555) 123-4567",
-      joinDate: "2023-01-15",
-      role: "Premium User",
-      status: "Active",
-      sessions: 147,
-      subscription: "Premium Monthly"
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      email: "sarah.j@email.com",
-      phone: "+1 (555) 234-5678",
-      joinDate: "2023-03-22",
-      role: "Basic User",
-      status: "Active",
-      sessions: 89,
-      subscription: "Pay-per-use"
-    },
-    {
-      id: 3,
-      name: "Mike Chen",
-      email: "mike.chen@company.com",
-      phone: "+1 (555) 345-6789",
-      joinDate: "2022-11-08",
-      role: "Fleet Manager",
-      status: "Active",
-      sessions: 523,
-      subscription: "Enterprise"
-    },
-    {
-      id: 4,
-      name: "Emma Wilson",
-      email: "emma.w@email.com",
-      phone: "+1 (555) 456-7890",
-      joinDate: "2024-02-14",
-      role: "Basic User",
-      status: "Suspended",
-      sessions: 23,
-      subscription: "Basic Monthly"
-    }
-  ]);
-
-  const handleEditUser = () => {
-    if (!selectedUser) return;
-
-    setUsers(users.map(u => u.id === selectedUser.id ? selectedUser : u));
-
-    toast({
-      title: "User Updated Successfully",
-      description: `${selectedUser.name}'s information has been updated`,
-    });
-
-    setEditUserOpen(false);
-    setSelectedUser(null);
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Active':
-        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
-      case 'Suspended':
-        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Suspended</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      'Premium User': {
-        className: "bg-warning/10 text-warning border-warning/20",
-        icon: "⭐",
-        text: "Premium User"
-      },
-      'Fleet Manager': {
-        className: "bg-primary/10 text-primary border-primary/20",
-        icon: "🚗",
-        text: "Fleet Manager"
-      },
-      'Basic User': {
-        className: "bg-muted/50 text-muted-foreground border-muted",
-        icon: "👤",
-        text: "Basic User"
-      }
+    return () => {
+      isMounted = false;
     };
+  }, [toast]);
 
-    const config = roleConfig[role as keyof typeof roleConfig];
-    if (!config) return <Badge variant="outline">{role}</Badge>;
+  /* =========================
+    Filters
+  ========================= */
+  const filteredUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return users.filter((u) => {
+      const roleUi = backendToRoleUi[u.roleName] || u.roleName || "-";
+      const statusStr = u.status ? "active" : "suspended";
+      const matchSearch =
+        !term ||
+        u.fullName?.toLowerCase().includes(term) ||
+        u.email?.toLowerCase().includes(term) ||
+        u.username?.toLowerCase().includes(term);
 
+      const matchRole =
+        roleFilter === "all" ||
+        (roleFilter === "basic" && roleUi === "Basic User") ||
+        (roleFilter === "premium" && roleUi === "Premium User") ||
+        (roleFilter === "fleet" && roleUi === "Fleet Manager");
+
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && statusStr === "active") ||
+        (statusFilter === "suspended" && statusStr === "suspended");
+
+      return matchSearch && matchRole && matchStatus;
+    });
+  }, [users, searchTerm, roleFilter, statusFilter]);
+
+  /* =========================
+    UI helpers
+  ========================= */
+  const getStatusBadge = (active: boolean) =>
+    active ? (
+      <Badge className="bg-emerald-100 text-emerald-700 font-medium py-1 px-3 rounded-full hover:bg-emerald-100 border border-emerald-200">Active</Badge>
+    ) : (
+      <Badge className="bg-red-100 text-red-700 font-medium py-1 px-3 rounded-full hover:bg-red-100 border border-red-200">Suspended</Badge>
+    );
+
+  const getRoleBadge = (roleName: string) => {
+    const ui = backendToRoleUi[roleName] || roleName || "—";
+    const cfg: Record<string, { cls: string; icon: ReactNode; text: string }> = {
+      "Premium User": { cls: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: <Star className="w-3.5 h-3.5" />, text: "Premium User" },
+      "Fleet Manager": { cls: "bg-blue-100 text-blue-800 border-blue-200", icon: <Truck className="w-3.5 h-3.5" />, text: "Fleet Manager" },
+      "Basic User": { cls: "bg-slate-100 text-slate-800 border-slate-200", icon: <Users className="w-3.5 h-3.5" />, text: "Basic User" },
+      Admin: { cls: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: <Shield className="w-3.5 h-3.5" />, text: "Admin" },
+    };
+    const c = cfg[ui] || { cls: "bg-slate-100 text-slate-800 border-slate-200", icon: <Users className="w-3.5 h-3.5" />, text: ui };
     return (
-      <Badge className={`${config.className} flex items-center gap-1`}>
-        <span>{config.icon}</span>
-        {config.text}
+      <Badge className={`px-3 py-1.5 text-sm rounded-full font-medium ${c.cls} hover:${c.cls} border flex items-center gap-1.5`}>
+        {c.icon}
+        {c.text}
       </Badge>
     );
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all-roles" ||
-      (roleFilter === "basic" && user.role === "Basic User") ||
-      (roleFilter === "premium" && user.role === "Premium User") ||
-      (roleFilter === "fleet" && user.role === "Fleet Manager");
-    const matchesStatus = statusFilter === "all-status" ||
-      user.status.toLowerCase() === statusFilter;
+  /* =========================
+    Actions
+  ========================= */
+  const openEdit = (u: UserResponse) => {
+    setSelectedUser(u);
+    setEditOpen(true);
+  };
 
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const toggleStatus = async (u: UserResponse) => {
+    setLoadingMap((m) => ({ ...m, [u.id]: true }));
+    const prev = u.status;
+    setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, status: !x.status } : x)));
 
-  const userActions = (
-    <>
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+    try {
+      await api.put(`/admin/users/${u.id}/status`, null, { params: { active: !prev } });
+
+      toast({
+        title: !prev ? "Activated" : "Suspended",
+        description: `${u.fullName} has been ${!prev ? "activated" : "suspended"}.`,
+      });
+    } catch (e: any) {
+      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, status: prev } : x)));
+      toast({
+        title: "Update status failed",
+        description:
+          e?.response?.data?.message ||
+          "Không cập nhật được trạng thái. Hãy đảm bảo BE có endpoint PUT /admin/users/{id}/status.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMap((m) => ({ ...m, [u.id]: false }));
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!selectedUser) return;
+    const u = selectedUser;
+
+    const uiRole = backendToRoleUi[u.roleName] || u.roleName;
+    const chosenUi =
+      uiRole === "Basic User" || uiRole === "Premium User" || uiRole === "Fleet Manager"
+        ? uiRole
+        : "Basic User";
+    const roleName = roleUiToBackend[chosenUi] ?? "ROLE_USER";
+
+    try {
+      await api.post("/user/setRole", {
+        username: u.username,
+        roleName,
+        keepUserBaseRole: false,
+      });
+
+      toast({ title: "Updated", description: "Role has been updated." });
+      setEditOpen(false);
+
+      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, roleName } : x)));
+    } catch (e: any) {
+      toast({
+        title: "Update role failed",
+        description: e?.response?.data?.message || "Không cập nhật được vai trò.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addStaff = async () => {
+    if (!addPayload.fullName || !addPayload.username || !addPayload.email || !addPayload.phone) {
+      toast({
+        title: "Validation error",
+        description: "Vui lòng điền đủ họ tên, username, email, phone.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSubmittingAdd(true);
+    try {
+      const res = await api.post("/user/add-staff", addPayload);
+      const list = await api.get<UserResponse[]>("/user/getAll");
+      setUsers(list.data || []);
+      setAddOpen(false);
+      setAddPayload({ fullName: "", username: "", email: "", phone: "" });
+      toast({ title: "Staff created", description: "Tạo nhân viên thành công." });
+    } catch (e: any) {
+      toast({
+        title: "Create staff failed",
+        description: e?.response?.data?.message || "Không tạo được nhân viên.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingAdd(false);
+    }
+  };
+
+  /* =========================
+    Header actions
+  ========================= */
+  const headerActions = (
+    <div className="flex items-center gap-3 bg-white shadow-lg shadow-slate-900/10 rounded-full p-2.5">
+      <div className="relative flex-1">
+        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <Input
-          placeholder="Search users by name or email..."
+          placeholder="Search users by name, email, username..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9 w-80"
+          className="pl-10 w-full min-w-[320px] bg-slate-100 shadow-none border-0 rounded-full h-11 focus-visible:ring-sky-500"
         />
       </div>
 
-      <Select value={roleFilter} onValueChange={setRoleFilter}>
-        <SelectTrigger className="w-40">
+      <Select
+        value={roleFilter}
+        onValueChange={(v: any) => setRoleFilter(v)}
+      >
+        <SelectTrigger className="w-48 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
           <SelectValue placeholder="All Roles" />
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all-roles">All Roles</SelectItem>
+        <SelectContent className="bg-white/90 backdrop-blur-md">
+          <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="basic">Basic User</SelectItem>
           <SelectItem value="premium">Premium User</SelectItem>
           <SelectItem value="fleet">Fleet Manager</SelectItem>
         </SelectContent>
       </Select>
 
-      <Select value={statusFilter} onValueChange={setStatusFilter}>
-        <SelectTrigger className="w-40">
+      <Select
+        value={statusFilter}
+        onValueChange={(v: any) => setStatusFilter(v)}
+      >
+        <SelectTrigger className="w-48 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
           <SelectValue placeholder="All Status" />
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all-status">All Status</SelectItem>
+        <SelectContent className="bg-white/90 backdrop-blur-md">
+          <SelectItem value="all">All Status</SelectItem>
           <SelectItem value="active">Active</SelectItem>
           <SelectItem value="suspended">Suspended</SelectItem>
         </SelectContent>
       </Select>
 
-      <Dialog open={roleEditorOpen} onOpenChange={setRoleEditorOpen}>
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
-            <Shield className="w-4 h-4 mr-2" />
-            Role Editor
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <Shield className="w-5 h-5 mr-2 text-primary" />
-              Role Management System
-            </DialogTitle>
-            <DialogDescription>
-              Manage user roles and permissions for the platform
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="p-4">
-                  <div className="text-center space-y-2">
-                    <div className="text-3xl">👤</div>
-                    <h3 className="font-semibold text-foreground">Basic User</h3>
-                    <p className="text-xs text-muted-foreground">Standard access to charging stations</p>
-                    <Badge variant="outline" className="text-xs">
-                      {users.filter(u => u.role === "Basic User").length} users
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-warning/20 bg-warning/5">
-                <CardContent className="p-4">
-                  <div className="text-center space-y-2">
-                    <div className="text-3xl">⭐</div>
-                    <h3 className="font-semibold text-foreground">Premium User</h3>
-                    <p className="text-xs text-muted-foreground">Priority access & discounts</p>
-                    <Badge variant="outline" className="text-xs">
-                      {users.filter(u => u.role === "Premium User").length} users
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-secondary/20 bg-secondary/5">
-                <CardContent className="p-4">
-                  <div className="text-center space-y-2">
-                    <div className="text-3xl">🚗</div>
-                    <h3 className="font-semibold text-foreground">Fleet Manager</h3>
-                    <p className="text-xs text-muted-foreground">Manage multiple vehicles</p>
-                    <Badge variant="outline" className="text-xs">
-                      {users.filter(u => u.role === "Fleet Manager").length} users
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-foreground">Role Permissions</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-muted-foreground">Access charging stations</span>
-                  <div className="flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-muted-foreground">Priority booking</span>
-                  <div className="flex gap-2">
-                    <span className="w-4 h-4 text-muted-foreground">—</span>
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-muted-foreground">Fleet management</span>
-                  <div className="flex gap-2">
-                    <span className="w-4 h-4 text-muted-foreground">—</span>
-                    <span className="w-4 h-4 text-muted-foreground">—</span>
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={() => setRoleEditorOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
-        <DialogTrigger asChild>
-          <Button
-            className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:opacity-90 shadow-electric"
-          >
+          <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 h-11 rounded-full px-6">
             <UserPlus className="w-4 h-4 mr-2" />
-            Add User
+            Add Staff
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[520px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center text-xl">
-              <UserPlus className="w-5 h-5 mr-2 text-primary" />
-              Add New User
+              <UserPlus className="w-5 h-5 mr-2 text-sky-600" />
+              Add New Staff
             </DialogTitle>
-            <DialogDescription>
-              Create a new user account with basic information and permissions
-            </DialogDescription>
+            <DialogDescription>Tạo tài khoản nhân viên (dùng /user/add-staff)</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
+              <Label htmlFor="fullName">Full Name *</Label>
               <Input
-                id="name"
-                placeholder="John Doe"
-                value={newUser.name}
-                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                className="w-full"
+                id="fullName"
+                value={addPayload.fullName}
+                onChange={(e) => setAddPayload((p) => ({ ...p, fullName: e.target.value }))}
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email Address *</Label>
+              <Label htmlFor="username">Username *</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="john.doe@email.com"
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                className="w-full"
+                id="username"
+                value={addPayload.username}
+                onChange={(e) => setAddPayload((p) => ({ ...p, username: e.target.value }))}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-sm font-medium">Phone Number *</Label>
-              <Input
-                id="phone"
-                placeholder="+1 (555) 123-4567"
-                value={newUser.phone}
-                onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                className="w-full"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium">User Role</Label>
-                <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
-                  <SelectTrigger id="role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basic">Basic User</SelectItem>
-                    <SelectItem value="premium">Premium User</SelectItem>
-                    <SelectItem value="fleet">Fleet Manager</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={addPayload.email}
+                  onChange={(e) => setAddPayload((p) => ({ ...p, email: e.target.value }))}
+                />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="subscription" className="text-sm font-medium">Subscription</Label>
-                <Select value={newUser.subscription} onValueChange={(value) => setNewUser({ ...newUser, subscription: value })}>
-                  <SelectTrigger id="subscription">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pay-per-use">Pay-per-use</SelectItem>
-                    <SelectItem value="basic">Basic Monthly</SelectItem>
-                    <SelectItem value="premium">Premium Monthly</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="phone">Phone *</Label>
+                <Input
+                  id="phone"
+                  value={addPayload.phone}
+                  onChange={(e) => setAddPayload((p) => ({ ...p, phone: e.target.value }))}
+                />
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setAddUserOpen(false)}>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleAddUser}
-              className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:brightness-110 active:translate-y-[1px] focus-visible:ring-2 focus-visible:ring-primary/50 shadow-electric transition-all"
-            >
-              Create User
+            <Button onClick={addStaff} disabled={submittingAdd} className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white">
+              {submittingAdd ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Create Staff
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 
+  /* =========================
+    Render
+  ========================= */
   return (
-    <AdminLayout title="User Management" actions={userActions}>
-      {/* User Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card className="shadow-card border-0 bg-gradient-to-br from-primary/5 to-primary/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold text-primary">{users.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">👥</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <AdminLayout title="User Management" actions={headerActions}>
+      <div className="w-full h-full bg-slate-100 text-slate-900">
+        {/* Stats */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          variants={kpiContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <StatCard
+            title="Total Users"
+            value={users.length}
+            icon={<Users className="w-6 h-6" />}
+            color="blue"
+          />
+          <StatCard
+            title="Active Users"
+            value={users.filter((u) => u.status).length}
+            icon={<UserCheck className="w-6 h-6" />}
+            color="green"
+          />
+          <StatCard
+            title="Premium Users"
+            value={users.filter((u) => (backendToRoleUi[u.roleName] || u.roleName) === "Premium User").length}
+            icon={<Star className="w-6 h-6" />}
+            color="yellow"
+          />
+          <StatCard
+            title="Fleet Managers"
+            value={users.filter((u) => (backendToRoleUi[u.roleName] || u.roleName) === "Fleet Manager").length}
+            icon={<Truck className="w-6 h-6" />}
+            color="purple"
+          />
+        </motion.div>
 
-        <Card className="shadow-card border-0 bg-gradient-to-br from-success/5 to-success/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold text-success">
-                  {users.filter(u => u.status === 'Active').length}
-                </p>
+        {/* Table */}
+        <motion.div variants={kpiCardVariants} initial="hidden" animate="visible">
+          <Card className="bg-white border-0 shadow-2xl shadow-slate-900/10 rounded-2xl">
+            <CardContent className="p-0">
+              <div className="px-8 py-6">
+                <h3 className="text-xl font-semibold text-slate-800 flex items-center">
+                  <Users className="w-5 h-5 mr-3 text-slate-500" />
+                  User Management ({filteredUsers.length} users)
+                </h3>
               </div>
-              <div className="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">✅</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              {loading ? (
+                <div className="flex items-center gap-2 text-slate-500 p-8 justify-center h-96">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Loading users...
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b-slate-200 hover:bg-transparent">
+                        <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider h-14 px-8">User Details</TableHead>
+                        <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider h-14 px-6">Contact Info</TableHead>
+                        <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider h-14 px-6">Role</TableHead>
+                        <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider h-14 px-6">Status</TableHead>
+                        <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider h-14 px-6">Activity</TableHead>
+                        <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider h-14 px-6">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((u) => {
+                        const created = formatDate(u.createdAt);
+                        const sessions = sessionsMap[u.id] ?? 0;
+                        return (
+                          <TableRow key={u.id} className="border-b border-slate-200/60 last:border-b-0 hover:bg-slate-50/70 transition-colors">
+                            <TableCell className="py-5 px-8">
+                              <div className="space-y-1">
+                                <div className="font-semibold text-slate-900 text-base">{u.fullName}</div>
+                                <div className="text-sm text-slate-500 flex items-center">
+                                  <Calendar className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+                                  Joined {created}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-5 px-6">
+                              <div className="space-y-2">
+                                <div className="flex items-center text-sm">
+                                  <Mail className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                                  <span className="text-blue-600 font-medium">{u.email || "-"}</span>
+                                </div>
+                                <div className="flex items-center text-sm text-slate-600">
+                                  <Phone className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                                  <span>{u.phone || "-"}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-5 px-6">{getRoleBadge(u.roleName)}</TableCell>
+                            <TableCell className="py-5 px-6">{getStatusBadge(u.status)}</TableCell>
+                            <TableCell className="py-5 px-6">
+                              <div className="space-y-1 text-center">
+                                <div className="text-base font-semibold text-slate-900">{sessions}</div>
+                                <div className="text-xs text-slate-500">sessions</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-5 px-6">
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                  onClick={() => openEdit(u)}
+                                >
+                                  <Edit className="w-3.5 h-3.5 mr-1.5" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={!!loadingMap[u.id]}
+                                  className={
+                                    u.status
+                                      ? "text-red-600 hover:bg-red-50 hover:text-red-700"
+                                      : "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                  }
+                                  onClick={() => toggleStatus(u)}
+                                >
+                                  {loadingMap[u.id] ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  ) : (
+                                    <UserX className="w-3.5 h-3.5 mr-1.5" />
+                                  )}
+                                  {u.status ? "Suspend" : "Activate"}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="shadow-card border-0 bg-gradient-to-br from-warning/5 to-warning/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Premium Users</p>
-                <p className="text-2xl font-bold text-warning">
-                  {users.filter(u => u.role === 'Premium User').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-warning/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">⭐</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Edit dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="sm:max-w-[520px] bg-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-xl">
+                <Edit className="w-5 h-5 mr-2 text-blue-600" />
+                Edit User
+              </DialogTitle>
+              <DialogDescription>Update user role & view basic info</DialogDescription>
+            </DialogHeader>
 
-        <Card className="shadow-card border-0 bg-gradient-to-br from-secondary/5 to-secondary/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Fleet Managers</p>
-                <p className="text-2xl font-bold text-secondary">
-                  {users.filter(u => u.role === 'Fleet Manager').length}
-                </p>
+            {selectedUser && (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Full Name</Label>
+                    <Input value={selectedUser.fullName} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Username</Label>
+                    <Input value={selectedUser.username} disabled />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input value={selectedUser.email || ""} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input value={selectedUser.phone || ""} disabled />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>User Role</Label>
+                    <Select
+                      value={
+                        (backendToRoleUi[selectedUser.roleName] as
+                          | "Basic User"
+                          | "Premium User"
+                          | "Fleet Manager") || "Basic User"
+                      }
+                      onValueChange={(uiRole) => {
+                        const be = roleUiToBackend[uiRole] ?? "ROLE_USER";
+                        setSelectedUser({ ...selectedUser, roleName: be });
+                      }}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="Basic User">Basic User</SelectItem>
+                        <SelectItem value="Premium User">Premium User</SelectItem>
+                        <SelectItem value="Fleet Manager">Fleet Manager</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Input value={selectedUser.status ? "Active" : "Suspended"} disabled />
+                  </div>
+                </div>
               </div>
-              <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">🚗</span>
-              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveEdit} className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white">
+                Save Changes
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
+    </AdminLayout>
+  );
+};
 
-      {/* User Management Table */}
-      <Card className="shadow-card border-0 bg-gradient-card">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center text-lg">
-            <span className="text-xl mr-3">👥</span>
-            User Management ({filteredUsers.length} users)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50">
-                  <TableHead className="font-semibold">User Details</TableHead>
-                  <TableHead className="font-semibold">Contact Info</TableHead>
-                  <TableHead className="font-semibold">Role</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">Activity</TableHead>
-                  <TableHead className="font-semibold">Subscription</TableHead>
-                  <TableHead className="font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id} className="border-border/50 hover:bg-muted/30 transition-colors">
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium text-foreground">{user.name}</div>
-                        <div className="text-sm text-muted-foreground flex items-center">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          Joined {user.joinDate}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-2">
-                        <div className="flex items-center text-sm">
-                          <Mail className="w-3 h-3 mr-2 text-muted-foreground" />
-                          <span className="text-primary font-medium">{user.email}</span>
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Phone className="w-3 h-3 mr-2" />
-                          <span>{user.phone}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getRoleBadge(user.role)}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(user.status)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-primary">
-                          {user.sessions}
-                        </div>
-                        <div className="text-xs text-muted-foreground">sessions</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm font-medium text-foreground">
-                        {user.subscription}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-primary/20 text-primary hover:bg-primary/10"
-                          onClick={() => openEditDialog(user)}
-                        >
-                          <Edit className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={user.status === 'Active'
-                            ? 'text-destructive border-destructive/20 hover:bg-destructive/10'
-                            : 'text-success border-success/20 hover:bg-success/10'}
-                          onClick={() => handleToggleStatus(user.id)}
-                        >
-                          <UserX className="w-3 h-3 mr-1" />
-                          {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+type StatCardProps = {
+  title: string;
+  value: string | number;
+  icon: ReactNode;
+  color: "blue" | "green" | "yellow" | "purple";
+};
+
+const StatCard = ({ title, value, icon, color }: StatCardProps) => {
+  const colors = {
+    blue: { bg: "bg-blue-100", text: "text-blue-600", border: "border-l-blue-500", shadow: "shadow-blue-500/10" },
+    green: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-l-emerald-500", shadow: "shadow-emerald-500/10" },
+    yellow: { bg: "bg-yellow-100", text: "text-yellow-600", border: "border-l-yellow-500", shadow: "shadow-yellow-500/10" },
+    purple: { bg: "bg-purple-100", text: "text-purple-600", border: "border-l-purple-500", shadow: "shadow-purple-500/10" },
+  };
+  const c = colors[color];
+
+  return (
+    <motion.div variants={kpiCardVariants}>
+      <Card className={`bg-white border-l-4 ${c.border} shadow-xl ${c.shadow} rounded-2xl`}>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-slate-500">{title}</p>
+              <p className={`text-4xl font-extrabold ${c.text}`}>{value}</p>
+            </div>
+            <div className={`w-16 h-16 bg-gradient-to-br from-white ${c.bg} rounded-2xl flex items-center justify-center ${c.text}`}>
+              {icon}
+            </div>
           </div>
         </CardContent>
       </Card>
-      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <Edit className="w-5 h-5 mr-2 text-primary" />
-              Edit User Information
-            </DialogTitle>
-            <DialogDescription>
-              Update user details and account settings
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name" className="text-sm font-medium">Full Name *</Label>
-                <Input
-                  id="edit-name"
-                  value={selectedUser.name}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-email" className="text-sm font-medium">Email Address *</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={selectedUser.email}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone" className="text-sm font-medium">Phone Number *</Label>
-                <Input
-                  id="edit-phone"
-                  value={selectedUser.phone}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-role" className="text-sm font-medium">User Role</Label>
-                  <Select
-                    value={selectedUser.role === "Basic User" ? "basic" : selectedUser.role === "Premium User" ? "premium" : "fleet"}
-                    onValueChange={(value) => {
-                      const roleMap: any = {
-                        "basic": "Basic User",
-                        "premium": "Premium User",
-                        "fleet": "Fleet Manager"
-                      };
-                      setSelectedUser({ ...selectedUser, role: roleMap[value] });
-                    }}
-                  >
-                    <SelectTrigger id="edit-role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basic">Basic User</SelectItem>
-                      <SelectItem value="premium">Premium User</SelectItem>
-                      <SelectItem value="fleet">Fleet Manager</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-subscription" className="text-sm font-medium">Subscription</Label>
-                  <Select
-                    value={selectedUser.subscription}
-                    onValueChange={(value) => setSelectedUser({ ...selectedUser, subscription: value })}
-                  >
-                    <SelectTrigger id="edit-subscription">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pay-per-use">Pay-per-use</SelectItem>
-                      <SelectItem value="Basic Monthly">Basic Monthly</SelectItem>
-                      <SelectItem value="Premium Monthly">Premium Monthly</SelectItem>
-                      <SelectItem value="Enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-status" className="text-sm font-medium">Account Status</Label>
-                <Select
-                  value={selectedUser.status}
-                  onValueChange={(value) => setSelectedUser({ ...selectedUser, status: value })}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Suspended">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setEditUserOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditUser} className="bg-gradient-primary text-primary-foreground hover:opacity-90">
-              Save Changes
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </AdminLayout>
+    </motion.div>
   );
 };
 

@@ -16,6 +16,10 @@ const DashboardHeader = () => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
 
+  const userId =
+    Number(localStorage.getItem("user_id") ||
+          localStorage.getItem("userId") ||
+          localStorage.getItem("id") || "");
   const fullName = (localStorage.getItem("full_name") || "Unknown User").toString();
   const initials = useMemo(
     () =>
@@ -126,10 +130,6 @@ const DashboardHeader = () => {
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/settings")} className="rounded-lg">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleLogout}
                 className="rounded-lg text-red-600 focus:text-red-700"
@@ -144,7 +144,7 @@ const DashboardHeader = () => {
 
       {/* Accent progress-like bar */}
       <div className="pointer-events-none h-[6px] bg-[linear-gradient(90deg,#0EA5E9,40%,#10B981,70%,#06B6D4)]" />
-      <NotificationModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+      <NotificationModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} userId={userId}/>
     </header>
   );
 };
