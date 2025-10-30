@@ -83,7 +83,7 @@ public class PaymentController {
 
         } catch (Exception e) {
             logger.error("Error processing return URL", e);
-            String fallbackUrl = "https://your-frontend.com/payment/error";
+            String fallbackUrl = "http://localhost:5173";
             return ResponseEntity.status(HttpStatus.FOUND)
                     .header("Location", fallbackUrl)
                     .build();
@@ -109,10 +109,11 @@ public class PaymentController {
 
     @GetMapping("/getPaymentU")
     public ResponseEntity<Page<PaymentTransactionResponse>> getPaymentU(
-            @RequestParam Long userId,
+            Principal principal,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int pageSize) {
-
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        Long userId = userRepository.findUserByUsername(principal.getName()).getId();
         Pageable pageable = PageRequest.of(page, pageSize);
         Page<PaymentTransactionResponse> result = paymentService.getPaymentTransactionByUserId(userId, pageable);
         return ResponseEntity.ok(result);

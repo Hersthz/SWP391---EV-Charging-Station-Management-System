@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import api from "../api/axios";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { cn } from "../lib/utils"; 
+import { cn } from "../lib/utils";
 import ReflectBackground from "../components/lightswind/reflect-background";
 
 // ----- GoogleButton -----
@@ -61,7 +61,7 @@ const Login = () => {
   const [showConfirmPasswordRegister, setShowConfirmPasswordRegister] = useState(false);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const [tab, setTab] = useState<"login" | "register">("login");
 
   const validateEmail = (email: string) => {
@@ -182,7 +182,7 @@ const Login = () => {
           : "Registration successful! Please check your email for verification.";
       toast.success(message);
       setRegisterData(prev => ({ ...prev, password: "", confirmPassword: "" }));
-      setTab("login"); 
+      setTab("login");
       setLoginData({ username, password: "" });
     } catch (err: any) {
       const message = err?.response?.data?.message ?? "Registration failed";
@@ -195,17 +195,17 @@ const Login = () => {
   const formVariants: Variants = {
     hiddenLeft: {
       opacity: 0,
-      x: "-100%", 
+      x: "-100%",
       transition: { duration: 0.4, ease: "easeInOut" }
     },
     hiddenRight: {
       opacity: 0,
-      x: "100%", 
+      x: "100%",
       transition: { duration: 0.4, ease: "easeInOut" }
     },
     visible: {
       opacity: 1,
-      x: "0%", 
+      x: "0%",
       transition: { duration: 0.5, ease: "easeInOut" }
     },
   };
@@ -217,15 +217,15 @@ const Login = () => {
         backdropBlurAmount="sm"
         className="absolute inset-0 -z-10"
       />
-      
+
       <div className="relative z-10 w-full max-w-md">
-        <motion.div 
+        <motion.div
           className="shadow-2xl border border-white/15 
             bg-gradient-to-br from-gray-950/70 via-gray-900/60 to-gray-950/70
             backdrop-blur-lg rounded-2xl overflow-hidden"
           initial={{ opacity: 0, y: 30, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} 
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* CardHeader */}
           <CardHeader className="relative text-center space-y-4 pb-4">
@@ -284,7 +284,7 @@ const Login = () => {
                 {tab === "login" && (
                   <motion.div
                     key="login"
-                    variants={formVariants} 
+                    variants={formVariants}
                     initial="hiddenRight"
                     animate="visible"
                     exit="hiddenLeft"
@@ -411,7 +411,7 @@ const Login = () => {
                           placeholder="Choose a username"
                           value={registerData.username}
                           onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-className="h-12 bg-white/5 border-gray-700 text-white placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                          className="h-12 bg-white/5 border-gray-700 text-white placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
                           required
                         />
                       </div>

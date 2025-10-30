@@ -49,7 +49,7 @@
             BigDecimal totalRevenue = paymentTransactionRepository.sumAll();
 
             YearMonth currentMonth = YearMonth.now();
-            List<AdminAnalyticsResponse.MonthlyRevenue> monthlyRevenue = IntStream.range(0, 5)
+            List<AdminAnalyticsResponse.MonthlyRevenue> monthlyRevenue = IntStream.range(0, 6)
                     .mapToObj(i-> {YearMonth ym = currentMonth.minusMonths(i);
                         BigDecimal revenue = paymentTransactionRepository.sumRevenueByMonth(ym.getYear(), ym.getMonthValue());
                         return AdminAnalyticsResponse.MonthlyRevenue.builder()

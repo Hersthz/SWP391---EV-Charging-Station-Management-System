@@ -71,6 +71,7 @@ public class AuthService {
         UserResponse resp = UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .fullName(user.getFull_name())
                 .phone(user.getPhone())
                 .roleName(user.getRole().getName())
                 .isVerified(user.getIs_verified())

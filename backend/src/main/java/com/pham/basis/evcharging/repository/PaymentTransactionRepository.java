@@ -68,6 +68,13 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     BigDecimal sumRevenueByMonth(@Param("year") int year,
                                  @Param("month") int month);
 
-    @Query("SELECT COALESCE(SUM(pt.amount),0) FROM PaymentTransaction pt WHERE pt.session.station.id = :stationId AND pt.status='SUCCESS'")
+    @Query("""
+    SELECT COALESCE(SUM(pt.amount), 0)
+    FROM PaymentTransaction pt
+    JOIN ChargingSession cs ON pt.referenceId = cs.id
+    WHERE cs.station.id = :stationId
+      AND pt.type = 'CHARGING-SESSION'
+      AND pt.status = 'SUCCESS'
+    """)
     BigDecimal sumRevenueByStation(Long stationId);
 }
