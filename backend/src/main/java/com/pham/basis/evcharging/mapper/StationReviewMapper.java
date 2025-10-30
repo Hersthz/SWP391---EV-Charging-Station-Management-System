@@ -2,8 +2,10 @@ package com.pham.basis.evcharging.mapper;
 
 import com.pham.basis.evcharging.dto.response.StationReviewResponse;
 import com.pham.basis.evcharging.model.StationReview;
+import org.mapstruct.Mapper;
 
-public class StationReviewMapper {
+@Mapper
+public interface StationReviewMapper {
 
     public static StationReviewResponse toResponse(StationReview review) {
         if (review == null) return null;

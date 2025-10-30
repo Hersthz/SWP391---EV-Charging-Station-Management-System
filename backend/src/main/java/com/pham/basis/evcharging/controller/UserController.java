@@ -78,4 +78,10 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @GetMapping("/getAll")
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
+        List<UserResponse> response = userService.getAllUsers();
+        return ResponseEntity.ok(response);
+    }
 }

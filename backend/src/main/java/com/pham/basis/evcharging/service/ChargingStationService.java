@@ -17,4 +17,6 @@ public interface ChargingStationService {
     ChargingStationDetailResponse addStation(StationRequest request);
     ChargingStationDetailResponse addPillarsWithConnectors(Long stationId, List<StationRequest.PillarRequest> pillarRequests);
 
+    Page<ChargingStationDetailResponse> getAllStation(Integer size, Integer page);
+
 }

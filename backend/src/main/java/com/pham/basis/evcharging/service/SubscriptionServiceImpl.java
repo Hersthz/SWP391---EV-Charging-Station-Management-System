@@ -7,6 +7,7 @@ import com.pham.basis.evcharging.model.Subscription;
 import com.pham.basis.evcharging.model.SubscriptionPlan;
 import com.pham.basis.evcharging.repository.SubscriptionPlanRepository;
 import com.pham.basis.evcharging.repository.SubscriptionRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,13 +17,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
-    @Autowired
-    private SubscriptionRepository subscriptionRepository;
-    @Autowired
-    private SubscriptionPlanRepository planRepository;
-    @Autowired
-    private SubscriptionMapper mapper;
+
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionPlanRepository planRepository;
+    private final SubscriptionMapper mapper;
 
     public SubscriptionResponse createSubscription(SubscriptionRequest request) {
         SubscriptionPlan plan = planRepository.findById(request.getPlanId())
@@ -52,7 +52,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public Optional<Subscription> getActiveSubscriptionByUserId(Integer userId) {
+    public Optional<Subscription> getActiveSubscriptionByUserId(Long userId) {
         return subscriptionRepository.findByUserId(userId)
                 .stream()
                 .filter(s -> "ACTIVE".equalsIgnoreCase(s.getStatus()))
