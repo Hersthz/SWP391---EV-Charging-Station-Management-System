@@ -907,7 +907,7 @@ export default function BookingPage() {
                                             {typeof v.socNow === "number" && (
                                                 <div className="mt-2 text-sm text-zinc-500 flex items-center gap-1.5">
                                                     <Battery className="w-4 h-4 text-emerald-600" /> SoC ~{" "}
-                                                    <b className="text-zinc-700">{`${v.socNow}%`}</b>
+                                                    <b className="text-zinc-700">{`${v.socNow * 100}%`}</b>
                                                 </div>
                                             )}
                                         </CardContent>
