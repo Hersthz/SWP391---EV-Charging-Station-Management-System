@@ -14,6 +14,8 @@ export default {
     },
     extend: {
       colors: {
+        'sparkle-emerald': 'var(--sparkle-emerald)',
+        'sparkle-cyan': 'var(--sparkle-cyan)',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

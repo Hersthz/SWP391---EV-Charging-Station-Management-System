@@ -656,7 +656,7 @@ const StatusCards = () => {
 
     let enriched = r;
     try {
-      const { data } = await api.get(`/reservation/${r.reservationId}`, { withCredentials: true });
+      const { data } = await api.post(`/book/${r.reservationId}`, { withCredentials: true });
       const d = data?.data ?? data ?? {};
       enriched = {
         ...r,
@@ -1160,7 +1160,7 @@ const StatusCards = () => {
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
                   </div>
-                  {est.advice && <div className="text-xs text-amber-600">{est.advice}</div>}
+                  
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Cannot estimate.</div>

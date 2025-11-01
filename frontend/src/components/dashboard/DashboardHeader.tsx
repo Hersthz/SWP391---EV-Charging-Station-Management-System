@@ -92,9 +92,6 @@ const DashboardHeader = () => {
             aria-label="Open notifications"
           >
             <Bell className="w-5 h-5 text-slate-700" />
-            <span className="absolute -top-1 -right-1 min-w-[1.1rem] h-5 px-1 rounded-full bg-sky-600 text-white text-[10px] font-bold grid place-items-center shadow ring-2 ring-white animate-pulse-soft">
-              3
-            </span>
           </Button>
 
           {/* User Avatar  */}

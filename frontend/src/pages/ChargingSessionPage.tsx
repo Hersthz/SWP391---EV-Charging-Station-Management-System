@@ -181,7 +181,7 @@ const ChargingSessionPage = () => {
           typeof me.data?.user_id === "number" ? me.data.user_id : typeof me.data?.id === "number" ? me.data.id : undefined;
 
         try {
-          const r1 = await api.get(`/reservation/${reservationIdParam}`, { withCredentials: true });
+          const r1 = await api.get(`/book/${reservationIdParam}`, { withCredentials: true });
           const d = r1.data?.data ?? r1.data;
           if (d?.reservationId && !cancelled) {
             setResv({
@@ -267,24 +267,7 @@ const ChargingSessionPage = () => {
   }, [sessionIdParam, vehicleIdParam]);
 
 
-  // ====== Fetch max-soc cho hiển thị (optional) ======
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!sessionIdParam) return;
-      try {
-        const { data } = await api.get(`/session/${sessionIdParam}/max-soc`, { withCredentials: true });
-        let v = Number(data?.data ?? data);
-        if (!Number.isNaN(v) && !cancelled) {
-          if (v > 1) v = v / 100;
-          setMaxSoc(clamp01(v));
-        }
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionIdParam]);
+  
 
   /** === Start/Stop tick helpers === */
   const startTick = () => {
@@ -461,7 +444,7 @@ const ChargingSessionPage = () => {
     try {
       const me = await api.get("/auth/me", { withCredentials: true });
       const userId = me.data?.user_id ?? me.data?.id;
-      const r2 = await api.get(`/vehicle/user/${userId}`, { withCredentials: true });
+      const r2 = await api.get(`/vehicle/${userId}`, { withCredentials: true });
       const list = r2.data?.data ?? r2.data?.content ?? r2.data ?? [];
       const found = Array.isArray(list) ? list.find((x: any) => Number(x?.id ?? x?.vehicleId) === Number(vehicleId)) : null;
       if (found) {

@@ -5,6 +5,7 @@ import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
 import com.pham.basis.evcharging.dto.response.AdjustTargetSocResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -260,7 +261,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
             BigDecimal estimateAmount = calculateEstimateAmount(targetSoc, vehicle, pillar);
             if (!walletService.hasSufficientBalance(driver.getId(), estimateAmount))
-                throw new IllegalArgumentException("Insufficient wallet balance for estimated charging amount");
+                throw new AppException.ConflictException("Insufficient wallet balance for estimated charging amount");
         }
     }
 
