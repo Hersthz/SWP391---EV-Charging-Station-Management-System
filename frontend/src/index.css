@@ -8,48 +8,68 @@ All colors MUST be HSL.
 html {
   scroll-behavior: smooth;
 }
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 }
+
 @layer base {
   :root {
 
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+     /* Energy/Electric themed colors */
+    --electric: 214 84% 56%;
+    --electric-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 217 32% 17%;
+    --danger: 0 84% 60%;
+    --danger-foreground: 0 0% 98%;
     
+    /* Status colors */
+    --status-available: 142 76% 36%;
+    --status-charging: 214 84% 56%;
+    --status-offline: 0 0% 45%;
+    --status-maintenance: 38 92% 50%;
+    
+    /* Gradients */
+    --gradient-electric: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 84% 66%));
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 46%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(218 23% 99%));
+    
+    /* Shadows */
+    --shadow-electric: 0 10px 30px -10px hsl(214 84% 56% / 0.3);
+    --shadow-card: 0 4px 20px -2px hsl(217 32% 17% / 0.08);
+
     /* Enhanced Primary Colors - Ocean Blue */
     --primary: 210 100% 50%;
     --primary-foreground: 0 0% 98%;
     --primary-glow: 220 100% 65%;
     --primary-light: 215 85% 75%;
-    
+
     /* Vibrant Secondary Palette - Forest Green */
     --secondary: 145 85% 45%;
     --secondary-foreground: 0 0% 98%;
     --secondary-light: 150 75% 65%;
-    
+
     /* Accent Colors - Teal Blue */
     --accent: 180 100% 40%;
     --accent-foreground: 0 0% 98%;
     --accent-light: 185 85% 60%;
-    
+
     /* Tertiary Colors - Lime Green */
     --tertiary: 85 100% 45%;
     --tertiary-foreground: 120 100% 10%;
     --tertiary-light: 90 85% 65%;
-    
+
     /* Success & Warning */
     --success: 142 76% 36%;
     --success-foreground: 355.7 100% 97.3%;
     --warning: 38 92% 50%;
     --warning-foreground: 48 96% 6%;
-    
+
     /* Neutral Colors */
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
@@ -58,7 +78,7 @@ html {
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 210 100% 50%;
-    
+
     /* Enhanced gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 50%, hsl(var(--accent)) 100%);
@@ -69,7 +89,7 @@ html {
     --gradient-card: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(240 4.8% 98%) 100%);
     --gradient-rainbow: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--tertiary)));
     --gradient-sunset: linear-gradient(135deg, hsl(var(--tertiary)) 0%, hsl(var(--secondary)) 50%, hsl(var(--primary)) 100%);
-    
+
     /* Enhanced Shadows */
     --shadow-primary: 0 10px 30px -10px hsl(210 100% 50% / 0.3);
     --shadow-glow: 0 0 40px hsl(220 100% 65% / 0.4);
@@ -88,48 +108,49 @@ html {
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* chart colors dùng chung cho Recharts */
---chart-1: var(--primary);
---chart-2: var(--success);
---chart-3: var(--accent);
---chart-4: var(--tertiary);
---chart-5: var(--secondary);
+    --chart-1: var(--primary);
+    --chart-2: var(--success);
+    --chart-3: var(--accent);
+    --chart-4: var(--tertiary);
+    --chart-5: var(--secondary);
   }
 
   .dark {
+    
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    
+
     /* Enhanced Dark Primary Colors - Ocean Blue Dark */
     --primary: 215 100% 60%;
     --primary-foreground: 240 10% 3.9%;
     --primary-glow: 225 100% 70%;
     --primary-light: 220 85% 75%;
-    
+
     /* Dark Vibrant Secondary Palette - Forest Green Dark */
     --secondary: 150 80% 55%;
     --secondary-foreground: 240 10% 3.9%;
     --secondary-light: 155 75% 70%;
-    
+
     /* Dark Accent Colors - Teal Blue Dark */
     --accent: 185 90% 50%;
     --accent-foreground: 240 10% 3.9%;
     --accent-light: 190 85% 65%;
-    
+
     /* Dark Tertiary Colors - Lime Green Dark */
     --tertiary: 90 100% 55%;
     --tertiary-foreground: 240 10% 3.9%;
     --tertiary-light: 95 85% 70%;
-    
+
     /* Dark Success & Warning */
     --success: 158 64% 52%;
     --success-foreground: 240 10% 3.9%;
     --warning: 38 92% 60%;
     --warning-foreground: 240 10% 3.9%;
-    
+
     /* Dark Neutral Colors */
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
@@ -138,7 +159,7 @@ html {
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 215 100% 60%;
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -150,31 +171,42 @@ html {
 
     /* chart colors dùng chung cho Recharts */
     --chart-1: var(--primary);
---chart-2: var(--success);
---chart-3: var(--accent);
---chart-4: var(--tertiary);
---chart-5: var(--secondary);
+    --chart-2: var(--success);
+    --chart-3: var(--accent);
+    --chart-4: var(--tertiary);
+    --chart-5: var(--secondary);
 
   }
+
   .nice-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,.25) transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, .25) transparent;
   }
+
   .nice-scroll::-webkit-scrollbar {
     width: 8px;
   }
+
   .nice-scroll::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .nice-scroll::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,.18);
+    background: rgba(0, 0, 0, .18);
     border-radius: 9999px;
   }
+
   .nice-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,0,0,.28);
+    background: rgba(0, 0, 0, .28);
   }
-  .glass-tile { @apply rounded-xl border border-slate-200/70 p-3 bg-white/60 backdrop-blur; }
-  .bg-noise { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.04"/></svg>'); }
+
+  .glass-tile {
+    @apply rounded-xl border border-slate-200/70 p-3 bg-white/60 backdrop-blur;
+  }
+
+  .bg-noise {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.04"/></svg>');
+  }
 }
 
 @layer base {
@@ -187,13 +219,33 @@ html {
     color: hsl(var(--foreground));
   }
 }
-@layer utilities {
-  .bg-gradient-primary { background-image: var(--gradient-primary); }
-  .bg-gradient-hero { background-image: var(--gradient-hero); }
-  .bg-gradient-secondary { background-image: var(--gradient-secondary); }
-  .bg-gradient-accent { background-image: var(--gradient-accent); }
-  .bg-gradient-section { background-image: var(--gradient-section); }
-  .bg-gradient-card { background-image: var(--gradient-card); }
 
-  .shadow-electric { box-shadow: var(--shadow-glow), var(--shadow-card); }
+@layer utilities {
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+  }
+
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+
+  .bg-gradient-secondary {
+    background-image: var(--gradient-secondary);
+  }
+
+  .bg-gradient-accent {
+    background-image: var(--gradient-accent);
+  }
+
+  .bg-gradient-section {
+    background-image: var(--gradient-section);
+  }
+
+  .bg-gradient-card {
+    background-image: var(--gradient-card);
+  }
+
+  .shadow-electric {
+    box-shadow: var(--shadow-glow), var(--shadow-card);
+  }
 }
