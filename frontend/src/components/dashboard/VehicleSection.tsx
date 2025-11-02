@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { Car, Zap, Plug, Gauge, Wrench, MapPin, Battery, IdCard } from "lucide-react";
+// src/pages/_parts/VehicleSection.tsx
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Car, Plug } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import api from "../../api/axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 /* =========================
    Types
@@ -36,19 +37,16 @@ function pctFrom01or100(x: number | undefined | null): number | undefined {
   if (n <= 1) return Math.round(n * 100);
   return Math.round(n);
 }
-function maskVIN(vin?: string) {
-  if (!vin) return "—";
-  if (vin.length < 6) return "****";
-  return `VIN • ****${vin.slice(-4)}`;
-}
 
 /* =========================
    Component
 ========================= */
 const VehicleSection = () => {
-  const [veh, setVeh] = useState<VehicleBE | null>(null);
+  const [list, setList] = useState<VehicleBE[]>([]);
+  const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // fetch vehicles of current user
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -59,57 +57,30 @@ const VehicleSection = () => {
         if (!uid) throw new Error("No userId");
 
         const vRes = await api.get<any>(`/vehicle/${uid}`, { withCredentials: true });
-        const list: VehicleBE[] = (vRes?.data?.data ?? vRes?.data ?? []) as VehicleBE[];
-        const first = list.find((x: any) => (x as any)?.isPrimary) ?? list[0];
+        const arr: VehicleBE[] = (vRes?.data?.data ?? vRes?.data ?? []) as VehicleBE[];
 
         if (!ignore) {
-          const merged: VehicleBE = {
-            id: first?.id ?? 0,
-            make: first?.make ?? localStorage.getItem("vehicle_make") ?? "Tesla",
-            model: first?.model ?? localStorage.getItem("vehicle_model") ?? "Model 3",
-            year: String(first?.year ?? localStorage.getItem("vehicle_year") ?? "2023"),
-            variant: first?.variant ?? "Long Range",
-            vin: first?.vin,
-            chargerType: first?.chargerType ?? "Type 2 / CCS",
-            maxPower: Number(first?.maxPower ?? 250),
-            range: Number(first?.range ?? 400),
-            battery: Number(first?.battery ?? 75),
-            connectorStandard: first?.connectorStandard ?? "CCS",
-            socNow:
-              pctFrom01or100(first?.socNow) ??
-              Number(localStorage.getItem("soc_now") ?? 78),
-            batteryHealthPct:
-              Number(first?.batteryHealthPct ?? localStorage.getItem("battery_health") ?? 96),
-          };
-          setVeh(merged);
+          setList(arr.length ? arr : [
+            // fallback 1 xe cho demo nếu BE trả rỗng
+            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, socNow: Number(localStorage.getItem("soc_now") ?? 78) }
+          ]);
+          setIdx(0);
         }
       } catch {
         if (!ignore) {
-          setVeh({
-            id: 0,
-            make: "Tesla",
-            model: "Model 3",
-            year: "2023",
-            variant: "Long Range",
-            vin: "5YJ3E1EA7JF000821",
-            chargerType: "Type 2 / CCS",
-            maxPower: 250,
-            range: 400,
-            battery: 75,
-            connectorStandard: "CCS",
-            socNow: Number(localStorage.getItem("soc_now") ?? 78),
-            batteryHealthPct: Number(localStorage.getItem("battery_health") ?? 96),
-          });
+          setList([
+            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, socNow: Number(localStorage.getItem("soc_now") ?? 78) }
+          ]);
+          setIdx(0);
         }
       } finally {
         if (!ignore) setLoading(false);
       }
     })();
-    return () => {
-      ignore = true;
-    };
+    return () => { ignore = true; };
   }, []);
 
+  const veh = list[idx];
   const tags = useMemo(() => {
     const arr: string[] = [];
     if (veh?.chargerType) arr.push(veh.chargerType);
@@ -117,11 +88,55 @@ const VehicleSection = () => {
     return Array.from(new Set(arr));
   }, [veh]);
 
-  const socNowPct = typeof veh?.socNow === "number" ? Math.max(0, Math.min(100, veh.socNow)) : undefined;
-  const healthPct = typeof veh?.batteryHealthPct === "number" ? Math.max(0, Math.min(100, veh.batteryHealthPct)) : undefined;
+  const socPct = typeof veh?.socNow === "number" ? Math.max(0, Math.min(100, pctFrom01or100(veh.socNow)!)) : undefined;
+
+  /* =========================
+     Selector handlers
+  ========================= */
+  const select = useCallback((i: number) => {
+    if (!list.length) return;
+    const n = Math.max(0, Math.min(i, list.length - 1));
+    setIdx(n);
+  }, [list]);
+
+  const prev = useCallback(() => select((idx - 1 + list.length) % list.length), [idx, list.length, select]);
+  const next = useCallback(() => select((idx + 1) % list.length), [idx, list.length, select]);
 
   return (
     <div className="group [perspective:1200px]">
+      {/* Selector row */}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          {list.map((v, i) => {
+            const active = i === idx;
+            return (
+              <Button
+                key={v.id ?? i}
+                variant={active ? "default" : "outline"}
+                size="sm"
+                onClick={() => select(i)}
+                className={
+                  active
+                    ? "rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 text-white shadow"
+                    : "rounded-full border-slate-200 text-slate-700 hover:bg-slate-50"
+                }
+              >
+                {(v.make || "EV")} {(v.model || "")}
+              </Button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="rounded-full" onClick={prev} disabled={!list.length || loading}>
+            ‹
+          </Button>
+          <Button variant="outline" size="icon" className="rounded-full" onClick={next} disabled={!list.length || loading}>
+            ›
+          </Button>
+        </div>
+      </div>
+
       <Card
         className="
           relative overflow-hidden rounded-3xl border border-white/40 bg-white/70
@@ -134,46 +149,57 @@ const VehicleSection = () => {
                         after:absolute after:inset-[-2px] after:rounded-[inherit]
                         after:bg-[conic-gradient(from_var(--ang),theme(colors.sky.400),theme(colors.emerald.400),theme(colors.sky.400))]
                         after:opacity-60 after:blur-[10px] motion-safe:animate-[spin-slow_10s_linear_infinite]" />
+
         <CardHeader className="relative z-[1] pb-2">
           <CardTitle className="flex items-center gap-2 text-base text-slate-800">
             <Car className="w-5 h-5 text-slate-500" /> Your EV
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="relative z-[1] space-y-5">
-          {/* header */}
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="font-semibold text-slate-900">
-                {loading ? "…" : `${veh?.make} ${veh?.model}`}
+        <CardContent className="relative z-[1]">
+          <AnimatePresence mode="wait">
+            {/* Key theo vehicle để animate khi đổi */}
+            <motion.div
+              key={veh?.id ?? idx}
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              className="space-y-5"
+            >
+              {/* header */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-semibold text-slate-900">
+                    {loading ? "…" : `${veh?.make ?? "—"} ${veh?.model ?? ""}`.trim()}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {tags.map((t) => (
+                      <Badge key={t} className="bg-sky-50 text-sky-700 border-sky-200 flex items-center gap-1 rounded-full">
+                        <Plug className="w-3.5 h-3.5" /> {t}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="text-sm text-slate-600">
-                {loading ? "…" : `${veh?.year ?? "—"} • ${veh?.variant ?? ""}`}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {tags.map((t) => (
-                  <Badge key={t} className="bg-sky-50 text-sky-700 border-sky-200 flex items-center gap-1 rounded-full">
-                    <Plug className="w-3.5 h-3.5" /> {t}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          {/* Battery + Charge */}
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-600">Current Charge</span>
-              <span className="font-semibold text-slate-900">{socNowPct ?? "—"}%</span>
-            </div>
-            <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 shadow-[inset_0_0_6px_rgba(255,255,255,.35)]
-                           animate-[barin_700ms_ease-out]"
-                style={{ width: `${socNowPct ?? 0}%` }}
-              />
-            </div>
-          </div>
+              {/* Battery + Charge */}
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Current Charge</span>
+                  <span className="font-semibold text-slate-900">{typeof socPct === "number" ? `${socPct}%` : "—"}</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 shadow-[inset_0_0_6px_rgba(255,255,255,.35)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${socPct ?? 0}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </CardContent>
       </Card>
     </div>
@@ -181,4 +207,3 @@ const VehicleSection = () => {
 };
 
 export default VehicleSection;
-

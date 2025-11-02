@@ -562,7 +562,7 @@ const Profile = () => {
                 )}
 
                 {vehicles.map((v) => (
-                  <Card key={v.id} className={`rounded-xl bg-white shadow-sm border ${v.isPrimary ? "border-sky-400" : "border-slate-200"}`}>
+                  <Card key={v.id} className={`rounded-xl bg-white shadow-sm border border-slate-200`}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4 flex-1">
@@ -574,10 +574,7 @@ const Profile = () => {
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="text-xl font-bold text-slate-900">
                                 {v.make} {v.model}
-                              </h3>
-                              {v.isPrimary && (
-                                <Badge className="bg-sky-100 text-sky-700 border-sky-200">Primary</Badge>
-                              )}
+                              </h3>                              
                             </div>
                             <p className="text-sm text-slate-500 mb-4">
                               {v.year} {v.variant ? `• ${v.variant}` : ""}
@@ -606,17 +603,7 @@ const Profile = () => {
                           </div>
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                          {!v.isPrimary && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleSetPrimaryVehicle(v.id)}
-                              className="border-sky-200 text-sky-700 hover:bg-sky-50"
-                            >
-                              Set primary
-                            </Button>
-                          )}
+                        <div className="flex flex-col gap-2">                         
                           <Button size="sm" variant="outline" className="hover:bg-slate-50">
                             <Edit className="w-3 h-3 mr-1" />
                             Edit

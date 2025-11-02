@@ -8,4 +8,19 @@ const api = axios.create({
     }
 });
 
+api.interceptors.response.use(
+  (r) => r,
+  async (err) => {
+    const original = err.config as any;
+    if (!original?._retry && err?.response?.status === 401) {
+      original._retry = true;
+      try {
+        await api.post("/auth/refresh");  // backend đang @PostMapping("/refresh")
+        return api(original);
+      } catch {}
+    }
+    return Promise.reject(err);
+  }
+);
+
 export default api;

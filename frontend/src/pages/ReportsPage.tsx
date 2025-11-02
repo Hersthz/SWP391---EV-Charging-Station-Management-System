@@ -1,5 +1,5 @@
 // src/pages/ReportsPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -27,7 +27,6 @@ import {
   IdCard,
 } from "lucide-react";
 import { ChatBot } from "./ChatBot";
-
 import {
   LineChart,
   Line,
@@ -46,7 +45,11 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from "../components/ui/dropdown-menu";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 /* ===================== Backend types ===================== */
 
 type ApiResponse<T> = { code?: string; message?: string; data?: T };
@@ -245,8 +248,6 @@ const kpiCardVariants: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.42, 0, 0.58, 1] } },
 };
 
-/* ===================== Detail helpers & types ===================== */
-
 const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 const fmtDurationRange = (start?: string | null, end?: string | null) => {
   if (!start) return "—";
@@ -317,6 +318,7 @@ const pickPaymentMethod = (x: any): string | undefined =>
 
 /* ===================== Component ===================== */
 const ReportsPage = () => {
+  const exportRef = useRef<HTMLDivElement>(null);
   const [selectedPeriod, setSelectedPeriod] =
     useState<"week" | "month" | "quarter" | "year">("month");
 
@@ -858,6 +860,89 @@ const ReportsPage = () => {
     );
   };
 
+  // Export functions
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPNG = async () => {
+    if (!exportRef.current) return;
+    const canvas = await html2canvas(exportRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+    canvas.toBlob((blob: Blob | null) => {
+      if (blob) downloadBlob(blob, `report-${new Date().toISOString().slice(0,10)}.png`);
+    }, "image/png");
+  };
+
+  const exportPDF = async () => {
+    if (!exportRef.current) return;
+    const canvas = await html2canvas(exportRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+    const imgData = canvas.toDataURL("image/png");
+
+    // A4: 210 x 297mm -> jsPDF default is mm
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    // nếu cao hơn 1 trang -> chia trang
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft * -1; // dịch lên
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save(`report-${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
+  const exportCSV = () => {
+    // dùng dữ liệu đã render: rows 
+    const headers = ["ID","Date","Time","Station","Port","Connector","Duration","Energy","Cost","Status"];
+    const lines = rows.map(r => [
+      r.id, r.date, r.time, r.station, r.port, (r.connector||""),
+      r.duration, r.energy, r.cost, r.status
+    ]);
+
+    const csv =
+      [headers, ...lines]
+        .map(cols =>
+          cols
+            .map((v) => {
+              const s = String(v ?? "");
+              // escape CSV
+              return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            })
+            .join(",")
+        )
+        .join("\n");
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" }); // BOM để Excel mở tiếng Việt ok
+    downloadBlob(blob, `sessions-${new Date().toISOString().slice(0,10)}.csv`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 text-slate-900">
       {/* Header */}
@@ -884,27 +969,24 @@ const ReportsPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Select value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)}>
-              <SelectTrigger className="w-36 bg-white/70 border-slate-300 text-slate-900 hover:bg-slate-50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-white/90 backdrop-blur-md border-slate-200 text-slate-900">
-                <SelectItem value="week">This week</SelectItem>
-                <SelectItem value="month">This month</SelectItem>
-                <SelectItem value="quarter">This quarter</SelectItem>
-                <SelectItem value="year">This year</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button className="shadow-lg shadow-cyan-500/30 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:brightness-110 transition-all">
-              <Download className="w-4 h-4 mr-2" />
-              Export report
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="shadow-lg shadow-cyan-500/30 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:brightness-110 transition-all">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export report
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={exportPDF}>Export as PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportPNG}>Export as PNG</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportCSV}>Export sessions CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div ref={exportRef} className="max-w-7xl mx-auto px-6 py-8">
         {/* Title */}
         <div className="mb-6">
           <h1 className="text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
