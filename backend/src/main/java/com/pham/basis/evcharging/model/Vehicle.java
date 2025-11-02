@@ -1,13 +1,10 @@
 package com.pham.basis.evcharging.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
-@Data
+@Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "vehicles")
@@ -16,15 +13,10 @@ public class Vehicle {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
     private String make;
     private String model;
 
-    private Double socNow;
+    private Double currentSoc;
 
     @Column(name = "battery_capacity_kwh", nullable = false)
     private Double batteryCapacityKwh;
@@ -36,4 +28,9 @@ public class Vehicle {
     private Double dcMaxKw;
 
     private Double efficiency;
+
+    //FK
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }

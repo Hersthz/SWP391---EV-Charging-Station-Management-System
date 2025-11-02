@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
+@Getter @Setter
 public class StationReviewResponse {
     private Long id;
     private Long stationId;

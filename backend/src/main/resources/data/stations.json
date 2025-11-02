@@ -7,67 +7,11 @@
     "longitude": 106.8022,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 16250,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11250,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 16250,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10000,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P5",
-        "status": "Maintenance",
-        "power": 80,
-        "pricePerKwh": 17500,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P4", "power": 180, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P5", "power": 180, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] }
     ]
   },
   {
@@ -78,53 +22,10 @@
     "longitude": 106.7979,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 260,
-        "pricePerKwh": 18750,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 11250,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Occupied",
-        "power": 80,
-        "pricePerKwh": 16250,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 250,
-        "pricePerKwh": 17500,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 260, "pricePerKwh": 18750, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P2", "power": 260, "pricePerKwh": 18750, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -135,56 +36,10 @@
     "longitude": 106.7991,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13750,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 200,
-        "pricePerKwh": 16250,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10000,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 18750,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 13750, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 13750, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 200, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] }
     ]
   },
   {
@@ -195,64 +50,11 @@
     "longitude": 106.8046,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 330,
-        "pricePerKwh": 20000,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10000,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 15000,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 70,
-        "pricePerKwh": 16250,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P5",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13750,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 330, "pricePerKwh": 20000, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P2", "power": 330, "pricePerKwh": 20000, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 10000, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 10000, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P5", "power": 20, "pricePerKwh": 13750, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -263,53 +65,10 @@
     "longitude": 106.8061,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Maintenance",
-        "power": 270,
-        "pricePerKwh": 16250,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 12500,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 18750,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10000,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 270, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Maintenance"}, {"type":"CHAdeMO","status":"Maintenance"} ] },
+      { "code": "DC-P2", "power": 270, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Maintenance"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 12500, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 12500, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -320,53 +79,10 @@
     "longitude": 106.7987,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 9200,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 70,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 200,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 200, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Occupied"} ] }
     ]
   },
   {
@@ -377,56 +93,10 @@
     "longitude": 106.7938,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 220,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 220, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P2", "power": 220, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -437,56 +107,10 @@
     "longitude": 106.8015,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 260,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Occupied"} ] }
     ]
   },
   {
@@ -497,42 +121,9 @@
     "longitude": 106.8068,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 90,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] }
     ]
   },
   {
@@ -543,56 +134,10 @@
     "longitude": 106.8009,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 250,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 180, "pricePerKwh": 14460, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P2", "power": 180, "pricePerKwh": 14460, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Occupied"} ] }
     ]
   },
   {
@@ -603,53 +148,10 @@
     "longitude": 106.8157,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 340,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -660,53 +162,10 @@
     "longitude": 106.7875,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 90,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 250,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 90, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 90, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -717,53 +176,10 @@
     "longitude": 106.7996,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Occupied",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Occupied"} ] },
+      { "code": "DC-P2", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -774,53 +190,10 @@
     "longitude": 106.814,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 70,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 200,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 70, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"} ] }
     ]
   },
   {
@@ -831,53 +204,10 @@
     "longitude": 106.7404,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 250,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 250, "pricePerKwh": 17090, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P2", "power": 250, "pricePerKwh": 17090, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -888,53 +218,10 @@
     "longitude": 106.7108,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 70,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 9200,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"} ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"} ] },
+      { "code": "DC-P3", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -945,50 +232,10 @@
     "longitude": 106.8091,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 9200,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 330,
-        "pricePerKwh": 21030,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 100,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 330, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P2", "power": 330, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"}, {"type":"AC","status":"Available"} ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"}, {"type":"AC","status":"Available"} ] }
     ]
   },
   {
@@ -999,53 +246,10 @@
     "longitude": 106.7768,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 80,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 80, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -1056,45 +260,9 @@
     "longitude": 106.7846,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 250,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -1105,50 +273,10 @@
     "longitude": 106.8185,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 70,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P4", "power": 70, "pricePerKwh": 15770, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -1159,53 +287,10 @@
     "longitude": 106.7119,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 350,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 350, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P2", "power": 350, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
     ]
   },
   {
@@ -1216,53 +301,10 @@
     "longitude": 106.6477,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 250,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 90,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
+      { "code": "DC-P3", "power": 250, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 250, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -1273,53 +315,10 @@
     "longitude": 106.6804,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Available",
-        "power": 80,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 11830,
-        "connectors": [
-          {
-            "type": "AC"
-          },
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 300,
-        "pricePerKwh": 19720,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] },
+      { "code": "DC-P4", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] }
     ]
   },
   {
@@ -1330,53 +329,10 @@
     "longitude": 106.7261,
     "status": "Available",
     "pillars": [
-      {
-        "code": "AC-P1",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 14460,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P2",
-        "status": "Available",
-        "power": 200,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P3",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P4",
-        "status": "Available",
-        "power": 70,
-        "pricePerKwh": 15770,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"} ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P3", "power": 200, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Maintenance"}, {"type":"CHAdeMO","status":"Available"} ] }
     ]
   },
   {
@@ -1387,68 +343,11 @@
     "longitude": 106.8463,
     "status": "Available",
     "pillars": [
-      {
-        "code": "DC-P1",
-        "status": "Occupied",
-        "power": 300,
-        "pricePerKwh": 21030,
-        "connectors": [
-          {
-            "type": "CCS"
-          },
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      },
-      {
-        "code": "AC-P2",
-        "status": "Available",
-        "power": 20,
-        "pricePerKwh": 13150,
-        "connectors": [
-          {
-            "type": "Type2"
-          }
-        ]
-      },
-      {
-        "code": "DC-P3",
-        "status": "Available",
-        "power": 180,
-        "pricePerKwh": 17090,
-        "connectors": [
-          {
-            "type": "CCS"
-          }
-        ]
-      },
-      {
-        "code": "AC-P4",
-        "status": "Available",
-        "power": 10,
-        "pricePerKwh": 10520,
-        "connectors": [
-          {
-            "type": "AC"
-          }
-        ]
-      },
-      {
-        "code": "DC-P5",
-        "status": "Available",
-        "power": 90,
-        "pricePerKwh": 18400,
-        "connectors": [
-          {
-            "type": "CHAdeMO"
-          }
-        ]
-      }
+      { "code": "DC-P1", "power": 300, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Occupied"} ] },
+      { "code": "DC-P2", "power": 300, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"Type2","status":"Available"}, {"type":"AC","status":"Available"} ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
+      { "code": "DC-P5", "power": 90, "pricePerKwh": 18400, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
     ]
   }
 ]
-
-
-
-

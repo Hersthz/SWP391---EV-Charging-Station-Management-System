@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.response.NotificationResponse;
 import com.pham.basis.evcharging.exception.AppException;
@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.model.Notification;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.NotificationRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
+import com.pham.basis.evcharging.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

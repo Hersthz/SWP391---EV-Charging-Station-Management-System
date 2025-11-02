@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -114,7 +113,7 @@ public class ChargingSessionController {
                 .chargedAmount(s.getChargedAmount())
                 .ratePerKwh(s.getRatePerKwh())
                 .targetSoc(s.getTargetSoc())
-                .socNow(s.getVehicle().getSocNow())
+                .socNow(s.getVehicle().getCurrentSoc())
                 .startTime(s.getStartTime())
                 .endTime(s.getEndTime())
                 .build();

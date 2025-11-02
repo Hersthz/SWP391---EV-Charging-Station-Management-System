@@ -7,10 +7,9 @@ import com.pham.basis.evcharging.dto.request.SetUserRoleRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.service.ReservationService;
-import com.pham.basis.evcharging.service.ReservationServiceImpl;
-import com.pham.basis.evcharging.service.UserServiceImpl;
+import com.pham.basis.evcharging.service.Impl.UserServiceImpl;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -30,7 +29,7 @@ public class UserController {
 
     @PostMapping("/change-password")
     public ResponseEntity<ChangePasswordResponse> changePassword(
-             @RequestBody ChangePasswordRequest request) {
+             @Valid @RequestBody ChangePasswordRequest request) {
 
         // Lấy username từ Security Context (người dùng đang đăng nhập)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -44,7 +43,7 @@ public class UserController {
     }
 
     @PostMapping("/update-profile")
-    public ResponseEntity<UpdateUserResponse> updateProfile(@RequestBody UpdateUserRequest request) {
+    public ResponseEntity<UpdateUserResponse> updateProfile(@Valid @RequestBody UpdateUserRequest request) {
         // Lấy username từ Security Context (người dùng đang đăng nhập)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
@@ -59,7 +58,7 @@ public class UserController {
     }
 
     @PostMapping("/setRole")
-    public ResponseEntity<SetUserRoleResponse>  setUserRole(@RequestBody SetUserRoleRequest request) {
+    public ResponseEntity<SetUserRoleResponse>  setUserRole(@Valid @RequestBody SetUserRoleRequest request) {
         try {
             SetUserRoleResponse response = userService.setRoleForUser(request.getUsername(), request.getRoleName(), request.isKeepUserBaseRole());
             return ResponseEntity.ok(response);
@@ -70,7 +69,7 @@ public class UserController {
     }
 
     @PostMapping("/add-staff")
-    public ResponseEntity<CreateStaffResponse> adminAddStaff(@RequestBody CreateStaffRequest request) {
+    public ResponseEntity<CreateStaffResponse> adminAddStaff(@Valid @RequestBody CreateStaffRequest request) {
         try {
             CreateStaffResponse response = userService.adminAddStaff(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);

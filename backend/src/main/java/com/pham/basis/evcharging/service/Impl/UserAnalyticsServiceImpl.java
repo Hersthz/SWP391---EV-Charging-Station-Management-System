@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.response.UserAnalyticsResponse;
 import com.pham.basis.evcharging.exception.AppException;
@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.model.ChargingSession;
 import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.*;
+import com.pham.basis.evcharging.service.UserAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,7 @@ import java.util.stream.IntStream;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class UserAnalyticsServiceImpl implements  UserAnalyticsService {
+public class UserAnalyticsServiceImpl implements UserAnalyticsService {
 
     private final ChargingSessionRepository chargingSessionRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;

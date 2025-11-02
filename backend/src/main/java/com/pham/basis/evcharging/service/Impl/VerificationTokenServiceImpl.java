@@ -1,8 +1,9 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.VerificationToken;
 import com.pham.basis.evcharging.repository.VerificationTokenRepository;
+import com.pham.basis.evcharging.service.VerificationTokenService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -25,7 +26,11 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
         tokenRepo.deleteByUser(user);
         String token = UUID.randomUUID().toString();
         LocalDateTime expiration = LocalDateTime.now().plusHours(EXPIRATION_HOURS);
-        VerificationToken vt = new VerificationToken(token,user,expiration);
+        VerificationToken vt = VerificationToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(expiration)
+                .build();
         tokenRepo.save(vt);
         return token;
     }

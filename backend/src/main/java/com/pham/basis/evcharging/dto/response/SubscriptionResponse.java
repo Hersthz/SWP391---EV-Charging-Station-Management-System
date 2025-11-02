@@ -1,10 +1,12 @@
 package com.pham.basis.evcharging.dto.response;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 public class SubscriptionResponse {
     private Integer subscriptionId;
     private Integer userId;

@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.response.OneTimeTokenResponse;
 import com.pham.basis.evcharging.dto.response.VerifyTokenResponse;
@@ -9,6 +9,7 @@ import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.OneTimeTokenRepository;
 import com.pham.basis.evcharging.repository.ReservationRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
+import com.pham.basis.evcharging.service.OneTimeTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

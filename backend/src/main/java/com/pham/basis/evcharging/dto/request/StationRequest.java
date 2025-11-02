@@ -27,7 +27,6 @@ public class StationRequest {
     }
     @Data
     public static class ConnectorRequest {
-
         private String connectorType;
     }
 }

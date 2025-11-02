@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "kyc_submission")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -20,14 +20,14 @@ public class KycSubmission {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "front_image_url", nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    @Column(nullable = false, length = 500)
     private String frontImageUrl;
 
-    @Column(name = "back_image_url", nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    @Column(nullable = false, length = 500)
     private String backImageUrl;
 
     @Column(nullable = false, length = 50)
-    private String status; //PENDING APPROVED, REJECTED
+    private String status; //PENDING, APPROVED, REJECTED
 
     @Column(name = "rejection_reason", length = 255)
     private String rejectionReason;
@@ -37,7 +37,8 @@ public class KycSubmission {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
+    
+    //----
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

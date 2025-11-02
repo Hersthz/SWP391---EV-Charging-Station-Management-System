@@ -3,8 +3,8 @@ package com.pham.basis.evcharging.controller;
 import com.pham.basis.evcharging.dto.request.EstimateRequest;
 import com.pham.basis.evcharging.dto.response.EstimateResponse;
 import com.pham.basis.evcharging.service.ChargingEstimatorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +16,7 @@ public class EstimateController {
     private final ChargingEstimatorService estimator;
 
     @PostMapping("/estimate-kw")
-    public ResponseEntity<EstimateResponse> estimate(@RequestBody EstimateRequest request) {
+    public ResponseEntity<EstimateResponse> estimate(@Valid @RequestBody EstimateRequest request) {
         try {
             EstimateResponse resp = estimator.estimate(request);
             return ResponseEntity.ok(resp);

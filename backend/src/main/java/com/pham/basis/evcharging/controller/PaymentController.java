@@ -2,13 +2,11 @@ package com.pham.basis.evcharging.controller;
 
 
 import com.pham.basis.evcharging.config.VNPayConfig;
-import com.pham.basis.evcharging.dto.request.GetPaymentRequest;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
-import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;

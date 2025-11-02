@@ -1,24 +1,21 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 
 import com.pham.basis.evcharging.dto.request.KycSubmissionRequest;
 import com.pham.basis.evcharging.exception.AppException;
-import com.pham.basis.evcharging.exception.GlobalExceptionHandler;
 import com.pham.basis.evcharging.model.KycSubmission;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.KycRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.pham.basis.evcharging.service.KycService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.Option;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

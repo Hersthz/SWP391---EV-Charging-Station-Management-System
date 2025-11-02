@@ -4,7 +4,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.util.List;
 
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -19,7 +19,7 @@ public class AdminAnalyticsResponse {
     private List<StationRevenue> revenueByStation;
     private List<PeakHour> peakHour;
 
-    @Data
+    @Getter @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
@@ -28,7 +28,7 @@ public class AdminAnalyticsResponse {
         private BigDecimal revenue;
     }
 
-    @Data
+    @Getter @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
@@ -39,7 +39,7 @@ public class AdminAnalyticsResponse {
         private Double energyKwh;
     }
 
-    @Data
+    @Getter @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder

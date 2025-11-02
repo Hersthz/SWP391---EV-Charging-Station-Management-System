@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.response.StationReviewResponse;
 import com.pham.basis.evcharging.exception.AppException;
@@ -7,6 +7,7 @@ import com.pham.basis.evcharging.model.StationReview;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
 import com.pham.basis.evcharging.repository.StationReviewRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
+import com.pham.basis.evcharging.service.StationReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

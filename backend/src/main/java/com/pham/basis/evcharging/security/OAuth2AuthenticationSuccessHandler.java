@@ -52,7 +52,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
         // Tạo access + refresh token (lưu ý: expiry là seconds ở JwtUtil định nghĩa trước)
         String access = jwtUtil.generateAccessToken(user.getUsername(), role, accessExpiry);
-        String refresh = jwtUtil.generateRefreshToken(user.getUsername(), refreshExpiry);
+        String refresh = jwtUtil.generateRefreshToken(user.getUsername(),role, refreshExpiry);
 
         // Tạo cookie theo chuẩn dùng ở AuthController
         ResponseCookie accessCookie = CookieUtil.createCookie(

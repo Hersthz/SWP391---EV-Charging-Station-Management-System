@@ -5,19 +5,9 @@ import java.time.YearMonth;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-/**
- * User analytics response DTO (đơn giản, rõ ràng, phù hợp đồ án môn học)
- * Đơn vị:
- * - Tiền: VND
- * - Năng lượng: kWh
- * - Thời lượng: phút
- */
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -29,7 +19,7 @@ public class UserAnalyticsResponse {
     private List<ConnectorAnalytics> connectorUsage; // thống kê connector type
     private List<HourlyUsage> hourlyUsage;          // thống kê theo giờ (0–23)
 
-    @Data
+    @Getter @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
@@ -42,7 +32,7 @@ public class UserAnalyticsResponse {
         private Double percentChangeCost;      // % so với tháng trước
     }
 
-    @Data
+    @Getter @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
@@ -55,7 +45,8 @@ public class UserAnalyticsResponse {
         private Double averageDuration;
     }
 
-    @Data
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder

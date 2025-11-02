@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
@@ -8,6 +8,10 @@ import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
+import com.pham.basis.evcharging.service.ChargingSessionService;
+import com.pham.basis.evcharging.service.PaymentService;
+import com.pham.basis.evcharging.service.SubscriptionService;
+import com.pham.basis.evcharging.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +69,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                 .ratePerKwh(BigDecimal.valueOf(pillar.getPricePerKwh()))
                 .paymentMethod(request.getPaymentMethod())
                 .targetSoc(request.getTargetSoc())
-                .initialSoc(vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0)
+                .initialSoc(vehicle.getCurrentSoc() != null ? vehicle.getCurrentSoc() : 0.0)
                 .build();
 
         return sessionRepo.save(session);
@@ -90,11 +94,11 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
             Vehicle vehicle = session.getVehicle();
             Double batteryCapacity = vehicle.getBatteryCapacityKwh();
             Double initialSoc = session.getInitialSoc() != null ? session.getInitialSoc()
-                    : (vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0);
+                    : (vehicle.getCurrentSoc() != null ? vehicle.getCurrentSoc() : 0.0);
 
             if (batteryCapacity != null && batteryCapacity > 0) {
                 double newSoc = Math.min(1.0, initialSoc + (session.getEnergyCount().doubleValue() / batteryCapacity));
-                vehicle.setSocNow(newSoc);
+                vehicle.setCurrentSoc(newSoc);
                 vehicleRepo.save(vehicle);
             }
         }
@@ -117,11 +121,11 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         Vehicle vehicle = session.getVehicle();
         Double batteryCapacity = vehicle.getBatteryCapacityKwh();
         Double initialSoc = session.getInitialSoc() != null ? session.getInitialSoc()
-                : (vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0);
+                : (vehicle.getCurrentSoc() != null ? vehicle.getCurrentSoc() : 0.0);
 
         if (batteryCapacity != null && batteryCapacity > 0) {
             double finalSoc = Math.min(1.0, initialSoc + session.getEnergyCount().doubleValue() / batteryCapacity);
-            vehicle.setSocNow(finalSoc);
+            vehicle.setCurrentSoc(finalSoc);
             vehicleRepo.save(vehicle);
         }
 
@@ -136,13 +140,11 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
     @Transactional
     public PaymentResponse createPaymentForSession(Long sessionId, String clientIp) {
         ChargingSession session = sessionRepo.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+                .orElseThrow(() -> new AppException.NotFoundException("Session not found"));
 
         if (!"COMPLETED".equals(session.getStatus()))
-            throw new IllegalArgumentException("Only completed sessions can be paid");
-        if (session.getPayment() != null) {
-            throw new IllegalArgumentException("Payment already exists for this session");
-        }
+            throw new AppException.BadRequestException("Only completed sessions can be paid");
+
         PaymentCreateRequest paymentRequest = PaymentCreateRequest.builder()
                 .amount(session.getChargedAmount())
                 .type("CHARGING-SESSION")
@@ -155,9 +157,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         PaymentResponse paymentResponse = paymentService.createPayment(
                 paymentRequest, session.getDriver().getId(), clientIp
         );
-        PaymentTransaction payment = paymentService.getPaymentEntity(paymentResponse.getPaymentId());
-        session.setPayment(payment);
-        sessionRepo.save(session);
+
         log.info("Payment created for session {}: {}", session.getId(), paymentResponse.getStatus());
         return paymentResponse;
     }
@@ -188,7 +188,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         //
         double powerKw = pillar.getPower() != null ? pillar.getPower() : 0.0;
         if (powerKw <= 0) throw new IllegalArgumentException("Invalid pillar power");
-        double energyNeededKwh = (targetSoc - (vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0)) * vehicle.getBatteryCapacityKwh();
+        double energyNeededKwh = (targetSoc - (vehicle.getCurrentSoc() != null ? vehicle.getCurrentSoc() : 0.0)) * vehicle.getBatteryCapacityKwh();
         long minutesNeeded = (long) Math.ceil((energyNeededKwh / powerKw) * 60.0);
 
         //
@@ -266,7 +266,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
     }
 
     private BigDecimal calculateEstimateAmount(Double targetSoc, Vehicle vehicle, ChargerPillar pillar) {
-        Double currentSoc = vehicle.getSocNow() != null ? vehicle.getSocNow() : 0.0;
+        Double currentSoc = vehicle.getCurrentSoc() != null ? vehicle.getCurrentSoc() : 0.0;
         if (targetSoc <= currentSoc)
             throw new IllegalArgumentException("Target SOC must be greater than current SOC");
 

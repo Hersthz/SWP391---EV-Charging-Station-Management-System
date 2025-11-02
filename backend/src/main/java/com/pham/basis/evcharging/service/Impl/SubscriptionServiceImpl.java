@@ -1,17 +1,19 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.request.SubscriptionRequest;
 import com.pham.basis.evcharging.dto.response.SubscriptionResponse;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.mapper.SubscriptionMapper;
 import com.pham.basis.evcharging.model.Subscription;
 import com.pham.basis.evcharging.model.SubscriptionPlan;
+import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.SubscriptionPlanRepository;
 import com.pham.basis.evcharging.repository.SubscriptionRepository;
+import com.pham.basis.evcharging.repository.UserRepository;
+import com.pham.basis.evcharging.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -23,15 +25,17 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionPlanRepository planRepository;
     private final SubscriptionMapper mapper;
+    private final UserRepository userRepository;
 
 
     @Override
     public SubscriptionResponse createSubscription(SubscriptionRequest request) {
         SubscriptionPlan plan = planRepository.findById(request.getPlanId())
-                .orElseThrow(() -> new RuntimeException("Plan not found"));
-
+                .orElseThrow(() -> new AppException.NotFoundException("Plan not found"));
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
         Subscription subscription = new Subscription();
-        subscription.setUserId(request.getUserId());
+        subscription.setUser(user);
         subscription.setPlan(plan);
         subscription.setStartDate(request.getStartDate());
         subscription.setStatus("ACTIVE");

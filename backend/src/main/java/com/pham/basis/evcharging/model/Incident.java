@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "incidents")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -20,6 +20,19 @@ public class Incident {
     @Column(nullable = false, length = 255)
     private String title;
 
+    @Column(nullable = false, length = 20)
+    private String priority;
+
+    @Column(nullable = false, length = 20)
+    private String status;
+
+    @Column(length = 300)
+    private String description;
+
+    @Column(name = "reported_time")
+    private LocalDateTime reportedTime;
+
+    //FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "station_id", nullable = false)
     private ChargingStation station;
@@ -28,19 +41,8 @@ public class Incident {
     @JoinColumn(name = "pillar_id")
     private ChargerPillar pillar;
 
-    @Column(nullable = false, length = 20)
-    private String priority;
-
-    @Column(nullable = false, length = 20)
-    private String status;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reported_by")
     private User reportedBy;
 
-    @Column(name = "reported_time")
-    private LocalDateTime reportedTime;
 }

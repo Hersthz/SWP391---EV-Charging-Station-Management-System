@@ -25,5 +25,6 @@ public interface UserService {
     CreateStaffResponse adminAddStaff(CreateStaffRequest req);
 
     List<UserResponse> getAllUsers();
+    void createDefaultVehiclesForUser(User user);
 }
 
