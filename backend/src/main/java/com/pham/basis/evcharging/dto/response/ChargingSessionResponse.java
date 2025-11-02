@@ -1,12 +1,14 @@
 package com.pham.basis.evcharging.dto.response;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Builder
 public class ChargingSessionResponse {
     private Long id;

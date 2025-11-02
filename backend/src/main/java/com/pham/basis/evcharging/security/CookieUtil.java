@@ -4,8 +4,7 @@ import org.springframework.http.ResponseCookie;
 
 public class CookieUtil {
 
-    public static ResponseCookie createCookie(String name, String token, long maxAgeSeconds,
-                                              boolean httpOnly, boolean secure, String sameSite) {
+    public static ResponseCookie createCookie(String name, String token, long maxAgeSeconds,boolean httpOnly, boolean secure, String sameSite) {
         return ResponseCookie.from(name, token)
                 .httpOnly(httpOnly)
                 .secure(secure)
@@ -15,9 +14,11 @@ public class CookieUtil {
                 .build();
     }
 
-    public static ResponseCookie deleteCookie(String name) {
+    public static ResponseCookie deleteCookie(String name, boolean secure, String sameSite) {
         return ResponseCookie.from(name, "")
                 .httpOnly(true)
+                .secure(secure)
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(0)
                 .build();

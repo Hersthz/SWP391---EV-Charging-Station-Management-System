@@ -1,7 +1,6 @@
 package com.pham.basis.evcharging.security;
 
 
-import com.pham.basis.evcharging.service.UserService;
 import io.jsonwebtoken.io.IOException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,6 +22,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
     private final JwtUtil jwtUtil;
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);

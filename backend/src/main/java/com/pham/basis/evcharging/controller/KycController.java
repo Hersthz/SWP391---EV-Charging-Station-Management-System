@@ -6,6 +6,7 @@ import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.KycStatusResponse;
 import com.pham.basis.evcharging.model.KycSubmission;
 import com.pham.basis.evcharging.service.KycService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class KycController {
     private final KycService kycService;
 
     @PostMapping("/submit")
-    public ResponseEntity<ApiResponse<KycSubmission>> submitKyc(@RequestBody KycSubmissionRequest request) {
+    public ResponseEntity<ApiResponse<KycSubmission>> submitKyc(@Valid @RequestBody KycSubmissionRequest request) {
         KycSubmission saved = kycService.submitKyc(request);
         return ResponseEntity.ok(
                 new ApiResponse<>(

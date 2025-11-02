@@ -9,27 +9,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.UUID;
-
 
 @Component
 public class JwtUtil {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
-
     @Value("${jwt.secret}")
     private String secretBase64;
-
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretBase64);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-
+    //
     public String generateAccessToken(String username, String role, long expirySeconds) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + expirySeconds * 1000);
@@ -46,11 +42,12 @@ public class JwtUtil {
     }
 
 
-    public String generateRefreshToken(String username, long expirySeconds) {
+    public String generateRefreshToken(String username,String role ,long expirySeconds) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + expirySeconds * 1000);
         return Jwts.builder()
                 .setSubject(username)
+                .claim("role", role)
                 .claim("type", "refresh")
                 .setIssuer("EV-Charging-API")
                 .setId(UUID.randomUUID().toString())
@@ -60,7 +57,7 @@ public class JwtUtil {
                 .compact();
     }
 
-
+    //
     private String stripBearer(String token) {
         if (token == null) return null;
         token = token.trim();

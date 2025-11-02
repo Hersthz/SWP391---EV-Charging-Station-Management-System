@@ -1,11 +1,11 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.request.ReservationRequest;
 import com.pham.basis.evcharging.dto.response.ReservationResponse;
 import com.pham.basis.evcharging.exception.AppException;
-import com.pham.basis.evcharging.exception.GlobalExceptionHandler.*;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
+import com.pham.basis.evcharging.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -161,17 +161,18 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Transactional
     @Scheduled(fixedRate = 60000)
-    public void autoUpdatePillarStatus() {
+    public void autoUpdateConnectorStatus() {
         LocalDateTime now = LocalDateTime.now();
+
         // 1) PENDING > 10 phút -> EXPIRED
         reservationRepository.findByStatus("PENDING").stream()
                 .filter(r -> r.getCreatedAt().isBefore(now.minusMinutes(10)))
                 .forEach(r -> {
                     r.setStatus("EXPIRED");
                     reservationRepository.save(r);
-                    if (r.getPillar() != null) {
-                        r.getPillar().setStatus("AVAILABLE");
-                        chargerPillarRepository.save(r.getPillar());
+                    if (r.getConnector() != null) {
+                        r.getConnector().setStatus("AVAILABLE");
+                        connectorRepository.save(r.getConnector());
                     }
                 });
 
@@ -181,10 +182,9 @@ public class ReservationServiceImpl implements ReservationService {
                 .forEach(r -> {
                     r.setStatus("VERIFYING");
                     reservationRepository.save(r);
-
-                    if (r.getPillar() != null) {
-                        r.getPillar().setStatus("OCCUPIED");
-                        chargerPillarRepository.save(r.getPillar());
+                    if (r.getConnector() != null) {
+                        r.getConnector().setStatus("OCCUPIED");
+                        connectorRepository.save(r.getConnector());
                     }
                 });
 
@@ -194,10 +194,9 @@ public class ReservationServiceImpl implements ReservationService {
                 .forEach(r -> {
                     r.setStatus("EXPIRED");
                     reservationRepository.save(r);
-
-                    if (r.getPillar() != null) {
-                        r.getPillar().setStatus("AVAILABLE");
-                        chargerPillarRepository.save(r.getPillar());
+                    if (r.getConnector() != null) {
+                        r.getConnector().setStatus("AVAILABLE");
+                        connectorRepository.save(r.getConnector());
                     }
                 });
 
@@ -209,14 +208,14 @@ public class ReservationServiceImpl implements ReservationService {
                         .forEach(r -> {
                             r.setStatus("EXPIRED");
                             reservationRepository.save(r);
-
-                            if (r.getPillar() != null) {
-                                r.getPillar().setStatus("AVAILABLE");
-                                chargerPillarRepository.save(r.getPillar());
+                            if (r.getConnector() != null) {
+                                r.getConnector().setStatus("AVAILABLE");
+                                connectorRepository.save(r.getConnector());
                             }
                         })
         );
     }
+
 
     private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseFee) {
         return subscriptionRepository.findByUserId(userId)

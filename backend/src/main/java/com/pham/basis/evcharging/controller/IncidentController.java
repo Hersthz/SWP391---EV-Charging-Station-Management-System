@@ -4,8 +4,8 @@ package com.pham.basis.evcharging.controller;
 import com.pham.basis.evcharging.dto.request.IncidentRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.IncidentResponse;
-import com.pham.basis.evcharging.model.Incident;
 import com.pham.basis.evcharging.service.IncidentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +19,7 @@ public class IncidentController {
     private final IncidentService  incidentService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<String>> reportIncident(@RequestBody IncidentRequest request) {
+    public ResponseEntity<ApiResponse<String>> reportIncident(@Valid @RequestBody IncidentRequest request) {
         incidentService.createIncident(request);
         return ResponseEntity.ok(new ApiResponse<>("200","Response succesfully","Report successfully"));
     }

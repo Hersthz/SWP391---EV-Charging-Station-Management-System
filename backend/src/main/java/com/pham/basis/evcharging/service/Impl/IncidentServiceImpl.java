@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.request.IncidentRequest;
 import com.pham.basis.evcharging.dto.response.IncidentResponse;
@@ -11,17 +11,17 @@ import com.pham.basis.evcharging.repository.ChargerPillarRepository;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
 import com.pham.basis.evcharging.repository.IncidentRepository;
 import com.pham.basis.evcharging.repository.UserRepository;
+import com.pham.basis.evcharging.service.IncidentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class IncidentServiceImpl implements  IncidentService {
+public class IncidentServiceImpl implements IncidentService {
     private final IncidentRepository repository;
     private final ChargingStationRepository chargingStationRepository;
     private final ChargerPillarRepository chargerPillarRepository;
@@ -65,7 +65,7 @@ public class IncidentServiceImpl implements  IncidentService {
                         .priority(incident.getPriority())
                         .status(incident.getStatus())
                         .description(incident.getDescription())
-                        .reportedBy(incident.getReportedBy().getFull_name())
+                        .reportedBy(incident.getReportedBy().getFullName())
                         .reportedById(incident.getReportedBy().getId())
                         .reportedTime(incident.getReportedTime())
                         .build()

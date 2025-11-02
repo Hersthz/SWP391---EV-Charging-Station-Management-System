@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "charging_sessions")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -39,9 +39,6 @@ public class ChargingSession {
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
-    @OneToOne(mappedBy = "session", fetch = FetchType.LAZY)
-    private PaymentTransaction payment;
-
     // --- Thời gian ---
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
@@ -57,7 +54,7 @@ public class ChargingSession {
 
     // --- Thông tin sạc ---
     @Column(length = 20, nullable = false)
-    private String status; // ACTIVE, COMPLETED, CANCELLED, FAILED...
+    private String status; // ACTIVE, COMPLETED, CANCELLED, FAILED
 
     @Column(name = "energy_count", precision = 10, scale = 2, nullable = false)
     private BigDecimal energyCount; // kWh đã sạc

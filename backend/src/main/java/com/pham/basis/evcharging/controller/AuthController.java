@@ -4,6 +4,7 @@ import com.pham.basis.evcharging.dto.request.LoginRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.LoginResponse;
 import com.pham.basis.evcharging.dto.response.UserResponse;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.security.CookieUtil;
 import com.pham.basis.evcharging.security.JwtUtil;
@@ -12,6 +13,7 @@ import com.pham.basis.evcharging.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -40,31 +42,36 @@ public class AuthController {
     @Value("${app.cookie.secure:false}")
     private boolean cookieSecure;
 
+    private String cookieSameSite() {
+        return "None";
+    }
+
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@RequestBody UserCreationRequest request) {
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody UserCreationRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletResponse response) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req, HttpServletResponse response) {
         User user = userService.login(req.getUsername(), req.getPassword());
-        if (!Boolean.TRUE.equals(user.getIs_verified())) {
-            return ResponseEntity.status(403).body(Map.of("message", "Email not verified"));
+        if (!Boolean.TRUE.equals(user.getIsVerified())) {
+            throw new AppException.ForbiddenException("Email not verified");
         }
 
-        String access = jwtUtil.generateAccessToken(user.getUsername(), user.getRole().getName(), accessExpiry);
-        String refresh = jwtUtil.generateRefreshToken(user.getUsername(), refreshExpiry);
+        String roleName = user.getRole() != null ? user.getRole().getName() : "USER";
 
-        ResponseCookie accessCookie = CookieUtil.createCookie(
-                "JWT", access, accessExpiry, true, cookieSecure, cookieSecure ? "None" : "Lax");
-        ResponseCookie refreshCookie = CookieUtil.createCookie(
-                "REFRESH", refresh, refreshExpiry, true, cookieSecure, cookieSecure ? "None" : "Lax");
+        String access = jwtUtil.generateAccessToken(user.getUsername(), roleName, accessExpiry);
+        String refresh = jwtUtil.generateRefreshToken(user.getUsername(), roleName, refreshExpiry);
+
+        String sameSite = cookieSameSite();
+        ResponseCookie accessCookie = CookieUtil.createCookie("JWT", access, accessExpiry, true, cookieSecure, sameSite);
+        ResponseCookie refreshCookie = CookieUtil.createCookie("REFRESH", refresh, refreshExpiry, true, cookieSecure, sameSite);
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        LoginResponse responseLogin = new LoginResponse(user.getUsername(),user.getRole().getName(),user.getFull_name());
-        return ResponseEntity.ok(Map.of("message","login successfully"));
+        LoginResponse loginResp = new LoginResponse(user.getUsername(), roleName, user.getFullName(), user.getId());
+        return ResponseEntity.ok(loginResp);
     }
 
     @GetMapping("/verify")
@@ -79,8 +86,10 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        ResponseCookie accessDel = CookieUtil.deleteCookie("JWT");
-        ResponseCookie refreshDel = CookieUtil.deleteCookie("REFRESH");
+        String sameSite = cookieSameSite();
+        ResponseCookie accessDel = CookieUtil.deleteCookie("JWT", cookieSecure, sameSite);
+        ResponseCookie refreshDel = CookieUtil.deleteCookie("REFRESH", cookieSecure, sameSite);
+
         response.addHeader(HttpHeaders.SET_COOKIE, accessDel.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshDel.toString());
         return ResponseEntity.ok(Map.of("message", "Logged out"));
@@ -88,28 +97,34 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
-        // Lấy refresh token từ cookie
         String refreshToken = null;
         if (request.getCookies() != null) {
             for (Cookie c : request.getCookies()) {
                 if ("REFRESH".equals(c.getName())) {
                     refreshToken = c.getValue();
+                    break;
                 }
             }
         }
 
         if (refreshToken == null || !jwtUtil.validateRefreshToken(refreshToken)) {
-            return ResponseEntity.status(401).body(Map.of("message", "Invalid refresh token"));
+            throw new AppException.UnauthorizedException("Invalid refresh token");
         }
 
         String username = jwtUtil.extractUsername(refreshToken);
         String role = jwtUtil.extractRole(refreshToken);
 
+        if (role == null) {
+            User u = userService.findByUsername(username);
+            role = (u != null && u.getRole() != null) ? u.getRole().getName() : "ROLE_USER";
+        }
+
         String newAccess = jwtUtil.generateAccessToken(username, role, accessExpiry);
-        ResponseCookie newAccessCookie = CookieUtil.createCookie(
-                "JWT", newAccess, accessExpiry, true, cookieSecure, cookieSecure ? "None" : "Lax");
+
+        ResponseCookie newAccessCookie = CookieUtil.createCookie("JWT", newAccess, accessExpiry, true, cookieSecure, cookieSameSite());
 
         response.addHeader(HttpHeaders.SET_COOKIE, newAccessCookie.toString());
         return ResponseEntity.ok(Map.of("message", "refreshed"));
     }
 }
+

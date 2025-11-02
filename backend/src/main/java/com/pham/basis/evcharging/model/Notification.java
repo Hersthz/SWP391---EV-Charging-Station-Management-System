@@ -5,21 +5,16 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-
 @Entity
 @Table(name = "notifications")
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Data
+@Getter @Setter
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long notificationId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @Column(nullable = false, length = 40)
     private String type;
@@ -32,4 +27,9 @@ public class Notification {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    //FK
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }

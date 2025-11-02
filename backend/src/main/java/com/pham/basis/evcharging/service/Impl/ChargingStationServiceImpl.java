@@ -1,4 +1,4 @@
-package com.pham.basis.evcharging.service;
+package com.pham.basis.evcharging.service.Impl;
 
 
 import com.pham.basis.evcharging.dto.request.StationFilterRequest;
@@ -11,10 +11,12 @@ import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
+import com.pham.basis.evcharging.service.ChargingStationService;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -22,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -49,27 +53,19 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
 
-        Page<ChargingStation> page = stationRepository.findNearbyStations(
+        Page<ChargingStation> page = filterStations(
                 request.getLatitude(),
                 request.getLongitude(),
                 request.getRadius(),
+                request.getSearch(),
                 connectors,
                 request.getMinPower(),
                 request.getMaxPower(),
                 request.getMinPrice(),
                 request.getMaxPrice(),
-                availableOnlyParam,
-                request.getSearch(),
+                request.getAvailableOnly(),
                 pageable
         );
-
-        if (request.getLatitude() != null && request.getLongitude() != null) {
-            double lat = request.getLatitude();
-            double lon = request.getLongitude();
-            page.getContent().forEach(station ->
-                    station.setDistance(calculateDistance(lat, lon, station.getLatitude(), station.getLongitude()))
-            );
-        }
 
         return page.map(stationMapper::toSummaryResponse);
     }
@@ -91,23 +87,6 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         return stationMapper.toDetailResponse(station, distance);
     }
 
-    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
-
-        final int R = 6371;
-        double latDist = Math.toRadians(lat2 - lat1);
-        double lonDist = Math.toRadians(lon2 - lon1);
-
-        double a = Math.sin(latDist / 2) * Math.sin(latDist / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDist / 2) * Math.sin(lonDist / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return Math.round(R * c * 100.0) / 100.0;
-    }
-
-
-
     @Override
     public ChargingStationDetailResponse addStation( StationRequest request) {
         // Validate request
@@ -119,7 +98,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         station.setAddress(request.getAddress());
         station.setLatitude(request.getLatitude());
         station.setLongitude(request.getLongitude());
-        station.setStatus("Available");
+        station.setStatus("AVAILABLE");
 
         // Add pillars and connectors (if provided)
         if (request.getPillars() != null && !request.getPillars().isEmpty()) {
@@ -128,17 +107,19 @@ public class ChargingStationServiceImpl implements ChargingStationService {
                 pillar.setCode(pillarReq.getCode());
                 pillar.setPower(pillarReq.getPower());
                 pillar.setPricePerKwh(pillarReq.getPricePerKwh());
-                pillar.setStatus("Available");
 
                 // Add connectors to pillar
                 if (pillarReq.getConnectors() != null && !pillarReq.getConnectors().isEmpty()) {
                     for (StationRequest.ConnectorRequest connReq : pillarReq.getConnectors()) {
                         Connector connector = new Connector();
                         connector.setType(connReq.getConnectorType());
+                        connector.setStatus("AVAILABLE");
+                        connector.setPillar(pillar);
                         pillar.addConnector(connector);
                     }
                 }
 
+                pillar.setStation(station);
                 station.addPillar(pillar);
             }
         }
@@ -169,7 +150,6 @@ public class ChargingStationServiceImpl implements ChargingStationService {
             pillar.setCode(pillarReq.getCode());
             pillar.setPower(pillarReq.getPower());
             pillar.setPricePerKwh(pillarReq.getPricePerKwh());
-            pillar.setStatus("AVAILABLE");
 
             // Add connectors (1–2 connectors per your preference)
             if (pillarReq.getConnectors() != null && !pillarReq.getConnectors().isEmpty()) {
@@ -181,8 +161,8 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
                     Connector connector = new Connector();
                     connector.setType(connReq.getConnectorType());
+                    connector.setStatus("AVAILABLE");
 
-                    // set both sides if needed
                     connector.setPillar(pillar);
                     pillar.addConnector(connector);
                 }
@@ -201,31 +181,11 @@ public class ChargingStationServiceImpl implements ChargingStationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ChargingStationDetailResponse> getAllStation(Integer size, Integer page) {
         Pageable pageable = PageRequest.of(page, size);
         Page<ChargingStation> stations = stationRepository.findAll(pageable);
-        return stations.map(station -> ChargingStationDetailResponse.builder()
-                .id(station.getId())
-                .name(station.getName())
-                .address(station.getAddress())
-                .latitude(station.getLatitude())
-                .longitude(station.getLongitude())
-                .status(station.getStatus())
-                .availablePillars((int)station.getPillars().stream().filter(p-> "AVAILABLE".equals(p.getStatus())).count())
-                .totalPillars((int) station.getPillars().size())
-                .pillars(station.getPillars().stream().map(pillar -> ChargingStationDetailResponse.PillarDto.builder()
-                        .id(pillar.getId())
-                        .code(pillar.getCode())
-                        .status(pillar.getStatus())
-                        .power(pillar.getPower())
-                        .pricePerKwh(pillar.getPricePerKwh())
-                        .connectors(pillar.getConnectors().stream().map(connector -> new ChargingStationDetailResponse.ConnectorDto(
-                                connector.getId(), connector.getType()
-                        )).toList())
-                        .build()
-                ).toList())
-                .build()
-        );
+        return stations.map(stationMapper::toDetailResponse);
     }
 
     //-------------helper-------
@@ -254,12 +214,116 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         if (request.getAddress() == null || request.getAddress().trim().isEmpty()) {
             throw new ValidationException("Address is required");
         }
-        if (request.getLatitude() < -90 || request.getLatitude() > 90) {
+        if ( request.getLatitude() < -90 || request.getLatitude() > 90) {
             throw new ValidationException("Invalid latitude value");
         }
-        if (request.getLongitude() < -180 || request.getLongitude() > 180) {
+        if ( request.getLongitude() < -180 || request.getLongitude() > 180) {
             throw new ValidationException("Invalid longitude value");
         }
     }
 
+    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+
+        final int R = 6371;
+        double latDist = Math.toRadians(lat2 - lat1);
+        double lonDist = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(latDist / 2) * Math.sin(latDist / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDist / 2) * Math.sin(lonDist / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return Math.round(R * c * 100.0) / 100.0;
+    }
+
+    //
+    public Page<ChargingStation> filterStations(
+            Double latitude, Double longitude, Double radiusKm,
+            String search,
+            List<String> connectors,
+            Double minPower, Double maxPower,
+            Double minPrice, Double maxPrice,
+            Boolean availableOnly,
+            Pageable pageable
+    ) {
+        List<ChargingStation> all = stationRepository.findAll();
+        Stream<ChargingStation> stream = all.stream();
+
+        // search name/address
+        if (search != null && !search.isBlank()) {
+            String keyword = search.toLowerCase(Locale.ROOT);
+            stream = stream.filter(s ->
+                    (s.getName() != null && s.getName().toLowerCase(Locale.ROOT).contains(keyword))
+                            || (s.getAddress() != null && s.getAddress().toLowerCase(Locale.ROOT).contains(keyword))
+            );
+        }
+
+        // power
+        if (minPower != null) stream = stream.filter(s ->
+                s.getPillars().stream().anyMatch(p -> p.getPower() != null && p.getPower() >= minPower)
+        );
+        if (maxPower != null) stream = stream.filter(s ->
+                s.getPillars().stream().anyMatch(p -> p.getPower() != null && p.getPower() <= maxPower)
+        );
+
+        // price
+        if (minPrice != null) stream = stream.filter(s ->
+                s.getPillars().stream().anyMatch(p -> p.getPricePerKwh() != null && p.getPricePerKwh() >= minPrice)
+        );
+        if (maxPrice != null) stream = stream.filter(s ->
+                s.getPillars().stream().anyMatch(p -> p.getPricePerKwh() != null && p.getPricePerKwh() <= maxPrice)
+        );
+
+        // connectors
+        if (connectors != null && !connectors.isEmpty()) {
+            List<String> connectorList = connectors.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::toLowerCase)
+                    .toList();
+
+            stream = stream.filter(s ->
+                    s.getPillars().stream()
+                            .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).stream())
+                            .anyMatch(c -> c.getType() != null && connectorList.contains(c.getType().toLowerCase()))
+            );
+        }
+
+        // availableOnly
+        if (availableOnly != null && availableOnly) {
+            stream = stream.filter(s ->
+                    s.getPillars().stream()
+                            .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).stream())
+                            .anyMatch(c -> c.getStatus() != null && "AVAILABLE".equalsIgnoreCase(c.getStatus()))
+            );
+        }
+
+        // compute distance and filter by radius
+        List<ChargingStation> filtered = stream.collect(Collectors.toList());
+
+        if (latitude != null && longitude != null) {
+            for (ChargingStation s : filtered) {
+                Double dist = calculateDistance(latitude, longitude, s.getLatitude(), s.getLongitude());
+                s.setDistance(dist);
+            }
+
+            if (radiusKm != null) {
+                filtered = filtered.stream()
+                        .filter(s -> s.getDistance() != null && s.getDistance() <= radiusKm)
+                        .collect(Collectors.toList());
+            }
+
+            // sort by distance asc
+            filtered.sort(Comparator.comparing(ChargingStation::getDistance, Comparator.nullsLast(Double::compareTo)));
+        }
+
+        // pagination
+        int total = filtered.size();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), total);
+        List<ChargingStation> pageContent = start <= end ? filtered.subList(start, end) : Collections.emptyList();
+
+        return new PageImpl<>(pageContent, pageable, total);
+    }
 }
+
