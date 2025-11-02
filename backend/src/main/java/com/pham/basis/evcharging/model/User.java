@@ -47,7 +47,7 @@ public class User{
     private LocalDate dateOfBirth;
 
     //FK
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 

@@ -70,7 +70,7 @@ type Review = {
   createdAt: string;
 };
 
-/* ===== Backend response types (shape from your DTOs) ===== */
+/* ===== Backend response types ===== */
 interface ChargingStationSummaryResponse {
   id: number;
   name: string;
@@ -79,8 +79,8 @@ interface ChargingStationSummaryResponse {
   longitude: number;
   distance?: number;
   status: string;
-  availablePillars?: number;
-  totalPillars?: number;
+  availableConnectors?: number;
+  totalConnectors?: number;
   minPrice?: number;
   maxPrice?: number;
   minPower?: number;
@@ -96,26 +96,21 @@ interface ChargingStationDetailResponse {
   longitude: number;
   distance?: number;
   status: string;
-  availablePillars?: number;
-  totalPillars?: number;
+  availableConnectors?: number;
+  totalConnectors?: number;
   minPrice?: number;
   maxPrice?: number;
   minPower?: number;
   maxPower?: number;
   pillars: {
+    id?: number;
     code: string;
     status: string;
     power: number;
     pricePerKwh: number;
-    connectors: { id?: number; type: string }[];
+    connectors: { id?: number; status?: string; type: string }[];
   }[];
-  reviews?: {
-    id: string;
-    userName: string;
-    rating: number;
-    comment: string;
-    createdAt: string;
-  }[];
+  reviews?: { id: string; userName: string; rating: number; comment: string; createdAt: string; }[];
 }
 
 /* =========================
@@ -126,7 +121,7 @@ const formatVND = (n?: number) =>
 
 const defaultFilters: Filters = {
   radius: 100, connectors: [], availableOnly: false,
-  minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 10000,
+  minPower: 0, maxPower: 350, minPrice: 0, maxPrice: 50000,
   sort: "distance", page: 0, size: 50,
 };
 
@@ -214,26 +209,23 @@ const initials = (name?: string) =>
     .slice(0, 2);
 
 // map helpers: convert BE summary -> Station
-const mapSummaryToStation = (s: ChargingStationSummaryResponse): Station => {
-  return {
-    id: s.id,
-    name: s.name,
-    address: s.address,
-    latitude: s.latitude,
-    longitude: s.longitude,
-    status: s.status,
-    pillars: [], // summary doesn't include pillar list; empty for list view
-    distance: s.distance,
-    availablePorts: s.availablePillars ?? 0,
-    totalPorts: s.totalPillars ?? 0,
-    minPrice: s.minPrice ?? undefined,
-    maxPrice: s.maxPrice ?? undefined,
-    maxPower: s.maxPower ?? undefined,
-    connectorTypes: s.connectorTypes ?? [],
-  };
-};
+const mapSummaryToStation = (s: ChargingStationSummaryResponse): Station => ({
+  id: s.id,
+  name: s.name,
+  address: s.address,
+  latitude: s.latitude,
+  longitude: s.longitude,
+  status: s.status,
+  pillars: [],
+  distance: s.distance,
+  availablePorts: s.availableConnectors ?? 0,   // <—
+  totalPorts: s.totalConnectors ?? 0,           // <—
+  minPrice: s.minPrice ?? undefined,
+  maxPrice: s.maxPrice ?? undefined,
+  maxPower: s.maxPower ?? undefined,
+  connectorTypes: s.connectorTypes ?? [],
+});
 
-// map detail response -> Station (fill pillars & reviews separately)
 const mapDetailToStation = (d: ChargingStationDetailResponse): Station => {
   const pillars: Pillar[] = (d.pillars ?? []).map(p => ({
     code: p.code,
@@ -242,8 +234,9 @@ const mapDetailToStation = (d: ChargingStationDetailResponse): Station => {
     pricePerKwh: p.pricePerKwh,
     connectors: (p.connectors ?? []).map(c => ({ type: c.type })),
   }));
-
   const connectorTypes = [...new Set(pillars.flatMap(p => p.connectors.map(c => c.type)))];
+  const availableFromPillars =
+    pillars.filter(p => String(p.status).toLowerCase() === "available").length;
 
   return {
     id: d.id,
@@ -254,14 +247,15 @@ const mapDetailToStation = (d: ChargingStationDetailResponse): Station => {
     status: d.status,
     pillars,
     distance: d.distance,
-    availablePorts: d.availablePillars ?? pillars.filter(p => p.status === "Available").length,
-    totalPorts: d.totalPillars ?? pillars.length,
+    availablePorts: d.availableConnectors ?? availableFromPillars, // <—
+    totalPorts: d.totalConnectors ?? pillars.length,               // <—
     minPrice: d.minPrice ?? (pillars.length ? Math.min(...pillars.map(p => p.pricePerKwh)) : undefined),
     maxPrice: d.maxPrice ?? (pillars.length ? Math.max(...pillars.map(p => p.pricePerKwh)) : undefined),
     maxPower: d.maxPower ?? (pillars.length ? Math.max(...pillars.map(p => p.power)) : undefined),
     connectorTypes,
   };
 };
+
 
 /* =========================
    Component
@@ -295,7 +289,7 @@ const StationMap = () => {
 
   // draft values for popovers
   const [draftRadius, setDraftRadius] = useState(appliedFilters.radius);
-  const [priceMax, setPriceMax] = useState(appliedFilters.maxPrice ?? 10000);
+  const [priceMax, setPriceMax] = useState(appliedFilters.maxPrice ?? 50000);
   const [minPower, setMinPower] = useState(appliedFilters.minPower ?? 0);
   const [draftConnectors, setDraftConnectors] = useState<string[]>(appliedFilters.connectors ?? []);
   const [availableOnly, setAvailableOnly] = useState(appliedFilters.availableOnly ?? false);
@@ -389,7 +383,7 @@ const StationMap = () => {
 
   const clearAll = () => {
     setDraftRadius(defaultFilters.radius);
-    setPriceMax(defaultFilters.maxPrice ?? 1);
+    setPriceMax(defaultFilters.maxPrice ?? 50000);
     setMinPower(defaultFilters.minPower ?? 0);
     setDraftConnectors([]);
     setAvailableOnly(false);
@@ -523,7 +517,7 @@ const StationMap = () => {
             variant="outline" size="sm" className="rounded-full border-slate-200"
             onClick={() => { setShowPrice(v => !v); setShowRadius(false); setShowPower(false); setShowConnector(false); setShowMore(false); }}
           >
-            Up to {formatVND(appliedFilters.maxPrice ?? 10000)}/kWh
+            Up to {formatVND(appliedFilters.maxPrice ?? 50000)}/kWh
             {Number(appliedFilters.maxPrice) !== defaultFilters.maxPrice && (
               <Badge className="ml-2 rounded-full w-5 h-5 p-0 grid place-items-center">1</Badge>
             )}
@@ -536,7 +530,7 @@ const StationMap = () => {
                 <button onClick={() => setShowPrice(false)}><X className="w-4 h-4" /></button>
               </div>
               <p className="text-xs text-muted-foreground mb-2">Max price per kWh</p>
-              <input type="range" min={0} max={1} step={0.05} value={priceMax}
+              <input type="range" min={0} max={50000} step={500} value={priceMax}
                 onChange={(e) => setPriceMax(parseFloat(e.target.value))} className="w-full" />
               <div className="mt-1 text-sm">{formatVND(priceMax)}</div>
               <div className="mt-4 text-right"><Button size="sm" onClick={applyAllFilters}>Apply</Button></div>
@@ -702,7 +696,11 @@ const StationMap = () => {
                           <span className="font-medium text-blue-600">
                             {station.maxPower} kW • {station.maxPower && station.maxPower >= 150 ? "Fast" : "Standard"}
                           </span>
-                          <span className="text-muted-foreground">• {station.availablePorts}/{station.totalPorts} available</span>
+                          <span className="text-muted-foreground">
+                            {(station.totalPorts ?? 0) > 0
+                              ? `${station.availablePorts}/${station.totalPorts} available`
+                              : "—/— available"}
+                          </span>
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {station.connectorTypes?.map((c) => (
@@ -812,213 +810,213 @@ const StationMap = () => {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="w-[92vw] max-w-3xl p-0 overflow-hidden sm:rounded-2xl sm:max-h-[90vh] [&>button]:hidden">
           <div className="flex max-h-[82vh] flex-col">
-          {/* Header cover */}
-          <div className="relative h-20 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500">
-            <DialogClose asChild>
-              <button
-                type="button"
-                onClick={() => setDetailOpen(false)}
-                className="absolute right-3 top-3 rounded-full bg-white/90 p-2 shadow hover:bg-white"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </DialogClose>
-            
-            <div className="relative z-10 flex h-full items-end gap-3 px-5 pb-4">
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-white text-slate-700 shadow">
-                <span className="text-sm font-bold">{initials(selectedStation?.name)}</span>
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="truncate text-lg font-semibold text-white">
-                    {selectedStation?.name ?? "Loading…"}
-                  </h2>
-                  {selectedStation && (
-                    <Badge
-                      className={`border ${statusStyles[selectedStation.status] ?? "bg-slate-100 text-slate-700 border-slate-200"} bg-white/90`}
-                    >
-                      {selectedStation.status}
-                    </Badge>
-                  )}
+            {/* Header cover */}
+            <div className="relative h-20 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500">
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  onClick={() => setDetailOpen(false)}
+                  className="absolute right-3 top-3 rounded-full bg-white/90 p-2 shadow hover:bg-white"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </DialogClose>
+
+              <div className="relative z-10 flex h-full items-end gap-3 px-5 pb-4">
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-white text-slate-700 shadow">
+                  <span className="text-sm font-bold">{initials(selectedStation?.name)}</span>
                 </div>
-                <p className="truncate text-sm text-white/90">{selectedStation?.address}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate text-lg font-semibold text-white">
+                      {selectedStation?.name ?? "Loading…"}
+                    </h2>
+                    {selectedStation && (
+                      <Badge
+                        className={`border ${statusStyles[selectedStation.status] ?? "bg-slate-100 text-slate-700 border-slate-200"} bg-white/90`}
+                      >
+                        {selectedStation.status}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="truncate text-sm text-white/90">{selectedStation?.address}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Body */}
-          {selectedStation ? (
-            <div className="flex-1 overflow-y-auto space-y-4 p-4">
-              {/* Stats row */}
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <StatTile
-                  label="Availability"
-                  value={
-                    <div className="flex items-center gap-2">
-                      <span>{selectedStation.availablePorts}/{selectedStation.totalPorts}</span>
-                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    </div>
-                  }
-                  sub="Free / Total ports"
-                />
-                <StatTile
-                  label="Price Range"
-                  value={
-                    <>
-                      {formatVND(selectedStation.minPrice)}
-                      {selectedStation.maxPrice && selectedStation.maxPrice !== selectedStation.minPrice
-                        ? `–${formatVND(selectedStation.maxPrice)}`
-                        : ""}/kWh
-                    </>
-                  }
-                />
-                <StatTile
-                  label="Max Power"
-                  value={`${selectedStation.maxPower ?? "—"} kW`}
-                  sub={(selectedStation.maxPower ?? 0) >= 150 ? "Fast" : "Standard"}
-                />
-                <StatTile
-                  label="Distance"
-                  value={`${selectedStation.distance?.toFixed(1) ?? "—"} km`}
-                />
-              </div>
+            {/* Body */}
+            {selectedStation ? (
+              <div className="flex-1 overflow-y-auto space-y-4 p-4">
+                {/* Stats row */}
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <StatTile
+                    label="Availability"
+                    value={
+                      <div className="flex items-center gap-2">
+                        <span>{selectedStation.availablePorts}/{selectedStation.totalPorts}</span>
+                        <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                      </div>
+                    }
+                    sub="Free / Total ports"
+                  />
+                  <StatTile
+                    label="Price Range"
+                    value={
+                      <>
+                        {formatVND(selectedStation.minPrice)}
+                        {selectedStation.maxPrice && selectedStation.maxPrice !== selectedStation.minPrice
+                          ? `–${formatVND(selectedStation.maxPrice)}`
+                          : ""}/kWh
+                      </>
+                    }
+                  />
+                  <StatTile
+                    label="Max Power"
+                    value={`${selectedStation.maxPower ?? "—"} kW`}
+                    sub={(selectedStation.maxPower ?? 0) >= 150 ? "Fast" : "Standard"}
+                  />
+                  <StatTile
+                    label="Distance"
+                    value={`${selectedStation.distance?.toFixed(1) ?? "—"} km`}
+                  />
+                </div>
 
-              {/* Connector chips */}
-              <div>
-                <div className="mb-2 text-xs font-medium text-slate-500">Available Connectors</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedStation.connectorTypes?.length
-                    ? selectedStation.connectorTypes.map((c) => (
+                {/* Connector chips */}
+                <div>
+                  <div className="mb-2 text-xs font-medium text-slate-500">Available Connectors</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedStation.connectorTypes?.length
+                      ? selectedStation.connectorTypes.map((c) => (
                         <Badge key={c} variant="outline" className="rounded-full">
                           {c}
                         </Badge>
                       ))
-                    : <span className="text-sm text-slate-500">No connector info.</span>
-                  }
+                      : <span className="text-sm text-slate-500">No connector info.</span>
+                    }
+                  </div>
                 </div>
-              </div>
 
-              {/* Pillars */}
-              <div>
-                <div className="mb-2 text-xs font-medium text-slate-500">Charging Pillars</div>
-                <div className="grid max-h-72 grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
-                  {selectedStation.pillars.map((p) => (
-                    <div
-                      key={p.code}
-                      className="group relative rounded-xl border bg-white p-4 shadow-sm transition hover:-translate-y-[1px] hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-semibold">{p.code}</div>
-                            <PillarStatusBadge status={p.status} />
-                          </div>
-                          <div className="mt-1 text-sm text-slate-600">
-                            {p.power} kW • {formatVND(p.pricePerKwh)}/kWh
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {p.connectors.map((c, i) => (
-                              <Badge key={i} variant="secondary" className="rounded-full text-xs">
-                                {c.type}
-                              </Badge>
-                            ))}
+                {/* Pillars */}
+                <div>
+                  <div className="mb-2 text-xs font-medium text-slate-500">Charging Pillars</div>
+                  <div className="grid max-h-72 grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+                    {selectedStation.pillars.map((p) => (
+                      <div
+                        key={p.code}
+                        className="group relative rounded-xl border bg-white p-4 shadow-sm transition hover:-translate-y-[1px] hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-semibold">{p.code}</div>
+                              <PillarStatusBadge status={p.status} />
+                            </div>
+                            <div className="mt-1 text-sm text-slate-600">
+                              {p.power} kW • {formatVND(p.pricePerKwh)}/kWh
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {p.connectors.map((c, i) => (
+                                <Badge key={i} variant="secondary" className="rounded-full text-xs">
+                                  {c.type}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* right ribbon */}
-                      <div className="pointer-events-none absolute right-0 top-0 rounded-bl-xl rounded-tr-xl bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500 opacity-0 ring-1 ring-slate-200 transition group-hover:opacity-100">
-                        Port
+                        {/* right ribbon */}
+                        <div className="pointer-events-none absolute right-0 top-0 rounded-bl-xl rounded-tr-xl bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500 opacity-0 ring-1 ring-slate-200 transition group-hover:opacity-100">
+                          Port
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {selectedStation.pillars.length === 0 && (
-                    <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">
-                      No detailed port information from server.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Reviews */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-semibold">User Reviews</h3>
-                    {reviews.length > 0 && (
-                      <div className="flex items-center gap-1 text-sm text-slate-600">
-                        <Stars value={Math.round(avgRating(reviews))} />
-                        <span className="ml-1 text-xs">({reviews.length})</span>
+                    ))}
+                    {selectedStation.pillars.length === 0 && (
+                      <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">
+                        No detailed port information from server.
                       </div>
                     )}
                   </div>
-                  {!reviewsLoading && (
-                    <div className="text-sm text-slate-500">
-                      {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                </div>
+
+                {/* Reviews */}
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold">User Reviews</h3>
+                      {reviews.length > 0 && (
+                        <div className="flex items-center gap-1 text-sm text-slate-600">
+                          <Stars value={Math.round(avgRating(reviews))} />
+                          <span className="ml-1 text-xs">({reviews.length})</span>
+                        </div>
+                      )}
+                    </div>
+                    {!reviewsLoading && (
+                      <div className="text-sm text-slate-500">
+                        {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                      </div>
+                    )}
+                  </div>
+
+                  {reviewsLoading ? (
+                    <div className="rounded-xl border bg-white p-4 text-sm text-slate-500">Loading reviews…</div>
+                  ) : reviews.length === 0 ? (
+                    <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">No reviews yet.</div>
+                  ) : (
+                    <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                      {reviews.map((r) => (
+                        <div key={r.id} className="rounded-xl border bg-white p-3 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium">{r.userName}</div>
+                            <Stars value={r.rating} />
+                          </div>
+                          <p className="mt-1 text-sm">{r.comment}</p>
+                          <p className="mt-1 text-xs text-slate-500">{new Date(r.createdAt).toLocaleString()}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
 
-                {reviewsLoading ? (
-                  <div className="rounded-xl border bg-white p-4 text-sm text-slate-500">Loading reviews…</div>
-                ) : reviews.length === 0 ? (
-                  <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-600">No reviews yet.</div>
-                ) : (
-                  <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                    {reviews.map((r) => (
-                      <div key={r.id} className="rounded-xl border bg-white p-3 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">{r.userName}</div>
-                          <Stars value={r.rating} />
-                        </div>
-                        <p className="mt-1 text-sm">{r.comment}</p>
-                        <p className="mt-1 text-xs text-slate-500">{new Date(r.createdAt).toLocaleString()}</p>
-                      </div>
-                    ))}
+                {/* Sticky action bar */}
+                <div className="sticky bottom-0 -mx-4 border-t bg-white/95 px-4 py-3 backdrop-blur">
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setDetailOpen(false);
+                        if (selectedStation) navigate(`/booking/${selectedStation.id}`, { state: { station: selectedStation } });
+                      }}
+                    >
+                      <Bookmark className="mr-1 h-4 w-4" />
+                      Book this Station
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setDetailOpen(false);
+                        if (selectedStation) navigateToStation(selectedStation);
+                      }}
+                    >
+                      <Navigation className="mr-1 h-4 w-4" />
+                      Navigate
+                    </Button>
                   </div>
-                )}
-              </div>
-
-              {/* Sticky action bar */}
-              <div className="sticky bottom-0 -mx-4 border-t bg-white/95 px-4 py-3 backdrop-blur">
-                <div className="flex gap-3">
-                  <Button
-                    className="flex-1"
-                    onClick={() => {
-                      setDetailOpen(false);
-                      if (selectedStation) navigate(`/booking/${selectedStation.id}`, { state: { station: selectedStation } });
-                    }}
-                  >
-                    <Bookmark className="mr-1 h-4 w-4" />
-                    Book this Station
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setDetailOpen(false);
-                      if (selectedStation) navigateToStation(selectedStation);
-                    }}
-                  >
-                    <Navigation className="mr-1 h-4 w-4" />
-                    Navigate
-                  </Button>
                 </div>
               </div>
-            </div>
-          ) : (
-            // Skeleton while waiting for detail fetch
-            <div className="space-y-4 p-5">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
-                ))}
+            ) : (
+              // Skeleton while waiting for detail fetch
+              <div className="space-y-4 p-5">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+                  ))}
+                </div>
+                <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
+                <div className="h-36 animate-pulse rounded-xl bg-slate-100" />
               </div>
-              <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
-              <div className="h-36 animate-pulse rounded-xl bg-slate-100" />
-            </div>
-          )}
+            )}
           </div>
         </DialogContent>
       </Dialog>
