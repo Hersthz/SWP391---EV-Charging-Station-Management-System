@@ -16,10 +16,8 @@ import VerifyEmail from "./pages/VerifyEmail";
 import StationMap from "./pages/StationMap";
 import Profile from "./pages/Profile";
 import StaffDashboard from "./pages/StaffDashboard";
-import StaffPayments from "./components/staff/StaffPayments";
 import StaffIncidents from "./components/staff/StaffIncidents";
 import StaffStationMonitor from "./components/staff/StaffStationMonitor";
-import StaffStationDetails from "./components/staff/StaffStationsDetails";
 import Booking from "./pages/BookingPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminAddStation from "./components/admin/AdminAddStation";
@@ -34,7 +32,7 @@ import ChargingReceiptPage from "./pages/ChargingReceiptPage";
 import SessionPayment from "./pages/SessionPayment";
 import SessionPaymentResult from "./pages/SessionPaymentResult";
 import WalletTopupResult from "./pages/WalletTopupResult";
-import ContactHelp from "./pages/ContactHelp";
+import SubscriptionPage from "./pages/SubscriptionPage";
 import StationReviewPage from "./pages/StationReviewPage";
 
 const queryClient = new QueryClient();
@@ -51,8 +49,6 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/staff/monitor" element={<StaffStationMonitor />} />
-          <Route path="/staff/details" element={<StaffStationDetails />} />
-          <Route path="/staff/payments" element={<StaffPayments />} />
           <Route path="/staff/incidents" element={<StaffIncidents />} />
           <Route path="/staff/reports" element={<StaffReport />} />
           <Route path="/map" element={<StationMap />} />
@@ -78,7 +74,7 @@ const App = () => (
           <Route path="/session/payment" element={<SessionPayment />} />
           <Route path="/session-payment-result" element={<SessionPaymentResult />} />
           <Route path="/wallet/topup-result" element={<WalletTopupResult />} />
-          <Route path="/contact" element={<ContactHelp />} />
+          <Route path="/subscription" element={<SubscriptionPage />} />
           <Route path="/stations/:stationId/review" element={<StationReviewPage />} />
         </Routes>
       </BrowserRouter>

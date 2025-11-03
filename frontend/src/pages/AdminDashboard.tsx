@@ -157,33 +157,6 @@ const AdminDashboard = () => {
                   <span className="font-bold text-white">{time}</span> • {date}
                 </motion.div>
               </div>
-              
-              {/* Phần Stats nhanh */}
-              <motion.div 
-                className="md:col-span-1 space-y-5"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-              >
-                <div className="flex items-center gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                    <MapPin className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-300">Online Stations</div>
-                    <div className="text-2xl font-bold text-white">47 / 52</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
-                    <AlertTriangle className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-300">Active Alerts</div>
-                    <div className="text-2xl font-bold text-white">1 High Priority</div>
-                  </div>
-                </div>
-              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
