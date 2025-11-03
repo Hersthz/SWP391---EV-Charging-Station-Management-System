@@ -8,7 +8,8 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Progress } from "../../components/ui/progress";
+// ⬇️ BỎ Progress vì không còn dùng
+// import { Progress } from "../../components/ui/progress";
 import { Separator } from "../../components/ui/separator";
 import { useToast } from "../../hooks/use-toast";
 import {
@@ -88,6 +89,9 @@ type StationVM = {
   lat: number;
   lng: number;
   status: string;
+  // ⬇️ THÊM: chỉ cần tổng số pillars để hiển thị
+  pillars: number;
+  // các field còn lại giữ để dùng ở chỗ khác
   available: number;
   total: number;
   minPrice?: number;
@@ -171,6 +175,8 @@ const toVM = (s: ChargingStationDetailResponse): StationVM => {
     lat: s.latitude,
     lng: s.longitude,
     status,
+    // ⬇️ CHỈ SỐ LƯỢNG PILLARS (ưu tiên count từ mảng pillars, fallback totalPillars)
+    pillars: totalDerived || Number(s.totalPillars ?? 0),
     available,
     total,
     minPrice,
@@ -242,7 +248,7 @@ const cardVariants: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: EASE_BEZIER }, // <– dùng tuple
+    transition: { duration: 0.5, ease: EASE_BEZIER },
   },
 };
 
@@ -430,7 +436,8 @@ const AdminStations = () => {
                           <StatusBadge status={s.status} />
                         </div>
                         <div className="mt-1 text-sm text-slate-700">
-                          Pillars: <span className="font-medium">{s.available}/{s.total}</span>
+                          {/* ⬇️ CHỈ HIỂN THỊ SỐ LƯỢNG PILLARS */}
+                          Pillars: <span className="font-medium">{s.pillars}</span>
                           <br />
                           Power: <span className="font-medium">{s.maxPower ?? "—"} kW</span>
                           <br />
@@ -478,6 +485,7 @@ const AdminStations = () => {
                       <TableRow className="border-b-slate-200/60">
                         <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider">Station</TableHead>
                         <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider">Status</TableHead>
+                        {/* ⬇️ Vẫn là tiêu đề Pillars nhưng chỉ hiển thị con số */}
                         <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider">Pillars</TableHead>
                         <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider">Power</TableHead>
                         <TableHead className="font-semibold text-slate-500 uppercase text-xs tracking-wider">Price</TableHead>
@@ -504,21 +512,9 @@ const AdminStations = () => {
                           <TableCell>
                             <StatusBadge status={s.status} />
                           </TableCell>
-                          <TableCell>
-                            <div className="space-y-1 min-w-24">
-                              <div className="text-sm font-medium text-slate-900">
-                                {s.available}/{s.total}
-                              </div>
-                              <Progress
-                                value={s.total ? (s.available / s.total) * 100 : 0}
-                                className={`h-2 bg-slate-200 ${s.available / (s.total || 1) < 0.2
-                                    ? "[&>div]:bg-red-500"
-                                    : s.available / (s.total || 1) < 0.5
-                                    ? "[&>div]:bg-amber-500"
-                                    : "[&>div]:bg-emerald-500"
-                                  }`}
-                              />
-                            </div>
+                          {/* ⬇️ CHỈ LÀ CON SỐ PILLARS, KHÔNG PROGRESS/AVAILABLE */}
+                          <TableCell className="text-sm font-medium text-slate-900 min-w-24">
+                            {s.pillars}
                           </TableCell>
                           <TableCell className="text-sm font-medium text-slate-900">
                             {s.maxPower ?? "—"} kW
@@ -596,6 +592,7 @@ const AdminStations = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {/* ...giữ nguyên phần incidents... */}
                       {incidents.map((it) => (
                         <TableRow
                           key={it.id}

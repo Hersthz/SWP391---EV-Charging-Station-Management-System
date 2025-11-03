@@ -1,3 +1,4 @@
+// src/pages/ChargingSessionPage.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -52,7 +53,7 @@ type ReservationBrief = {
 type VehicleBrief = {
   id: number;
   batteryCapacityKwh?: number;
-  socNow?: number; // 0..1
+  currentSoc?: number; // 0..1  (đã đổi từ socNow)
 };
 
 /** ===== Helpers ===== */
@@ -146,7 +147,7 @@ const ChargingSessionPage = () => {
   // --- SOC base info
   const batteryKwh = vehicle?.batteryCapacityKwh || undefined;
   const initialSocFrac =
-    initialSocFromBE != null ? initialSocFromBE : typeof vehicle?.socNow === "number" ? vehicle!.socNow! : undefined;
+    initialSocFromBE != null ? initialSocFromBE : typeof vehicle?.currentSoc === "number" ? vehicle!.currentSoc! : undefined;
 
   // === current SOC fraction dựa trên energyCount ===
   const computedSocFrac = useMemo(() => {
@@ -266,9 +267,6 @@ const ChargingSessionPage = () => {
     return () => { cancelled = true; };
   }, [sessionIdParam, vehicleIdParam]);
 
-
-  
-
   /** === Start/Stop tick helpers === */
   const startTick = () => {
     if (!sessionIdParam || tickTimer.current) return;
@@ -339,7 +337,6 @@ const ChargingSessionPage = () => {
             const stopPayload = data?.data ?? data;
             
             // >>> AUTO-DEDUCT WALLET IF PREPAID <<<
-            // Chuẩn bị prevLast/meta sớm để tính method theo yêu cầu
             const prevLast = JSON.parse(localStorage.getItem(`session_last_${sessionIdParam}`) || "null");
             const total = Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? 0);
             const method = String(
@@ -358,9 +355,7 @@ const ChargingSessionPage = () => {
                   referenceId: Number(sessionIdParam),
                   description: `Charging session #${sessionIdParam}`
                 }, { withCredentials: true });
-                // Không cần redirect – vẫn đi tiếp sang Receipt như cũ
               } catch (e: any) {
-                // Thiếu tiền? → fallback đưa sang trang thanh toán VNPAY
                 navigate("/session/payment", {
                   replace: true,
                   state: {
@@ -372,7 +367,7 @@ const ChargingSessionPage = () => {
                     endTime: stopPayload?.endTime || new Date().toISOString(),
                     energyKwh: stopPayload?.totalEnergy ?? snap?.energyCount ?? 0,
                     description: `Charging session #${sessionIdParam}`,
-                    forceMethod: "VNPAY" // khoá UI ở trang SessionPayment
+                    forceMethod: "VNPAY"
                   }
                 });
                 return;
@@ -381,8 +376,7 @@ const ChargingSessionPage = () => {
 
             localStorage.setItem(`session_stop_${sessionIdParam}`, JSON.stringify(stopPayload));
 
-            // đọc lại snapshot/meta để trộn
-            const meta     = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
+            const meta = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
 
             const finalSnap = {
               id: Number(sessionIdParam),
@@ -405,7 +399,6 @@ const ChargingSessionPage = () => {
             // nếu /stop fail vẫn điều hướng, Receipt sẽ ráng đọc được phần đã lưu
           }
 
-          // Điều hướng sau khi đã setItem xong 
           navigate(`/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${reservationIdParam || ""}`);
           return;
         }
@@ -451,16 +444,17 @@ const ChargingSessionPage = () => {
         return {
           id: Number(found.id ?? found.vehicleId),
           batteryCapacityKwh: Number(found.batteryCapacityKwh ?? found.battery_capacity_kwh),
-          socNow: normalizeSoc(found.socNow ?? found.soc_now),
+          currentSoc: normalizeSoc(found.currentSoc ?? found.socNow ?? found.soc_now),
         };
       }
     } catch {}
 
     const kwhLS = Number(localStorage.getItem("battery_kwh"));
-    const socRaw = Number(localStorage.getItem("vehicle_soc_now_frac") ?? localStorage.getItem("soc_now"));
+    const socRaw =
+      Number(localStorage.getItem("vehicle_soc_now_frac") ?? localStorage.getItem("current_soc") ?? localStorage.getItem("soc_now"));
     const socLS = normalizeSoc(socRaw);
     if (Number.isFinite(kwhLS) && typeof socLS === "number") {
-      return { id: vehicleId, batteryCapacityKwh: kwhLS, socNow: socLS };
+      return { id: vehicleId, batteryCapacityKwh: kwhLS, currentSoc: socLS };
     }
     return null;
   }
@@ -493,7 +487,6 @@ const ChargingSessionPage = () => {
             description: `Charging session #${sessionIdParam}`
           }, { withCredentials: true });
         } catch (e: any) {
-          // fallback sang VNPAY nếu ví thiếu
           navigate("/session/payment", {
             replace: true,
             state: {

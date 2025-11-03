@@ -23,7 +23,7 @@ const QuickActions = () => {
     },
     {
       icon: History,
-      title: "Report & Analytics",
+      title: "Report",
       desc: "View your charging history and analytics",
       action: () => navigate("/reports"),
       tone: {
@@ -33,7 +33,7 @@ const QuickActions = () => {
         btnText: "text-orange-700",
         orb: "bg-orange-300/30",
       },
-      btnText: "View History",
+      btnText: "View Reports",
     },
     {
       icon: Wallet,
@@ -51,9 +51,9 @@ const QuickActions = () => {
     },
     {
       icon: HeadphonesIcon,
-      title: "24/7 Support",
-      desc: "Contact us for help",
-      action: () => navigate("/contact"),
+      title: "Your Plan",
+      desc: "Manage your subscription",
+      action: () => navigate("/subscription"),
       tone: {
         grad: "from-emerald-600 via-green-500 to-lime-500",
         ring: "ring-emerald-200/50",
@@ -61,7 +61,7 @@ const QuickActions = () => {
         btnText: "text-emerald-700",
         orb: "bg-lime-300/30",
       },
-      btnText: "Contact",
+      btnText: "View Subscription",
     },
   ];
 

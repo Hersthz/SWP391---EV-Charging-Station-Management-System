@@ -18,7 +18,6 @@ import {
   MapPin,
   Wifi,
   WifiOff,
-  Signal,
   Eye,
   AlertTriangle,
   Zap,
@@ -28,13 +27,19 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 /* ===================== Backend types ===================== */
+type ConnectorDto = {
+  id?: number;
+  type?: string;   // AC / Type2 / CCS / CHAdeMO ...
+  status?: string; // Available / Occupied / Faulted / Maintenance / Offline ...
+};
+
 type PillarDto = {
   code?: string;
-  status?: string;
-  power?: number;
-  pricePerKwh?: number;
-  connectors?: { id?: number; type?: string }[];
+  power?: number;        // kW  (lấy từ pillar)
+  pricePerKwh?: number;  // VND/kWh (lấy từ pillar)
+  connectors?: ConnectorDto[];
 };
+
 type ReviewDto = {
   id?: string;
   userName?: string;
@@ -42,6 +47,7 @@ type ReviewDto = {
   comment?: string;
   createdAt?: string;
 };
+
 type ChargingStationDetailResponse = {
   id?: number;
   name?: string;
@@ -49,7 +55,6 @@ type ChargingStationDetailResponse = {
   latitude?: number;
   longitude?: number;
   status?: string;
-  availablePillars?: number;
   totalPillars?: number;
   minPrice?: number;
   maxPrice?: number;
@@ -59,7 +64,7 @@ type ChargingStationDetailResponse = {
   reviews?: ReviewDto[];
 };
 
-/* ===================== Bảng màu & Helpers ===================== */
+/* ===================== Colors & helpers ===================== */
 const STATUS_COLORS = {
   Available: {
     hex: "#10b981", // Emerald 500
@@ -81,23 +86,16 @@ const STATUS_COLORS = {
     hex: "#64748b", // Slate 500
     badge: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
   },
-};
+} as const;
 
-// Helper render badge trạng thái cho Pillar
-const PillarStatusBadge = ({ status }: { status?: string }) => {
-  const s = (status || "UNKNOWN").toUpperCase();
-  let style = STATUS_COLORS.Unknown.badge;
-
-  if (s === "AVAILABLE") style = STATUS_COLORS.Available.badge;
-  else if (s === "CHARGING") style = STATUS_COLORS.Charging.badge;
-  else if (s === "MAINTENANCE") style = STATUS_COLORS.Maintenance.badge;
-  else if (["UNAVAILABLE", "OFFLINE", "FAULTED"].includes(s)) style = STATUS_COLORS.Offline.badge;
-
-  return (
-    <Badge className={`${style} w-28 justify-center`}>
-      {s === "FAULTED" ? "OFFLINE" : s}
-    </Badge>
-  );
+const norm = (s?: string) => (s || "UNKNOWN").trim().toUpperCase();
+const toGroup = (s?: string): keyof typeof STATUS_COLORS | "Unknown" => {
+  const x = norm(s);
+  if (x === "AVAILABLE") return "Available";
+  if (x === "CHARGING" || x === "OCCUPIED") return "Charging";
+  if (x === "MAINTENANCE" || x === "MAINTAINING") return "Maintenance";
+  if (x === "OFFLINE" || x === "FAULTED" || x === "UNAVAILABLE") return "Offline";
+  return "Unknown";
 };
 
 /* ===================== Component ===================== */
@@ -107,20 +105,23 @@ const StaffDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /* ===================== LOGIC FETCH DATA ===================== */
+  /* ===================== Fetch ===================== */
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
       try {
         setLoading(true);
         setError(null);
+
         const meRes = await api.get("/auth/me", { signal: controller.signal });
         const me = meRes.data;
         const userId =
           me?.user_id ?? me?.id ?? me?.userId ?? Number(localStorage.getItem("userId"));
         if (!userId) throw new Error("Không tìm thấy userId từ /auth/me");
+
         const res = await api.get(`/station-managers/${userId}`, { signal: controller.signal });
         const raw = res.data?.data ?? res.data;
+
         let stationObj: any = null;
         if (Array.isArray(raw)) {
           if (raw.length === 0) {
@@ -132,10 +133,12 @@ const StaffDashboard = () => {
         } else {
           stationObj = raw.station ?? raw.stationDto ?? raw;
         }
+
         if (!stationObj) {
           setStation(null);
           return;
         }
+
         const mapped: ChargingStationDetailResponse = {
           id: stationObj.id ?? stationObj.stationId ?? undefined,
           name: stationObj.name ?? stationObj.stationName,
@@ -143,7 +146,6 @@ const StaffDashboard = () => {
           latitude: stationObj.latitude,
           longitude: stationObj.longitude,
           status: stationObj.status,
-          availablePillars: stationObj.availablePillars,
           totalPillars:
             stationObj.totalPillars ??
             stationObj.total_pillars ??
@@ -152,9 +154,23 @@ const StaffDashboard = () => {
           maxPrice: stationObj.maxPrice ?? stationObj.max_price,
           minPower: stationObj.minPower ?? stationObj.min_power,
           maxPower: stationObj.maxPower ?? stationObj.max_power,
-          pillars: Array.isArray(stationObj.pillars) ? stationObj.pillars : undefined,
+          pillars: Array.isArray(stationObj.pillars)
+            ? stationObj.pillars.map((p: any) => ({
+                code: p.code,
+                power: p.power,
+                pricePerKwh: p.pricePerKwh ?? p.price_per_kwh,
+                connectors: Array.isArray(p.connectors)
+                  ? p.connectors.map((c: any) => ({
+                      id: c.id,
+                      type: c.type,
+                      status: c.status,
+                    }))
+                  : [],
+              }))
+            : [],
           reviews: Array.isArray(stationObj.reviews) ? stationObj.reviews : undefined,
         };
+
         setStation(mapped);
       } catch (err: any) {
         if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
@@ -174,29 +190,32 @@ const StaffDashboard = () => {
     return () => controller.abort();
   }, [navigate]);
 
-  // Tính toán số liệu cho biểu đồ 
-  const pillarStats = useMemo(() => {
+  /* ===================== Stats (by CONNECTOR) ===================== */
+  const connectorStats = useMemo(() => {
     const pillars = station?.pillars ?? [];
-    const total = pillars.length; // Luôn đếm từ mảng
+    let total = 0;
     let available = 0;
     let charging = 0;
     let maintenance = 0;
     let offline = 0;
 
-    pillars.forEach((p) => {
-      const status = (p.status || "UNKNOWN").toUpperCase();
-      if (status === "AVAILABLE") available++;
-      else if (status === "CHARGING") charging++;
-      else if (status === "MAINTENANCE") maintenance++;
-      else offline++; // Gộp (FAULTED, OFFLINE, UNKNOWN...)
-    });
+    for (const p of pillars) {
+      for (const c of p.connectors ?? []) {
+        total++;
+        const g = toGroup(c.status);
+        if (g === "Available") available++;
+        else if (g === "Charging") charging++;
+        else if (g === "Maintenance") maintenance++;
+        else offline++; // gộp Offline + Unknown
+      }
+    }
 
     const chartData = [
       { name: "Available", value: available },
       { name: "Charging", value: charging },
       { name: "Maintenance", value: maintenance },
       { name: "Offline", value: offline },
-    ].filter((d) => d.value > 0); // Chỉ hiển thị nếu có giá trị
+    ].filter((d) => d.value > 0);
 
     return { total, available, charging, maintenance, offline, chartData };
   }, [station]);
@@ -225,7 +244,7 @@ const StaffDashboard = () => {
 
   return (
     <StaffLayout title="Staff Dashboard">
-      {/* ===== HERO HEADER ===== */}
+      {/* ===== HERO ===== */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30">
@@ -239,13 +258,13 @@ const StaffDashboard = () => {
               {station.address ?? "Address not provided"}
             </p>
             {String(station.status ?? "").toLowerCase() === "available" ? (
-              <Badge className={`${STATUS_COLORS.Available.badge} mt-1 flex items-center gap-1 w-fit`}>
-                <Wifi className="w-4 h-4" />
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 mt-1 w-fit">
+                <Wifi className="w-4 h-4 mr-1" />
                 Station Available
               </Badge>
             ) : (
-              <Badge className={`${STATUS_COLORS.Offline.badge} mt-1 flex items-center gap-1 w-fit`}>
-                <WifiOff className="w-4 h-4" />
+              <Badge className="bg-red-100 text-red-700 border-red-200 mt-1 w-fit">
+                <WifiOff className="w-4 h-4 mr-1" />
                 Station {station.status ?? "Unknown"}
               </Badge>
             )}
@@ -267,14 +286,14 @@ const StaffDashboard = () => {
         </div>
       </div>
 
-      {/* ===== BỐ CỤC CHÍNH ===== */}
+      {/* ===== MAIN GRID ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* === CỘT TRÁI === */}
+        {/* === LEFT: Table === */}
         <div className="lg:col-span-2">
           <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15 h-full">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-slate-900">
-                Pillar Status & Configuration
+                Pillars & Connector Status
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -282,44 +301,69 @@ const StaffDashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b-slate-300 hover:bg-transparent">
-                      <TableHead className="w-[100px] text-slate-900 font-semibold">
-                        Pillar
-                      </TableHead>
-                      <TableHead className="text-center text-slate-900 font-semibold">
-                        Status
-                      </TableHead>
-                      <TableHead className="text-slate-900 font-semibold">Power</TableHead>
-                      <TableHead className="text-slate-900 font-semibold">
+                      <TableHead className="w-[120px] text-slate-900 font-semibold">Pillar</TableHead>
+                      <TableHead className="w-[120px] text-slate-900 font-semibold">Power</TableHead>
+                      <TableHead className="w-[160px] text-slate-900 font-semibold">
                         Price (VND/kWh)
                       </TableHead>
-                      <TableHead className="text-right text-slate-900 font-semibold">
-                        Connectors
-                      </TableHead>
+                      <TableHead className="text-slate-900 font-semibold">Connectors</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {station.pillars.map((p, idx) => (
-                      <TableRow
-                        key={p.code ?? idx}
-                        className="border-b-slate-200/80 hover:bg-slate-50/50"
-                      >
-                        <TableCell className="font-medium text-slate-800">
-                          {p.code ?? `P-${idx + 1}`}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <PillarStatusBadge status={p.status} />
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-800">
-                          {p.power ?? "—"} kW
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-800">
-                          {p.pricePerKwh?.toLocaleString("vi-VN") ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-slate-800">
-                          {Array.isArray(p.connectors) ? p.connectors.length : 0}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {station.pillars.map((p, idx) => {
+                      const connectors = p.connectors ?? [];
+                      return (
+                        <TableRow key={p.code ?? idx} className="border-b-slate-200/80 hover:bg-slate-50/50">
+                          <TableCell className="font-semibold text-slate-900">
+                            {p.code ?? `P-${idx + 1}`}
+                          </TableCell>
+
+                          {/* Power & Price lấy từ pillar */}
+                          <TableCell className="text-slate-800">
+                            {typeof p.power === "number" ? `${p.power} kW` : "— kW"}
+                          </TableCell>
+                          <TableCell className="text-slate-800">
+                            {typeof p.pricePerKwh === "number"
+                              ? p.pricePerKwh.toLocaleString("vi-VN")
+                              : "—"}
+                          </TableCell>
+
+                          {/* Connectors: type + status */}
+                          <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                              {connectors.length ? (
+                                connectors.map((c) => {
+                                  const g = toGroup(c.status);
+                                  const style = STATUS_COLORS[g].badge;
+                                  const label =
+                                    g === "Offline"
+                                      ? "OFFLINE"
+                                      : g === "Maintenance"
+                                      ? "MAINT."
+                                      : g === "Charging"
+                                      ? "BUSY"
+                                      : g === "Available"
+                                      ? "OK"
+                                      : "UNK";
+                                  return (
+                                    <Badge
+                                      key={c.id ?? `${p.code}-${c.type}-${c.status}`}
+                                      className={`${style} rounded-full`}
+                                    >
+                                      <span className="font-semibold">{c.type ?? "—"}</span>
+                                      <span className="mx-1">•</span>
+                                      <span className="opacity-80 text-xs">{label}</span>
+                                    </Badge>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-sm text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (
@@ -331,13 +375,13 @@ const StaffDashboard = () => {
           </Card>
         </div>
 
-        {/* === CỘT PHẢI === */}
+        {/* === RIGHT: KPIs === */}
         <div className="lg:col-span-1 space-y-6">
-          {/* --- KPI 1 --- */}
+          {/* --- KPI: Connector Availability --- */}
           <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-base font-semibold text-slate-900">
-                Pillar Availability
+                Connector Availability
               </CardTitle>
               <PieChartIcon className="w-5 h-5 text-primary" />
             </CardHeader>
@@ -358,15 +402,15 @@ const StaffDashboard = () => {
                       }}
                     />
                     <Pie
-                      data={pillarStats.chartData}
-                      cx="50%" 
+                      data={connectorStats.chartData}
+                      cx="50%"
                       cy="50%"
                       innerRadius={60}
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {pillarStats.chartData.map((entry) => (
+                      {connectorStats.chartData.map((entry) => (
                         <Cell
                           key={`cell-${entry.name}`}
                           fill={
@@ -380,17 +424,17 @@ const StaffDashboard = () => {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-4xl font-extrabold text-emerald-600">
-                    {pillarStats.available}
+                    {connectorStats.available}
                   </span>
                   <span className="text-base font-semibold text-muted-foreground">
-                    / {pillarStats.total} Total
+                    / {connectorStats.total} Total
                   </span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* --- KPI 2 --- */}
+          {/* --- KPI 2: Power Range --- */}
           <Card className="relative bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15 overflow-hidden">
             <Zap className="w-32 h-32 text-emerald-500/10 absolute -right-8 -top-8" />
             <CardHeader className="pb-2 relative z-10">
@@ -418,7 +462,7 @@ const StaffDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* --- KPI 3 --- */}
+          {/* --- KPI 3: Price Range --- */}
           <Card className="relative bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15 overflow-hidden">
             <DollarSign className="w-32 h-32 text-amber-500/10 absolute -right-8 -bottom-8" />
             <CardHeader className="pb-2 relative z-10">

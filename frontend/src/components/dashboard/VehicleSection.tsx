@@ -21,7 +21,7 @@ type VehicleBE = {
   maxPower?: number;
   range?: number;
   battery?: number;        // kWh
-  socNow?: number;         // 0..1 or 0..100
+  currentSoc?: number;         // 0..1 or 0..100
   batteryHealthPct?: number;
   connectorStandard?: string; // "Type 2"/"CCS"...
 };
@@ -62,14 +62,14 @@ const VehicleSection = () => {
         if (!ignore) {
           setList(arr.length ? arr : [
             // fallback 1 xe cho demo nếu BE trả rỗng
-            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, socNow: Number(localStorage.getItem("soc_now") ?? 78) }
+            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, currentSoc: Number(localStorage.getItem("currentSoc") ?? 78) }
           ]);
           setIdx(0);
         }
       } catch {
         if (!ignore) {
           setList([
-            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, socNow: Number(localStorage.getItem("soc_now") ?? 78) }
+            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, currentSoc: Number(localStorage.getItem("currentSoc") ?? 78) }
           ]);
           setIdx(0);
         }
@@ -88,7 +88,7 @@ const VehicleSection = () => {
     return Array.from(new Set(arr));
   }, [veh]);
 
-  const socPct = typeof veh?.socNow === "number" ? Math.max(0, Math.min(100, pctFrom01or100(veh.socNow)!)) : undefined;
+  const socPct = typeof veh?.currentSoc === "number" ? Math.max(0, Math.min(100, pctFrom01or100(veh.currentSoc)!)) : undefined;
 
   /* =========================
      Selector handlers

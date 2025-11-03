@@ -38,7 +38,7 @@ type Vehicle = {
   acMaxKw?: number;
   dcMaxKw?: number;
   efficiency?: number;
-  socNow?: number; // %
+  currentSoc?: number; // %  (đã đổi từ socNow)
   socTarget?: number;
 };
 
@@ -156,7 +156,7 @@ const fmtVnd = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency"
 const isArrivableNow = (startIso: string) => Date.now() >= new Date(startIso).getTime();
 
 function mapApiVehicle(v: any): Vehicle {
-  const rawSoc = v?.socNow ?? v?.soc_now;
+  const rawSoc = v?.currentSoc ?? v?.socNow ?? v?.soc_now;
   const socPct = typeof rawSoc === "number" ? (rawSoc <= 1 ? Math.round(rawSoc * 100) : Math.round(rawSoc)) : undefined;
   return {
     id: v?.id ?? v?.vehicleId,
@@ -167,7 +167,7 @@ function mapApiVehicle(v: any): Vehicle {
     acMaxKw: v?.acMaxKw ?? v?.ac_max_kw,
     dcMaxKw: v?.dcMaxKw ?? v?.dc_max_kw,
     efficiency: v?.efficiency,
-    socNow: socPct,
+    currentSoc: socPct,
   };
 }
 
@@ -224,14 +224,14 @@ function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefine
 
 /** ===== UI palette per status (stripe + card + badge + button) ===== */
 type UIConf = {
-  stripe: string;   // gradient for the left stripe
-  ring: string;     // ring color
-  glow: string;     // shadow color
-  badge: string;    // badge chip
-  text: string;     // accent text
-  btn: string;      // primary button gradient
-  btnGlow: string;  // button glow
-  halo: string;     // animated border halo
+  stripe: string;
+  ring: string;
+  glow: string;
+  badge: string;
+  text: string;
+  btn: string;
+  btnGlow: string;
+  halo: string;
   icon: React.ReactNode;
   label: string;
 };
@@ -680,8 +680,8 @@ const StatusCards = () => {
           setVehicles(list);
           if (list.length === 1) {
             setVehicleId(list[0].id);
-            if (typeof list[0].socNow === "number") setCurrentSoc(list[0].socNow);
-            fetchEstimateFor(enriched, list[0].id, list[0].socNow);
+            if (typeof list[0].currentSoc === "number") setCurrentSoc(list[0].currentSoc);
+            fetchEstimateFor(enriched, list[0].id, list[0].currentSoc);
           }
         })
         .catch(() => setVehicles([]));
@@ -704,6 +704,7 @@ const StatusCards = () => {
         stationId: r.stationId,
         pillarId: r.pillarId,
         connectorId: r.connectorId,
+        // BE vẫn nhận key 'socNow' → giữ nguyên tên field request
         socNow: isFinite(socToUse) ? socToUse / 100 : undefined,
         socTarget: 1,
       };
@@ -1114,7 +1115,7 @@ const StatusCards = () => {
                   const v = Number(e.target.value) || null;
                   setVehicleId(v);
                   const picked = vehicles.find((x) => x.id === v);
-                  const socPct = typeof picked?.socNow === "number" ? picked!.socNow! : currentSoc;
+                  const socPct = typeof picked?.currentSoc === "number" ? picked!.currentSoc! : currentSoc;
                   setCurrentSoc(socPct);
                   const rr = items.find((x) => x.reservationId === pmResId!);
                   if (rr) fetchEstimateFor(rr, v!, socPct);
@@ -1198,5 +1199,3 @@ const StatusCards = () => {
 };
 
 export default StatusCards;
-
-

@@ -91,6 +91,7 @@ type VehicleBE = {
   variant?: string;
 
   // BE fields có thể trả snake_case
+  currentSoc?: number; 
   soc_now?: number;               // 0..1 (fraction) hoặc % (0..100)
   socNow?: number;
 
@@ -160,8 +161,15 @@ const Profile = () => {
   }
 
   function mapVehicleBEToUI(v: VehicleBE): Vehicle {
-    const socRaw = typeof v.soc_now === "number" ? v.soc_now : v.socNow;
-    const cap = typeof v.battery_capacity_kwh === "number" ? v.battery_capacity_kwh : v.batteryCapacityKwh;
+    // LẤY SoC theo thứ tự ưu tiên đúng
+    const socRaw =
+      (typeof v.currentSoc === "number" ? v.currentSoc : undefined) ??
+      (typeof v.soc_now === "number" ? v.soc_now : undefined) ??
+      (typeof v.socNow === "number" ? v.socNow : undefined);
+
+    const cap =
+      (typeof v.batteryCapacityKwh === "number" ? v.batteryCapacityKwh : undefined) ??
+      (typeof v.battery_capacity_kwh === "number" ? v.battery_capacity_kwh : undefined);
 
     return {
       id: v.id,
@@ -169,13 +177,9 @@ const Profile = () => {
       model: v.model ?? "",
       year: String(v.year ?? ""),
       variant: v.variant,
-
-      socNowPct: toPercent(socRaw),
+      socNowPct: toPercent(socRaw),                     // <-- giờ sẽ có %
       connectorType: v.connectorStandard ?? v.connectorType ?? "",
-
-      batteryCapacityKwh: typeof cap === "number" ? cap : undefined,
-
-      // giữ lại cho form thêm mới/local preview
+      batteryCapacityKwh: cap,                          // kWh
       range: typeof v.range === "number" ? v.range : undefined,
       battery: typeof v.battery === "number" ? v.battery : undefined,
       isPrimary: !!v.isPrimary,
@@ -204,9 +208,6 @@ const Profile = () => {
         // có thể là { data: [...] } hoặc array trực tiếp
         const raw = (vRes?.data?.data ?? vRes?.data ?? []) as VehicleBE[];
         const list = raw.map(mapVehicleBEToUI);
-
-        // nếu BE không gắn isPrimary, đánh dấu chiếc đầu tiên
-        if (list.length && !list.some((x) => x.isPrimary)) list[0].isPrimary = true;
 
         setVehicles(list);
       } catch {

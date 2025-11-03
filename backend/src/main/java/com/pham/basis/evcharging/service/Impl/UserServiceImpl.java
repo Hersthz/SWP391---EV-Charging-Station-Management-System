@@ -16,6 +16,7 @@ import com.pham.basis.evcharging.repository.RoleRepository;
 import com.pham.basis.evcharging.repository.VehicleRepository;
 import com.pham.basis.evcharging.service.UserService;
 import com.pham.basis.evcharging.service.WalletService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
@@ -81,6 +82,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void createOrUpdateFromOAuth(String email, String full_name, boolean emailVerified) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
@@ -305,6 +307,7 @@ public class UserServiceImpl implements UserService {
                     .limit(numVehicles)
                     .map(template -> {
                         Vehicle v = new Vehicle();
+                        System.out.println("HELLOOOOOOOOO" + template.getCurrentSoc());
                         v.setUser(user);
                         v.setMake(template.getMake());
                         v.setModel(template.getModel());
