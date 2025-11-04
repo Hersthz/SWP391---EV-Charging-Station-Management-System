@@ -1,0 +1,37 @@
+package com.pham.basis.evcharging.dto.request;
+
+
+
+import jakarta.validation.constraints.*;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+
+public class VehicleRequest {
+
+    @NotBlank(message = "Make is required")
+    private String make;
+
+    @NotBlank(message = "Model is required")
+    private String model;
+
+    @NotNull(message = "Current SOC is required")
+    private Double currentSoc;
+
+    @NotNull(message = "Battery capacity is required")
+    @DecimalMin(value = "5.0", message = "Battery capacity must be >= 5 kWh")
+    @DecimalMax(value = "200.0", message = "Battery capacity must be <= 200 kWh")
+    private Double batteryCapacityKwh;
+
+    @DecimalMin(value = "1.0", message = "AC power must be >= 1 kW")
+    @DecimalMax(value = "50.0", message = "AC power must be <= 50 kW")
+    private Double acMaxKw;
+
+    @DecimalMin(value = "10.0", message = "DC power must be >= 10 kW")
+    @DecimalMax(value = "400.0", message = "DC power must be <= 400 kW")
+    private Double dcMaxKw;
+}
+

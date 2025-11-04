@@ -58,7 +58,6 @@ public class AuthServiceImpl implements AuthService {
             walletService.createWallet(user.getId());
             return null;
         });
-        userService.createDefaultVehiclesForUser(user);
         userService.save(user);
         tokenService.removeTokenByUser(user);
         return ResponseEntity.ok(Map.of("message", "Email verified"));
