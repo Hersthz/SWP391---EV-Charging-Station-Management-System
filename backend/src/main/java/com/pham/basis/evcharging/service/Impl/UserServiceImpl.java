@@ -38,9 +38,6 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
-    private final VehicleRepository vehicleRepository;
-    private final ObjectMapper objectMapper;
-    private final Random random = new Random();
 
     @Override
     public User createUser(UserCreationRequest request) {
@@ -63,13 +60,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User login(String username, String password) {
-        User user = userRepository.findUserByUsername(username);
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new AppException.UnauthorizedException("Invalid username or password"));
 
-        if (user == null) {
-            throw new AppException.UnauthorizedException("Invalid username or password");
-        }
         if (user.getPassword() == null || "null".equals(user.getPassword())) {
-            throw new AppException.BadRequestException("This account uses Google login");
+            throw new AppException.BadRequestException("Account registered with Google. Please login with Google");
         }
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new AppException.UnauthorizedException("Invalid username or password");
@@ -98,7 +93,7 @@ public class UserServiceImpl implements UserService {
             userRepository.save(u);
             if (emailVerified) {
                 walletService.createWallet(u.getId());
-                createDefaultVehiclesForUser(u);
+
             }
         } else {
             boolean changed = false;
@@ -106,7 +101,6 @@ public class UserServiceImpl implements UserService {
                 user.setIsVerified(true);
                 changed = true;
                 walletService.createWallet(user.getId());
-                createDefaultVehiclesForUser(user);
             }
             if (changed) userRepository.save(user);
         }
@@ -119,15 +113,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByUsername(String username) {
-        return userRepository.findUserByUsername(username);
+        return userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
     }
 
     @Override
     public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request) {
-        User user = userRepository.findUserByUsername(userName);
-        if (user == null) {
-            throw new RuntimeException("User not found");
-        }
+        User user = userRepository.findUserByUsername(userName)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
         user.setFullName(request.getFull_name());
         //Kiem tra phone number
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
@@ -159,12 +152,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public ChangePasswordResponse changePassword(String username, ChangePasswordRequest request) {
-        User user = userRepository.findUserByUsername(username);
+    public ChangePasswordResponse changePassword(String userName, ChangePasswordRequest request) {
+        User user = userRepository.findUserByUsername(userName)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
 
-        if (user == null) {
-            throw new AppException.NotFoundException("User not found");
-        }
         // Trường hợp account đăng nhập bằng Google
         if (user.getPassword() == null || "null".equals(user.getPassword())) {
             return new ChangePasswordResponse(false,
@@ -190,11 +181,9 @@ public class UserServiceImpl implements UserService {
     }
 
 
-    public SetUserRoleResponse setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole) {
-        User user = userRepository.findUserByUsername(username);
-        if (user == null) {
-            throw new IllegalArgumentException("User not found: " + username);
-        }
+    public SetUserRoleResponse setRoleForUser(String userName, String targetRoleName, boolean keepUserBaseRole) {
+        User user = userRepository.findUserByUsername(userName)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
 
         Role targetRole = roleRepository.findByName(targetRoleName);
         if (targetRole == null) {
@@ -210,7 +199,7 @@ public class UserServiceImpl implements UserService {
                 newRoles.add(baseUser);
             }
         }
-        return new SetUserRoleResponse(username,targetRoleName,keepUserBaseRole);
+        return new SetUserRoleResponse(userName,targetRoleName,keepUserBaseRole);
     }
 
         @Override
@@ -273,61 +262,6 @@ public class UserServiceImpl implements UserService {
                 .toList();
     }
 
-    @Override
-    public void createDefaultVehiclesForUser(User user) {
-        try {
-            //User only
-            if (!user.getRole().getName().equalsIgnoreCase("USER")) {
-                return;
-            }
-            if (vehicleRepository.existsByUserId((user.getId()))) {
-                System.out.println("User already has vehicles, skip creating new ones.");
-                return;
-            }
-            ClassPathResource resource = new ClassPathResource("data/vehicles.json");
-            if (!resource.exists()) {
-                System.err.println("File not found: data/vehicles.json");
-                return;
-            }
-
-            List<Vehicle> templates;
-            try (InputStream is = resource.getInputStream()) {
-                templates = objectMapper.readValue(is, new TypeReference<List<Vehicle>>() {});
-            }
-
-            if (templates.isEmpty()) {
-                System.err.println("Vehicle JSON empty!");
-                return;
-            }
-
-            int numVehicles = 2;
-            Collections.shuffle(templates);
-
-            List<Vehicle> vehicles = templates.stream()
-                    .limit(numVehicles)
-                    .map(template -> {
-                        Vehicle v = new Vehicle();
-                        System.out.println("HELLOOOOOOOOO" + template.getCurrentSoc());
-                        v.setUser(user);
-                        v.setMake(template.getMake());
-                        v.setModel(template.getModel());
-                        v.setBatteryCapacityKwh(template.getBatteryCapacityKwh());
-                        v.setCurrentSoc(template.getCurrentSoc());
-                        v.setAcMaxKw(template.getAcMaxKw());
-                        v.setDcMaxKw(template.getDcMaxKw());
-                        v.setEfficiency(template.getEfficiency());
-                        return v;
-                    })
-                    .collect(Collectors.toList());
-
-            vehicleRepository.saveAll(vehicles);
-            System.out.println("Created " + numVehicles + " vehicles for verified user: " + user.getUsername());
-
-        } catch (Exception e) {
-            System.err.println("Error creating vehicles for user " + user.getUsername());
-            e.printStackTrace();
-        }
-    }
 
 }
 
