@@ -119,7 +119,7 @@ const Login = () => {
       await api.post("/auth/login", { username, password });
       let meData = null;
       try {
-        const meRes = await api.get<any>("/auth/me");
+        const meRes = await api.get<any>("/auth/me", {withCredentials: true});
         meData = meRes.data;
       } catch (meErr) {
         console.warn("Could not fetch /auth/me after login", meErr);
