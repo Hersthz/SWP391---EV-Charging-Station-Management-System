@@ -25,6 +25,7 @@ public class ChargingStationDetailResponse {
     private Double maxPrice;
     private Double minPower;
     private Double maxPower;
+    private String url;
     private List<PillarDto> pillars;
     private List<ReviewDto> reviews;
 

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -50,10 +51,13 @@ public class ChargingStationController {
 
     @PostMapping("/addStation")
     public ResponseEntity<ChargingStationDetailResponse> addStation(
-            @Valid @RequestBody StationRequest request) {
+            @Valid @RequestBody StationRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile file
+            ) {
         log.info("Adding station");
-        return ResponseEntity.ok(stationService.addStation(request));
+        return ResponseEntity.ok(stationService.addStation(request, file));
     }
+
     @PostMapping("/{stationId}/pillars")
     public ResponseEntity<ChargingStationDetailResponse> addPillars(
             @PathVariable Long stationId,

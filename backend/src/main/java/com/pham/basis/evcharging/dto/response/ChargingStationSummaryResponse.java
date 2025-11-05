@@ -23,5 +23,6 @@ public class ChargingStationSummaryResponse {
     private Double maxPrice;
     private Double minPower;
     private Double maxPower;
+    private String url;
     private List<String> connectorTypes;
 }

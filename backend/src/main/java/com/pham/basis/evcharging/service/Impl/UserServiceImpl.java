@@ -12,6 +12,10 @@ import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.model.Vehicle;
+import com.pham.basis.evcharging.repository.UserRepository;
+import com.pham.basis.evcharging.repository.RoleRepository;
+import com.pham.basis.evcharging.repository.VehicleRepository;
+import com.pham.basis.evcharging.service.CloudinaryService;
 import com.pham.basis.evcharging.repository.*;
 import com.pham.basis.evcharging.service.UserService;
 import com.pham.basis.evcharging.service.WalletService;
@@ -21,10 +25,12 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 
 import java.io.InputStream;
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,7 +43,9 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
+    private final CloudinaryService cloudinaryService;
     private final ChargingStationRepository chargingStationRepository;
+
     @Override
     public User createUser(UserCreationRequest request) {
         User user = new User();
@@ -77,7 +85,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void createOrUpdateFromOAuth(String email, String full_name, boolean emailVerified) {
+    public void createOrUpdateFromOAuth(String email, String full_name, boolean emailVerified, String url) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
             User u = new User();
@@ -89,10 +97,10 @@ public class UserServiceImpl implements UserService {
             Role defaultRole = roleRepository.getReferenceById(1);
             u.setRole(defaultRole);
             u.setCreatedAt(LocalDateTime.now());
+            u.setUrl(url);
             userRepository.save(u);
             if (emailVerified) {
                 walletService.createWallet(u.getId());
-
             }
         } else {
             boolean changed = false;
@@ -100,6 +108,9 @@ public class UserServiceImpl implements UserService {
                 user.setIsVerified(true);
                 changed = true;
                 walletService.createWallet(user.getId());
+            }
+            if (user.getUrl() == null && url != null) {
+                user.setUrl(url);
             }
             if (changed) userRepository.save(user);
         }
@@ -117,38 +128,52 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request) {
+    public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request, MultipartFile file) {
         User user = userRepository.findUserByUsername(userName)
                 .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
+        // Update fullName
         user.setFullName(request.getFull_name());
-        //Kiem tra phone number
-        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-            // Does exist?
-            User existingUser = userRepository.findByPhone(request.getPhone());
-            if (existingUser != null && !existingUser.getUsername().equals(userName)) {
-                throw new RuntimeException("The phone number has already been used by another account");
-            }
-            user.setPhone(request.getPhone());
-        }
+
+        // Update phone
+        Optional.ofNullable(request.getPhone())
+                .filter(p -> !p.trim().isEmpty())
+                .ifPresent(phone -> {
+                    User u = userRepository.findByPhone(phone);
+                    if (u != null && !u.getUsername().equals(userName)) {
+                        throw new RuntimeException("Phone already used by another account");
+                    }
+                    user.setPhone(phone);
+                });
+
+        // Update email
         if (!user.getEmail().equals(request.getEmail())) {
-            User existingUser = userRepository.findByEmail(request.getEmail());
-            if (existingUser != null && !existingUser.getUsername().equals(userName)) {
-                throw new RuntimeException("The email has already been used by another account");
+            User u = userRepository.findByEmail(request.getEmail());
+            if (u != null && !u.getUsername().equals(userName)) {
+                throw new RuntimeException("Email already used by another account");
             }
-            //can verify khi doi email
             user.setEmail(request.getEmail());
             user.setIsVerified(true);
         }
         user.setDateOfBirth(request.getDate_of_birth());
-        User updatedUser = userRepository.save(user);
-        UpdateUserResponse data = new UpdateUserResponse();
-        data.setFullName(updatedUser.getFullName());
-        data.setEmail(updatedUser.getEmail());
-        data.setPhone(updatedUser.getPhone());
-        data.setDateOfBirth(updatedUser.getDateOfBirth());
 
-        return data;
+        // Upload avatar if exists
+        if (file != null && !file.isEmpty()) {
+            String url = cloudinaryService.uploadFile(file, "avatars");
+            user.setUrl(url);
+        }
+
+        User updatedUser = userRepository.save(user);
+
+        return new UpdateUserResponse(
+                updatedUser.getFullName(),
+                updatedUser.getEmail(),
+                updatedUser.getPhone(),
+                updatedUser.getDateOfBirth(),
+                updatedUser.getUrl()
+        );
     }
+
 
     @Override
     public ChangePasswordResponse changePassword(String userName, ChangePasswordRequest request) {
@@ -179,7 +204,7 @@ public class UserServiceImpl implements UserService {
         return new ChangePasswordResponse(true, "Password changed successfully");
     }
 
-
+    @Override
     public SetUserRoleResponse setRoleForUser(String userName, String targetRoleName, boolean keepUserBaseRole) {
         User user = userRepository.findUserByUsername(userName)
                 .orElseThrow(() -> new AppException.NotFoundException("User not found"));
@@ -243,6 +268,17 @@ public class UserServiceImpl implements UserService {
         }
 
     @Override
+    public String checkPass(User user) {
+        if (user == null) return null;
+
+        String pass = user.getPassword();
+        if (pass == null || "null".equalsIgnoreCase(pass)) {
+            return "GOOGLE";
+        }
+        return "REGISTER";
+    }
+
+    @Override
     public List<UserResponse> getAllUsers() {
         List<User> users = userRepository.findAll();
         return users.stream()
@@ -257,8 +293,26 @@ public class UserServiceImpl implements UserService {
                         .roleName(user.getRole().getName())
                         .dateOfBirth(user.getDateOfBirth())
                         .createdAt(user.getCreatedAt())
+                        .url(user.getUrl())
                         .build())
                 .toList();
+    }
+
+    @Override
+    public String toggleBlockUser(Long id, Principal principal) {
+        User admin = findByUsername(principal.getName());
+        if (!admin.getRole().getName().equals("ADMIN")) {
+            throw new AppException.ForbiddenException("Not allowed");
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
+        boolean newStatus = !user.getStatus();
+        user.setStatus(newStatus);
+        userRepository.save(user);
+
+        return newStatus ? "User unblocked" : "User blocked";
     }
 
 

@@ -46,6 +46,8 @@ public class User{
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    private String url;
+
     //FK
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)

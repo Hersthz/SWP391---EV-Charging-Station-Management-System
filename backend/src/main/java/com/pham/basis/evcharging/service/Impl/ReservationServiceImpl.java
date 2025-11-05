@@ -147,6 +147,19 @@ public class ReservationServiceImpl implements ReservationService {
         reservationRepository.save(reservation);
     }
 
+    @Override
+    public List<ReservationResponse> getReservationByStation(Long stationId) {
+        chargingStationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException.BadRequestException("Station not found"));
+
+        List<Reservation> reservations = reservationRepository
+                .findByStationIdOrderByCreatedAtDesc(stationId);
+
+        return reservations.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     private ReservationResponse toResponse(Reservation saved) {
         return ReservationResponse.builder()
                 .reservationId(saved.getId())

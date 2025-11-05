@@ -41,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getUsername())
                 .phone(user.getPhone())
                 .roleName(user.getRole() != null ? user.getRole().getName() : null)
+                .url(null)
                 .build();
     }
 
