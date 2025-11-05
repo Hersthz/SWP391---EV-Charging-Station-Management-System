@@ -4,10 +4,7 @@ import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
 import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
 import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
-import com.pham.basis.evcharging.dto.response.CreateStaffResponse;
-import com.pham.basis.evcharging.dto.response.ChangePasswordResponse;
-import com.pham.basis.evcharging.dto.response.UpdateUserResponse;
-import com.pham.basis.evcharging.dto.response.UserResponse;
+import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.model.User;
 
 import java.util.List;
@@ -25,5 +22,7 @@ public interface UserService {
     CreateStaffResponse adminAddStaff(CreateStaffRequest req);
 
     List<UserResponse> getAllUsers();
+    AssignStationResponse assignStationToUser(Long userId, Long stationId);
+
 }
 
