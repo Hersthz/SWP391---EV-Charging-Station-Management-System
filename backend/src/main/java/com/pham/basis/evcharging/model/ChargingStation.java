@@ -37,6 +37,8 @@ public class ChargingStation {
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChargerPillar> pillars = new ArrayList<>();
 
+    private String url;
+
     //FK
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")

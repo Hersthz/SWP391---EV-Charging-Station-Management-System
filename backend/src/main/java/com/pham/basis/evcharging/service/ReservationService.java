@@ -13,4 +13,5 @@ public interface ReservationService {
     List<ReservationResponse> getReservationsByUser(Long userId);
     ReservationResponse updateStatus(Long reservationId);
     void cancel(Long id, User user);
+    List<ReservationResponse> getReservationByStation(Long stationId);
 }

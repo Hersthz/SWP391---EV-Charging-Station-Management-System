@@ -37,6 +37,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByStatus(String status);
 
     Optional<Reservation> findByIdAndUser(Long id, User user);
-    List<Reservation> findByStatusInAndStartTimeBefore(List<String> statuses, LocalDateTime time);
+    List<Reservation> findByStatusInAndStartTimeBefore(List<String> statuses, LocalDateTime
+            time);
+    List<Reservation> findByStationIdOrderByCreatedAtDesc(Long stationId);
 }
 
