@@ -1,10 +1,7 @@
 package com.pham.basis.evcharging.controller;
 
 
-import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
-import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
-import com.pham.basis.evcharging.dto.request.SetUserRoleRequest;
-import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
+import com.pham.basis.evcharging.dto.request.*;
 import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.service.ReservationService;
 import com.pham.basis.evcharging.service.Impl.UserServiceImpl;
@@ -81,6 +78,11 @@ public class UserController {
     @GetMapping("/getAll")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> response = userService.getAllUsers();
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/assign-station")
+    public ResponseEntity<AssignStationResponse> assignStation(@RequestBody AssignStationRequest request) {
+        AssignStationResponse response = userService.assignStationToUser(request.getUserId(), request.getStationId());
         return ResponseEntity.ok(response);
     }
 }
