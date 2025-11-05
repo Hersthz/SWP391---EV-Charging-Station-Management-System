@@ -8,6 +8,7 @@ import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.exception.AppException;
+import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.model.Vehicle;
@@ -15,6 +16,7 @@ import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.RoleRepository;
 import com.pham.basis.evcharging.repository.VehicleRepository;
 import com.pham.basis.evcharging.service.CloudinaryService;
+import com.pham.basis.evcharging.repository.*;
 import com.pham.basis.evcharging.service.UserService;
 import com.pham.basis.evcharging.service.WalletService;
 import jakarta.transaction.Transactional;
@@ -42,6 +44,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
     private final CloudinaryService cloudinaryService;
+    private final ChargingStationRepository chargingStationRepository;
 
     @Override
     public User createUser(UserCreationRequest request) {
@@ -313,6 +316,31 @@ public class UserServiceImpl implements UserService {
     }
 
 
+    @Override
+    public AssignStationResponse assignStationToUser(Long userId, Long stationId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
+        ChargingStation station = chargingStationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException.NotFoundException("Charging station not found"));
+
+        // Nếu trạm đã có manager khác thì báo lỗi
+        if (station.getManager() != null && !station.getManager().getId().equals(userId)) {
+            throw new AppException.BadRequestException("This station already has another manager assigned.");
+        }
+
+        // Gán user làm manager của trạm
+        station.setManager(user);
+        chargingStationRepository.save(station);
+
+        return AssignStationResponse.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .stationId(station.getId())
+                .stationName(station.getName())
+                .message("Station assigned to user successfully.")
+                .build();
+    }
 }
 
 

@@ -1,10 +1,7 @@
 package com.pham.basis.evcharging.controller;
 
 
-import com.pham.basis.evcharging.dto.request.ChangePasswordRequest;
-import com.pham.basis.evcharging.dto.request.CreateStaffRequest;
-import com.pham.basis.evcharging.dto.request.SetUserRoleRequest;
-import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
+import com.pham.basis.evcharging.dto.request.*;
 import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.service.ReservationService;
@@ -91,6 +88,7 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+
     @GetMapping("/pass")
     public ResponseEntity<ApiResponse<String>> checkPass(Principal principal){
         if(principal == null){ throw new AppException.UnauthorizedException("Unauthorized");}
@@ -111,5 +109,6 @@ public class UserController {
                         .message(message)
                         .build()
         );
+
     }
 }

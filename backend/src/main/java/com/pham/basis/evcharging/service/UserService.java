@@ -26,5 +26,7 @@ public interface UserService {
     List<UserResponse> getAllUsers();
     String toggleBlockUser(Long id, Principal principal);
     SetUserRoleResponse setRoleForUser(String userName, String targetRoleName, boolean keepUserBaseRole);
+    AssignStationResponse assignStationToUser(Long userId, Long stationId);
+
 }
 
