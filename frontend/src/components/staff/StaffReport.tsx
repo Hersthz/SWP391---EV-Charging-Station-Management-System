@@ -1,68 +1,91 @@
-// src/pages/staff/StaffReport.tsx
-import { useEffect, useMemo, useState, useRef } from "react";
-import StaffLayout from "./StaffLayout";
-import api from "../../api/axios";
-
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "../../components/ui/dropdown-menu";
-
+// src/components/staff/StaffReport.tsx
 import {
-  BarChart3,
+  Calendar,
+  Download,
   TrendingUp,
   Zap,
-  DollarSign,
-  Users,
-  Download,
-  Activity,
+  Battery,
+  Clock,
 } from "lucide-react";
-
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../ui/card";
+import { Button } from "../ui/button";
+import {
   LineChart,
   Line,
-  LabelList,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from "recharts";
+import StaffLayout from "./StaffLayout";
+import api from "../../api/axios";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+// ===== mock chart data fallback =====
+const usageDataFallback = [
+  { date: "Mon", sessions: 24, energy: 156 },
+  { date: "Tue", sessions: 28, energy: 189 },
+  { date: "Wed", sessions: 32, energy: 203 },
+  { date: "Thu", sessions: 29, energy: 178 },
+  { date: "Fri", sessions: 35, energy: 221 },
+  { date: "Sat", sessions: 42, energy: 267 },
+  { date: "Sun", sessions: 38, energy: 241 },
+];
+
+const pillarPerformanceFallback = [
+  { code: "P-01", uptime: 98, sessions: 45 },
+  { code: "P-02", uptime: 100, sessions: 52 },
+  { code: "P-03", uptime: 65, sessions: 18 },
+  { code: "P-04", uptime: 85, sessions: 32 },
+  { code: "P-05", uptime: 96, sessions: 41 },
+  { code: "P-06", uptime: 99, sessions: 48 },
+];
+
+// ===== types từ backend (bạn chỉnh đúng tên field theo backend nha) =====
+type HourlyUsageDto = {
+  hour: number | string;
+  sessionCount: number;
+  energyKwh: number;
+};
+
+type PillarReportDto = {
+  code: string;
+  uptime: number;
+  sessions: number;
+  status?: string;
+};
+
+type StatusCountDto = {
+  status: string;
+  count: number;
+};
 
 type StaffAnalyticsResponse = {
   totalSessions: number;
-  totalEnergyKwh: number;
-  totalRevenue: string | number; // BE BigDecimal → string|number
-  hourlyUsage: Array<{
-    hour: number;
-    sessionCount: number;
-    energyKwh?: number | null;
-  }>;
-};
-
-const fmtMoney = (n?: number | string | null) => {
-  const v = Number(n ?? 0);
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
-};
-const fmtKwh = (n?: number | null, d = 1) => `${Number(n ?? 0).toFixed(d)} kWh`;
-
-const tooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="p-2 bg-white/90 border border-slate-200 rounded-md shadow">
-      <div className="text-sm font-semibold text-slate-900 mb-1">{label}</div>
-      {payload.map((p: any, i: number) => (
-        <div key={i} className="text-xs" style={{ color: p.color }}>
-          {p.name}: <b>{p.value}</b>
-        </div>
-      ))}
-    </div>
-  );
+  totalEnergy: number;
+  avgUptime: number;
+  avgChargeTime: number;
+  hourlyUsage: HourlyUsageDto[];
+  pillars: PillarReportDto[];
+  statusCounts: StatusCountDto[];
 };
 
 const StaffReport = () => {
@@ -70,9 +93,7 @@ const StaffReport = () => {
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [staffId, setStaffId] = useState<number | null>(null);
   const [data, setData] = useState<StaffAnalyticsResponse | null>(null);
-  const [tab, setTab] = useState("overview");
 
   // ===== Load current user → staff analytics =====
   useEffect(() => {
@@ -82,26 +103,34 @@ const StaffReport = () => {
         setLoading(true);
         setErr(null);
 
-        // 1) Lấy user id
+        // 1) lấy user
         const me = await api.get<any>("/auth/me", { withCredentials: true });
-        const uid =
-          Number(me?.data?.id ??
+        const uid = Number(
+          me?.data?.id ??
             me?.data?.user?.id ??
             me?.data?.data?.id ??
-            me?.data?.user_id);
-        if (!Number.isFinite(uid)) throw new Error("Không xác định được staffId hiện tại.");
-        if (!mounted) return;
-        setStaffId(uid);
+            me?.data?.user_id
+        );
+        if (!Number.isFinite(uid)) {
+          throw new Error("Không xác định được staff hiện tại.");
+        }
 
-        // 2) Gọi staff analytics
-        const res = await api.get<StaffAnalyticsResponse>("/staff/analytics", {
-          params: { staffId: uid },
-          withCredentials: true,
-        });
+        // 2) gọi analytics
+        const res = await api.get<StaffAnalyticsResponse>(
+          "/staff/analytics",
+          {
+            params: { staffId: uid },
+            withCredentials: true,
+          }
+        );
+
         if (!mounted) return;
         setData(res.data);
       } catch (e: any) {
-        const msg = e?.response?.data?.message || e?.message || "Load analytics failed.";
+        const msg =
+          e?.response?.data?.message ||
+          e?.message ||
+          "Load analytics failed.";
         setErr(msg);
         setData(null);
       } finally {
@@ -115,9 +144,17 @@ const StaffReport = () => {
   }, []);
 
   // ===== Derived charts =====
+  // nếu backend trả hourlyUsage thì build lại 0..23, còn không thì dùng fallback
   const hourly = useMemo(() => {
     const arr = data?.hourlyUsage ?? [];
-    // đảm bảo đủ 0…23 cho đẹp
+    if (!arr.length) {
+      // không có từ BE thì trả mảng rỗng để khỏi vẽ
+      return Array.from({ length: 24 }, (_, h) => ({
+        label: `${String(h).padStart(2, "0")}h`,
+        sessions: 0,
+        energy: 0,
+      }));
+    }
     const full = Array.from({ length: 24 }, (_, h) => {
       const hit = arr.find((x) => Number(x.hour) === h);
       return {
@@ -129,30 +166,54 @@ const StaffReport = () => {
     return full;
   }, [data]);
 
-  // Buckets: Night / Morning / Afternoon / Evening (vẫn dùng ở tab Usage)
-  const buckets = useMemo(() => {
-    const sum = (cond: (h: number) => boolean) =>
-      hourly.filter((r, i) => cond(i)).reduce((a, b) => a + b.sessions, 0);
+  // status distribution cho pie
+  const statusDistribution = useMemo(() => {
+    const src = data?.statusCounts;
+    if (!src || !src.length) {
+      return [
+        { name: "Available", value: 6, color: "hsl(var(--primary))" },
+        { name: "Charging", value: 3, color: "hsl(var(--status-charging,#f97316))" },
+        { name: "Maintenance", value: 1, color: "hsl(var(--destructive))" },
+      ];
+    }
+    // map từ BE → UI
+    return src.map((s, idx) => {
+      const colors = [
+        "hsl(var(--primary))",
+        "hsl(var(--status-charging,#f97316))",
+        "hsl(var(--destructive))",
+        "hsl(var(--muted-foreground))",
+      ];
+      return {
+        name: s.status,
+        value: s.count,
+        color: colors[idx % colors.length],
+      };
+    });
+  }, [data]);
 
-    return [
-      { name: "Night (00–06)", value: sum((h) => h < 6) },
-      { name: "Morning (06–12)", value: sum((h) => h >= 6 && h < 12) },
-      { name: "Afternoon (12–18)", value: sum((h) => h >= 12 && h < 18) },
-      { name: "Evening (18–24)", value: sum((h) => h >= 18) },
-    ];
-  }, [hourly]);
+  // pillars
+  const pillarPerformance = useMemo(() => {
+    if (data?.pillars?.length) return data.pillars;
+    return pillarPerformanceFallback;
+  }, [data]);
 
-  // ===== Export helpers (PNG/PDF lightweight) =====
+  // ===== Export helpers =====
   const exportPNG = async () => {
     const root = exportRef.current;
     if (!root) return;
     const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(root, { scale: 2, backgroundColor: "#fff" });
+    const canvas = await html2canvas(root, {
+      scale: 2,
+      backgroundColor: "#fff",
+    });
     canvas.toBlob((blob) => {
       if (!blob) return;
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `staff-report-${new Date().toISOString().slice(0, 10)}.png`;
+      link.download = `staff-report-${new Date()
+        .toISOString()
+        .slice(0, 10)}.png`;
       link.click();
     });
   };
@@ -162,263 +223,317 @@ const StaffReport = () => {
     if (!root) return;
     const html2canvas = (await import("html2canvas")).default;
     const jsPDF = (await import("jspdf")).default;
-    const canvas = await html2canvas(root, { scale: 2, backgroundColor: "#fff" });
+    const canvas = await html2canvas(root, {
+      scale: 2,
+      backgroundColor: "#fff",
+    });
     const img = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const pw = pdf.internal.pageSize.getWidth();
-    const ph = pdf.internal.pageSize.getHeight();
-    const iw = pw;
-    const ih = (canvas.height * iw) / canvas.width;
-    let left = ih;
-    pdf.addImage(img, "PNG", 0, 0, iw, ih, undefined, "FAST");
-    while (left > ph) {
-      pdf.addPage();
-      pdf.addImage(img, "PNG", 0, -(ih - left), iw, ih, undefined, "FAST");
-      left -= ph;
-    }
-    pdf.save(`staff-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    const ih = (canvas.height * pw) / canvas.width;
+    pdf.addImage(img, "PNG", 0, 0, pw, ih, undefined, "FAST");
+    pdf.save(
+      `staff-report-${new Date().toISOString().slice(0, 10)}.pdf`
+    );
   };
 
   // ===== UI =====
   return (
     <StaffLayout title="Report Management">
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 text-slate-900">
+      <div
+        ref={exportRef}
+        className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 text-slate-900"
+      >
         {/* Header */}
-        <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/30 bg-gradient-to-br from-sky-500 to-emerald-500">
-                <BarChart3 className="w-5 h-5 text-white" />
+        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <div className="container mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Staff analytics
+                </h2>
+                {err ? (
+                  <p className="text-xs text-red-500">{err}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {loading ? "Loading..." : "Overview of assigned station"}
+                  </p>
+                )}
               </div>
-              <span className="text-xl font-semibold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
-                Reports & Analytics of your Station
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className="shadow-lg shadow-cyan-500/30 bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:brightness-110">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem onClick={exportPDF}>Export PDF</DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportPNG}>Export PNG</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" size="sm">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Last 7 days
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportPNG}>
+                  <Download className="h-4 w-4 mr-2" />
+                  PNG
+                </Button>
+                <Button variant="default" size="sm" onClick={exportPDF}>
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+              </div>
             </div>
           </div>
         </header>
 
-        <div ref={exportRef} className="max-w-7xl mx-auto px-6 py-8">
-          {/* Error / loading */}
-          {loading ? (
-            <div className="p-6 text-sm text-slate-500">Loading analytics…</div>
-          ) : err ? (
-            <div className="p-6 text-sm text-rose-600">{err}</div>
-          ) : (
-            <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-              <TabsList
-                className="
-                  grid w-full grid-cols-2 rounded-2xl bg-white/80 backdrop-blur-md p-1.5
-                  shadow-2xl shadow-slate-900/15 h-auto gap-1
-                "
-              >
-                {[
-                  { v: "overview", label: "Overview" },
-                  { v: "usage", label: "Hourly usage" },
-                ].map((t) => (
-                  <TabsTrigger
-                    key={t.v}
-                    value={t.v}
-                    className="
-                      group w-full rounded-xl px-6 py-3
-                      text-slate-600 font-medium hover:text-slate-900
-                      data-[state=active]:text-white
-                      data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)]
-                      data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)]
-                      transition-all flex items-center justify-center
-                    "
+        <main className="container mx-auto px-6 py-8">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Total sessions
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {data?.totalSessions ?? 228}
+                    </p>
+                    <p className="text-xs text-primary font-medium">
+                      +12% vs last week
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Zap className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Energy used
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {(data?.totalEnergy ?? 1455).toLocaleString()} kWh
+                    </p>
+                    <p className="text-xs text-primary font-medium">
+                      +8% vs last week
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Battery className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Avg. uptime
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {(data?.avgUptime ?? 92.8).toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-primary font-medium">
+                      {data?.avgUptime && data.avgUptime > 90
+                        ? "Excellent"
+                        : "Stable"}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Avg. charge time
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {data?.avgChargeTime
+                        ? `${data.avgChargeTime} minutes`
+                        : "42 minutes"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Per session
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Usage Trend */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily usage trend</CardTitle>
+                <CardDescription>
+                  Sessions and energy consumption
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={data ? usageDataFallback : usageDataFallback}
                   >
-                    {t.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="sessions"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      name="Sessions"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="energy"
+                      stroke="hsl(var(--primary)/0.4)"
+                      strokeWidth={2}
+                      name="Energy (kWh)"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-              {/* ===== Overview ===== */}
-              <TabsContent value="overview" className="space-y-6 mt-0">
-                {/* KPIs (3 cards) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
-                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">Total revenue</p>
-                          <p className="text-4xl font-extrabold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
-                            {fmtMoney(data?.totalRevenue)}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1 flex items-center">
-                            <TrendingUp className="w-3 h-3 mr-1 text-emerald-600" />
-                            Live from staff station
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
-                          <DollarSign className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* Pillar performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pillar performance</CardTitle>
+                <CardDescription>
+                  Uptime and sessions per pillar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={pillarPerformance}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="code"
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="uptime" fill="hsl(var(--primary))" name="Uptime (%)" />
+                    <Bar dataKey="sessions" fill="hsl(var(--muted-foreground))" name="Sessions" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
 
-                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">Total sessions</p>
-                          <p className="text-4xl font-extrabold text-slate-900">
-                            {data?.totalSessions ?? 0}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">Sum of all sessions on your station</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
-                          <Users className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+          {/* Charts Row 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Status Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Status distribution</CardTitle>
+                <CardDescription>
+                  Current status across pillars
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={statusDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${value}`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {statusDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">Energy delivered</p>
-                          <p className="text-4xl font-extrabold text-slate-900">
-                            {fmtKwh(data?.totalEnergyKwh, 1)}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">Aggregated kWh</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
-                          <Zap className="w-6 h-6 text-white" />
-                        </div>
+            {/* Peak Hours */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Peak hours</CardTitle>
+                <CardDescription>Usage by time slot</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    { time: "08:00 - 10:00", usage: 85, label: "Morning peak" },
+                    { time: "12:00 - 14:00", usage: 72, label: "Lunchtime" },
+                    { time: "17:00 - 19:00", usage: 95, label: "Evening peak" },
+                    { time: "20:00 - 22:00", usage: 45, label: "Night" },
+                  ].map((slot, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-foreground">
+                          {slot.time}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {slot.label}
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Overview charts */}
-                <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl font-bold text-slate-900">Sessions by hour</CardTitle>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Activity className="w-3 h-3" />
-                        Today (0–23h)
+                      <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary to-cyan-400 rounded-full transition-all"
+                          style={{ width: `${slot.usage}%` }}
+                        />
                       </div>
+                      <span className="text-xs text-muted-foreground">
+                        {slot.usage}% capacity
+                      </span>
                     </div>
-                    <CardDescription>Histogram of charging sessions across the day</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-72 w-full">
-                      <ResponsiveContainer>
-                        <BarChart data={hourly}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
-                          <YAxis stroke="#64748b" fontSize={12} />
-                          <Tooltip content={tooltip as any} />
-                          <Legend wrapperStyle={{ fontSize: "14px", color: "#334155" }} />
-                          <Bar dataKey="sessions" name="Sessions" fill="#10b981" radius={[6, 6, 0, 0]}>
-                            <LabelList
-                              dataKey="sessions"
-                              position="top"
-                              fontSize={10}
-                              fill="#10b981"
-                              formatter={(v: any) => (typeof v === "number" && v > 0 ? v : "")}
-                              dy={-12}
-                            />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* ===== Usage ===== */}
-              <TabsContent value="usage" className="space-y-6 mt-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xl font-bold text-slate-900">Cumulative sessions</CardTitle>
-                      <CardDescription>Area chart (running total over the day)</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-72 w-full">
-                        <ResponsiveContainer>
-                          <AreaChart
-                            data={hourly.map((r, i, arr) => ({
-                              ...r,
-                              cum: arr.slice(0, i + 1).reduce((a, b) => a + b.sessions, 0),
-                            }))}
-                            margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
-                          >
-                            <defs>
-                              <linearGradient id="cums" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8} />
-                                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
-                            <YAxis stroke="#64748b" fontSize={12} />
-                            <Tooltip content={tooltip as any} />
-                            <Area
-                              type="monotone"
-                              dataKey="cum"
-                              name="Cumulative"
-                              stroke="#0ea5e9"
-                              fillOpacity={1}
-                              fill="url(#cums)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xl font-bold text-slate-900">Time-of-day buckets</CardTitle>
-                      <CardDescription>Compare session counts by period</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-72 w-full">
-                        <ResponsiveContainer>
-                          <LineChart data={buckets} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                            <YAxis stroke="#64748b" fontSize={12} />
-                            <Tooltip content={tooltip as any} />
-                            <Line dataKey="value" name="Sessions" stroke="#10b981" dot>
-                              <LabelList
-                                dataKey="value"
-                                position="top"
-                                fontSize={10}
-                                fill="#10b981"
-                                formatter={(v: any) => (typeof v === "number" && v > 0 ? v : "")}
-                                dy={-12}
-                              />
-                            </Line>
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  ))}
                 </div>
-              </TabsContent>
-            </Tabs>
-          )}
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
       </div>
     </StaffLayout>
   );
