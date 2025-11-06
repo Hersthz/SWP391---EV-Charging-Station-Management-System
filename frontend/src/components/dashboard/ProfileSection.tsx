@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, User as UserIcon, CalendarClock, ShieldCheck, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { Button } from "../../components/ui/button";
 import api from "../../api/axios";
 
@@ -16,6 +16,8 @@ type Me = {
   createdAt?: string;
   created_at?: string;
   member_since?: string;
+  url?: string;
+  avatarUrl?: string;
 };
 
 function initialsOf(name?: string) {
@@ -31,6 +33,9 @@ function monthYear(iso?: string) {
 
 export default function ProfileSection() {
   const [me, setMe] = useState<Me | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    localStorage.getItem("avatarUrl") || localStorage.getItem("url")
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,20 +48,30 @@ export default function ProfileSection() {
           (res?.data && typeof res.data === "object" && "data" in res.data
             ? (res.data as any).data
             : res?.data) ?? {};
+
         const name =
           (raw.fullName as string) ?? localStorage.getItem("fullName") ?? "Unknown User";
+
         const role =
           (raw.role as string) ??
           localStorage.getItem("role") ??
           (raw.authorities?.[0] as string) ??
           (raw.userRole as string) ??
           "USER";
+
         const created =
           (raw.member_since as string) ??
           (raw.createdAt as string) ??
           (raw.created_at as string) ??
           localStorage.getItem("member_since") ??
           new Date().toISOString();
+
+        const url =
+          (raw.url as string) ??
+          (raw.avatarUrl as string) ??
+          localStorage.getItem("avatarUrl") ??
+          localStorage.getItem("url") ??
+          null;
 
         if (!ignore) {
           setMe({
@@ -66,7 +81,13 @@ export default function ProfileSection() {
             email: (raw.email as string) ?? "",
             role,
             member_since: created,
+            url: url ?? undefined,
           });
+          if (url) {
+            setAvatarUrl(url);
+            localStorage.setItem("avatarUrl", url);
+            localStorage.setItem("url", url);
+          }
         }
       } finally {
         if (!ignore) setLoading(false);
@@ -113,7 +134,15 @@ export default function ProfileSection() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Avatar className="shadow-sm ring-2 ring-white">
+                <Avatar className="shadow-sm ring-2 ring-white w-11 h-11">
+                  {avatarUrl && (
+                    <AvatarImage
+                      src={avatarUrl}
+                      alt={me?.fullName || "avatar"}
+                      className="object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
                   <AvatarFallback className="bg-gradient-to-br from-sky-500 to-emerald-500 text-white font-semibold">
                     {initials}
                   </AvatarFallback>
@@ -146,7 +175,7 @@ export default function ProfileSection() {
           <div
             className="
               grid gap-3 items-stretch
-              [grid-template-columns:92px_1fr]       
+              [grid-template-columns:92px_1fr]
               sm:[grid-template-columns:108px_1fr]
               pr-2 sm:pr-3
             "
@@ -154,7 +183,7 @@ export default function ProfileSection() {
             <InfoTile
               icon={<CalendarClock className="w-4 h-4" />}
               label="Member Since"
-              className="px-3 py-2"                   
+              className="px-3 py-2"
             >
               <span className="font-semibold leading-tight whitespace-nowrap">
                 {loading ? "…" : monthYear(me?.member_since ?? me?.createdAt ?? me?.created_at)}
@@ -164,7 +193,7 @@ export default function ProfileSection() {
             <InfoTile
               icon={<Mail className="w-4 h-4" />}
               label="Email"
-              className="px-4 py-2 mr-2 sm:mr-3"      
+              className="px-4 py-2 mr-2 sm:mr-3"
             >
               <span className="block truncate pr-1" title={me?.email || ""}>
                 {loading ? "…" : me?.email || "—"}
@@ -181,10 +210,13 @@ function InfoTile({
   icon, label, children, className = "",
 }: { icon: React.ReactNode; label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={
-      "h-full min-h-[70px] rounded-2xl border border-slate-200/60 " +
-      "bg-white/70 backdrop-blur flex flex-col justify-center " + className
-    }>
+    <div
+      className={
+        "h-full min-h[70px] rounded-2xl border border-slate-200/60 " +
+        "bg-white/70 backdrop-blur flex flex-col justify-center " +
+        className
+      }
+    >
       <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
         {icon} {label}
       </div>
@@ -194,5 +226,3 @@ function InfoTile({
     </div>
   );
 }
-
-
