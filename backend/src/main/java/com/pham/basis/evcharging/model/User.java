@@ -1,10 +1,7 @@
 package com.pham.basis.evcharging.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Data
+@Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name= "users")
@@ -22,13 +19,12 @@ public class User{
     @Column(name = "user_id")
     private Long id;
 
-    @Column(name = "full_name",columnDefinition = "NVarchar(50)")
-    private String full_name;
+    @Column(name = "full_name", length = 50)
+    private String fullName;
 
     @Column(name = "username", length=50, nullable=false, unique=true)
     private String username;
 
-    @JsonIgnore
     @Column(name = "password", length = 255, nullable=false)
     private String password;
 
@@ -42,26 +38,24 @@ public class User{
     private Boolean status = true;
 
     @Column(name = "is_verified", nullable = false)
-    private Boolean is_verified = false;
+    private Boolean isVerified = false;
 
-    @JsonIgnore
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt ;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    private String url;
+
+    //FK
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-
-
-    @Column(name = "created_at")
-    private LocalDateTime created_at ;
-
-    @Column(name = "date_of_birth")
-    private LocalDate date_of_birth;
-
     @OneToOne(mappedBy = "manager")
-    @JsonIgnore
     private ChargingStation managedStation;
 
     @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private List<ChargingSession> chargingSessions = new ArrayList<>();
 }

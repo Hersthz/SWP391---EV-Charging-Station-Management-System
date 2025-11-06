@@ -2,14 +2,13 @@ package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import net.minidev.json.annotate.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "charging_stations")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -26,15 +25,21 @@ public class ChargingStation {
     @Column(nullable = false, length = 255)
     private String address;
 
+    @Column(nullable = false)
     private Double latitude;
+
+    @Column(nullable = false)
     private Double longitude;
 
     @Column(length = 20)
-    private String status; // Active, Inactive, Maintenance
+    private String status; // ACTIVE, INACTIVE, MAINTENANCE
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChargerPillar> pillars = new ArrayList<>();
 
+    private String url;
+
+    //FK
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
     private User manager;

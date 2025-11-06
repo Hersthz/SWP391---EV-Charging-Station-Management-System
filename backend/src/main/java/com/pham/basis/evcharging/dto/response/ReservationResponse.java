@@ -1,12 +1,10 @@
 package com.pham.basis.evcharging.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Data
+@Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder

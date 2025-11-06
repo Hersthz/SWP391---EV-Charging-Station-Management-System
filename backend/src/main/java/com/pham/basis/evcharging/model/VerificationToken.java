@@ -2,16 +2,16 @@ package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter @Setter
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
+@Table(name = "verification_tokens")
 public class VerificationToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,15 +21,10 @@ public class VerificationToken {
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_verif_user"))
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
 
-    public VerificationToken(String token, User user, LocalDateTime expiryDate) {
-        this.token = token;
-        this.user = user;
-        this.expiryDate = expiryDate;
-    }
 }

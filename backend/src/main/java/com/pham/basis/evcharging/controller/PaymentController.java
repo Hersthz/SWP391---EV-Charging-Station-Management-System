@@ -2,13 +2,13 @@ package com.pham.basis.evcharging.controller;
 
 
 import com.pham.basis.evcharging.config.VNPayConfig;
-import com.pham.basis.evcharging.dto.request.GetPaymentRequest;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.response.ApiResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
-import com.pham.basis.evcharging.model.PaymentTransaction;
+import com.pham.basis.evcharging.exception.AppException;
+import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,20 +48,17 @@ public class PaymentController {
             Principal principal
     ) {
         if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>("401", "Unauthorized", null));
+            throw new AppException.UnauthorizedException("Unauthorized");
         }
-        Long userId = userRepository.findUserByUsername(principal.getName()).getId();
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>("401", "Invalid user identity", null));
-        }
+        User user = userRepository.findUserByUsername(principal.getName())
+                .orElseThrow(() -> new AppException.UnauthorizedException("Invalid user identity"));
+
         String clientIp = vnPayConfig.getClientIp(servletRequest);
 
         logger.info("Create payment request: reservationId={}, userId={}, amount={}",
-                req.getReferenceId(), userId, req.getAmount());
+                req.getReferenceId(), user.getId(), req.getAmount());
 
-        PaymentResponse resp = paymentService.createPayment(req, userId, clientIp);
+        PaymentResponse resp = paymentService.createPayment(req, user.getId(), clientIp);
         return ResponseEntity.ok(new ApiResponse<>("00", "Tạo link thanh toán thành công", resp));
     }
 
@@ -83,7 +80,7 @@ public class PaymentController {
 
         } catch (Exception e) {
             logger.error("Error processing return URL", e);
-            String fallbackUrl = "https://your-frontend.com/payment/error";
+            String fallbackUrl = "http://localhost:5173";
             return ResponseEntity.status(HttpStatus.FOUND)
                     .header("Location", fallbackUrl)
                     .build();
@@ -109,12 +106,14 @@ public class PaymentController {
 
     @GetMapping("/getPaymentU")
     public ResponseEntity<Page<PaymentTransactionResponse>> getPaymentU(
-            @RequestParam Long userId,
+            Principal principal,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int pageSize) {
-
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        User user = userRepository.findUserByUsername(principal.getName())
+                .orElseThrow(() -> new AppException.UnauthorizedException("Invalid user identity"));
         Pageable pageable = PageRequest.of(page, pageSize);
-        Page<PaymentTransactionResponse> result = paymentService.getPaymentTransactionByUserId(userId, pageable);
+        Page<PaymentTransactionResponse> result = paymentService.getPaymentTransactionByUserId(user.getId(), pageable);
         return ResponseEntity.ok(result);
     }
 

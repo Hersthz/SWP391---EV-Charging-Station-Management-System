@@ -1,16 +1,12 @@
 package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Data
+@Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -27,6 +23,10 @@ public class StationReview {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    //FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "charging_station_id", nullable = false)
     private ChargingStation chargingStation;
@@ -35,9 +35,7 @@ public class StationReview {
     @JoinColumn(name="user_id")
     private User user;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
+    //
     @PrePersist
     public void onCreate()
     {

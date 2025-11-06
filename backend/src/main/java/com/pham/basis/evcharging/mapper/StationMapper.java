@@ -16,9 +16,10 @@ import java.util.stream.Collectors;
 public interface StationMapper {
 
     @Mapping(target = "distance", source = "distance")
+    @Mapping(target = "url", source = "station.url")
     @Mapping(target = "status", source = "station", qualifiedByName = "calculateStatus")
-    @Mapping(target = "availablePillars", source = "station", qualifiedByName = "calculateAvailablePillars")
-    @Mapping(target = "totalPillars", source = "station", qualifiedByName = "calculateTotalPillars")
+    @Mapping(target = "availableConnectors", source = "station", qualifiedByName = "calculateAvailableConnectors")
+    @Mapping(target = "totalConnectors", source = "station", qualifiedByName = "calculateTotalConnectors")
     @Mapping(target = "minPrice", source = "station", qualifiedByName = "calculateMinPrice")
     @Mapping(target = "maxPrice", source = "station", qualifiedByName = "calculateMaxPrice")
     @Mapping(target = "minPower", source = "station", qualifiedByName = "calculateMinPower")
@@ -27,9 +28,10 @@ public interface StationMapper {
     ChargingStationSummaryResponse toSummaryResponse(ChargingStation station);
 
     @Mapping(target = "distance", source = "distance")
+    @Mapping(target = "url", source = "station.url")
     @Mapping(target = "status", source = "station", qualifiedByName = "calculateStatus")
-    @Mapping(target = "availablePillars", source = "station", qualifiedByName = "calculateAvailablePillars")
-    @Mapping(target = "totalPillars", source = "station", qualifiedByName = "calculateTotalPillars")
+    @Mapping(target = "availableConnectors", source = "station", qualifiedByName = "calculateAvailableConnectors")
+    @Mapping(target = "totalConnectors", source = "station", qualifiedByName = "calculateTotalConnectors")
     @Mapping(target = "minPrice", source = "station", qualifiedByName = "calculateMinPrice")
     @Mapping(target = "maxPrice", source = "station", qualifiedByName = "calculateMaxPrice")
     @Mapping(target = "minPower", source = "station", qualifiedByName = "calculateMinPower")
@@ -37,9 +39,10 @@ public interface StationMapper {
     ChargingStationDetailResponse toDetailResponse(ChargingStation station, Double distance);
 
     @Mapping(target = "distance", source = "distance")
+    @Mapping(target = "url", source = "station.url")
     @Mapping(target = "status", source = "station", qualifiedByName = "calculateStatus")
-    @Mapping(target = "availablePillars", source = "station", qualifiedByName = "calculateAvailablePillars")
-    @Mapping(target = "totalPillars", source = "station", qualifiedByName = "calculateTotalPillars")
+    @Mapping(target = "availableConnectors", source = "station", qualifiedByName = "calculateAvailableConnectors")
+    @Mapping(target = "totalConnectors", source = "station", qualifiedByName = "calculateTotalConnectors")
     @Mapping(target = "minPrice", source = "station", qualifiedByName = "calculateMinPrice")
     @Mapping(target = "maxPrice", source = "station", qualifiedByName = "calculateMaxPrice")
     @Mapping(target = "minPower", source = "station", qualifiedByName = "calculateMinPower")
@@ -49,22 +52,25 @@ public interface StationMapper {
     // Named methods for complex mappings
     @Named("calculateStatus")
     default String calculateStatus(ChargingStation station) {
-        long availableCount = station.getPillars().stream()
-                .filter(p -> "Available".equalsIgnoreCase(p.getStatus()))
-                .count();
-        return availableCount > 0 ? "Available" : "Occupied";
+        return station.getPillars().stream()
+                .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).stream())
+                .anyMatch(c -> c.getStatus() != null && "AVAILABLE".equalsIgnoreCase(c.getStatus()))
+                ? "Available" : "Occupied";
     }
 
-    @Named("calculateAvailablePillars")
-    default Integer calculateAvailablePillars(ChargingStation station) {
+    @Named("calculateAvailableConnectors")
+    default Integer calculateAvailableConnectors(ChargingStation station) {
         return (int) station.getPillars().stream()
-                .filter(p -> "Available".equalsIgnoreCase(p.getStatus()))
+                .flatMap(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).stream())
+                .filter(c -> c.getStatus() != null && "AVAILABLE".equalsIgnoreCase(c.getStatus()))
                 .count();
     }
 
-    @Named("calculateTotalPillars")
-    default Integer calculateTotalPillars(ChargingStation station) {
-        return station.getPillars().size();
+    @Named("calculateTotalConnectors")
+    default Integer calculateTotalConnectors(ChargingStation station) {
+        return station.getPillars().stream()
+                .mapToInt(p -> Optional.ofNullable(p.getConnectors()).orElse(List.of()).size())
+                .sum();
     }
 
     @Named("calculateMinPrice")

@@ -1,12 +1,11 @@
 package com.pham.basis.evcharging.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateUserResponse {
@@ -14,5 +13,5 @@ public class UpdateUserResponse {
     private String email;
     private String phone;
     private LocalDate dateOfBirth;
-
+    private String url;
 }

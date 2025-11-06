@@ -2,15 +2,13 @@ package com.pham.basis.evcharging.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import net.minidev.json.annotate.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "charger_pillars")
-@Getter
-@Setter
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -23,15 +21,13 @@ public class ChargerPillar {
     @Column(nullable = false, length = 50)
     private String code; // AC- | DC-
 
-    @Column(nullable = false, length = 20)
-    private String status; // AVAILABLE | OCCUPIED | MAINTENANCE
-
     @Column(nullable = false)
-    private Double power;
+    private Double power; //Kwh
 
     @Column(name = "price_per_kwh", nullable = false)
     private Double pricePerKwh;
 
+    // FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "station_id", nullable = false)
     private ChargingStation station;

@@ -10,5 +10,4 @@ public class PasswordEncoderConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12); // work factor 12
     }
-
 }

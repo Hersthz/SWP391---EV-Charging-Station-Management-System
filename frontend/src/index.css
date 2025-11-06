@@ -27,6 +27,14 @@ html {
     --warning-foreground: 217 32% 17%;
     --danger: 0 84% 60%;
     --danger-foreground: 0 0% 98%;
+    --sparkle-emerald: #10b981; 
+    --sparkle-cyan: #06b6d4;   
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
     
     /* Status colors */
     --status-available: 142 76% 36%;

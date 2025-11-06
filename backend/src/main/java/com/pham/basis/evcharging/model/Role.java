@@ -2,15 +2,12 @@
 
     import com.fasterxml.jackson.annotation.JsonIgnore;
     import jakarta.persistence.*;
-    import lombok.AllArgsConstructor;
-    import lombok.Data;
-    import lombok.NoArgsConstructor;
-    import com.fasterxml.jackson.annotation.JsonIgnore;
+    import lombok.*;
     import java.util.ArrayList;
     import java.util.List;
 
     @Entity
-    @Data
+    @Getter @Setter
     @AllArgsConstructor
     @NoArgsConstructor
     @Table (name = "roles")
@@ -26,7 +23,7 @@
         @Column(name = "description")
         private String description;
 
-        @JsonIgnore
+        //FK
         @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
         private List<User> users = new ArrayList<>();
     }

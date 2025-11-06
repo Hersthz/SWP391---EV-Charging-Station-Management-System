@@ -1,13 +1,16 @@
-import { useState } from "react";
+// src/pages/admin/AdminReports.tsx
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../../api/axios";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Progress } from "../../components/ui/progress";
-import { 
-  Zap, 
-  Users, 
-  MapPin, 
+import {
+  Zap,
+  Users,
+  MapPin,
   Bell,
   Settings,
   LogOut,
@@ -18,62 +21,194 @@ import {
   Download,
   Filter,
   DollarSign,
-  Battery,
   TrendingUp,
-  Clock
+  Clock,
+  ArrowRight,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell, PieChart, Pie } from "recharts";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Cell,
+  PieChart,
+  Pie,
+  Area,
+  AreaChart,
+  Legend,
+} from "recharts";
+import { motion, type Variants } from "framer-motion";
 
+/* ================== BE types ================== */
+type AdminAnalyticsResponse = {
+  totalUsers: number;
+  totalStations: number;
+  totalEnergyKwh: number;
+  totalRevenue: number;
+  revenue6Months: { month: string; revenue: number }[];
+  revenueByStation: { stationId: number; stationName: string; revenue: number; energyKwh: number }[];
+  peakHour: { hour: number; sessionCount: number }[];
+};
+
+type ApiResponse<T> = { code?: string; message?: string; data?: T };
+
+/* ================== Helpers ================== */
+const fmtVND = (n: any) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 })
+    .format(Number(n || 0));
+
+const fmtKwh = (n?: number) => `${Number(n || 0).toFixed(1)} kWh`;
+
+const ymLabel = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y || 1970, (m || 1) - 1, 1);
+  return d.toLocaleString(undefined, { month: "short" });
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="p-3 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg">
+        <p className="label text-sm font-bold text-slate-900">{label}</p>
+        {payload.map((pld: any, index: number) => (
+          <p key={index} style={{ color: pld.color }} className="text-sm">
+            {pld.name}: <span className="font-semibold">{fmtVND(pld.value)}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomTooltipArea = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="p-3 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg">
+        <p className="label text-sm font-bold text-slate-900">{label}</p>
+        {payload.map((pld: any, index: number) => (
+          <p key={index} style={{ color: pld.color }} className="text-sm">
+            {pld.name}: <span className="font-semibold">{pld.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+const kpiContainerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const kpiCardVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.42, 0, 0.58, 1],
+    },
+  },
+};
+
+/* ================== Component ================== */
 const AdminReports = () => {
   const navigate = useNavigate();
   const [notifications] = useState(3);
 
-  const handleLogout = () => {
-    navigate("/");
-  };
-
-  const revenueData = [
-    { name: 'Jan', revenue: 47000, sessions: 1200 },
-    { name: 'Feb', revenue: 53000, sessions: 1350 },
-    { name: 'Mar', revenue: 48000, sessions: 1180 },
-    { name: 'Apr', revenue: 61000, sessions: 1520 },
-    { name: 'May', revenue: 58000, sessions: 1450 },
-    { name: 'Jun', revenue: 76000, sessions: 2000 }
-  ];
-
-  const hourlyUsage = [
-    { hour: '00', usage: 12 },
-    { hour: '02', usage: 8 },
-    { hour: '04', usage: 6 },
-    { hour: '06', usage: 45 },
-    { hour: '08', usage: 89 },
-    { hour: '10', usage: 78 },
-    { hour: '12', usage: 92 },
-    { hour: '14', usage: 95 },
-    { hour: '16', usage: 134 },
-    { hour: '18', usage: 156 },
-    { hour: '20', usage: 98 },
-    { hour: '22', usage: 67 }
-  ];
-
-  const topStations = [
-    { name: "Downtown #3", sessions: 456, revenue: "$18,240", utilization: 85 },
-    { name: "Mall #2", sessions: 389, revenue: "$15,560", utilization: 67 },
-    { name: "Highway #7", sessions: 623, revenue: "$24,920", utilization: 92 },
-    { name: "Airport #1", sessions: 512, revenue: "$20,480", utilization: 78 },
-    { name: "Shopping Center #5", sessions: 298, revenue: "$11,920", utilization: 55 }
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [adminId, setAdminId] = useState<number | null>(null);
+  const [data, setData] = useState<AdminAnalyticsResponse | null>(null);
 
   const subscriptionData = [
-    { name: 'Basic Monthly', value: 29, color: 'hsl(var(--primary))' },
-    { name: 'Premium Monthly', value: 20, color: 'hsl(var(--success))' },
-    { name: 'Pay-per-use', value: 49, color: 'hsl(var(--destructive))' },
-    { name: 'Enterprise Annual', value: 2, color: 'hsl(var(--warning))' }
+    { name: "Basic Monthly", value: 29, color: "#0ea5e9" }, // sky-500
+    { name: "Premium Monthly", value: 20, color: "#10b981" }, // emerald-500
+    { name: "Pay-per-use", value: 49, color: "#ef4444" }, // red-500
+    { name: "Enterprise Annual", value: 2, color: "#f59e0b" }, // amber-500
   ];
 
+  const handleLogout = () => navigate("/");
+
+  /* ============= Load admin + analytics ============= */
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const me = await api.get<any>("/auth/me", { withCredentials: true });
+        const uidRaw =
+          me?.data?.id ??
+          me?.data?.user_id ??
+          me?.data?.data?.id ??
+          me?.data?.user?.id ??
+          me?.data?.profile?.id;
+        const uid = Number(uidRaw);
+        if (!Number.isFinite(uid)) throw new Error("Cannot determine current admin id.");
+        if (!mounted) return;
+        setAdminId(uid);
+
+        const res = await api.get(
+          "/admin/analytics",
+          { params: { adminId: uid }, withCredentials: true }
+        );
+        const payload = (res as any)?.data;
+        if (!mounted) return;
+        setData((payload && payload.data) ? payload.data : payload);
+      } catch (e: any) {
+        if (!mounted) return;
+        setError(e?.response?.data?.message || e?.message || "Failed to load analytics.");
+        setData(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* ============= Derive charts from BE ============= */
+  const revenueData = useMemo(() => {
+    if (!data?.revenue6Months?.length) return [];
+    const sorted = [...data.revenue6Months].sort((a, b) => (a.month > b.month ? 1 : -1));
+    return sorted.map((m) => ({ name: ymLabel(m.month), revenue: Number(m.revenue || 0) }));
+  }, [data]);
+
+  const topStations = useMemo(() => {
+    if (!data?.revenueByStation?.length) return [];
+    const sorted = [...data.revenueByStation].sort((a, b) => Number(b.revenue) - Number(a.revenue));
+    const maxEnergy = Math.max(...sorted.map((s) => Number(s.energyKwh || 0)), 1);
+    return sorted.slice(0, 5).map((s) => ({
+      name: s.stationName,
+      revenue: Number(s.revenue || 0),
+      energy: Number(s.energyKwh || 0),
+      utilization: Math.round((Number(s.energyKwh || 0) / maxEnergy) * 100),
+    }));
+  }, [data]);
+
+  const hourlyUsage = useMemo(() => {
+    if (!data?.peakHour?.length) return [];
+    return [...data.peakHour]
+      .sort((a, b) => a.hour - b.hour)
+      .map((h) => ({ hour: `${String(h.hour).padStart(2, "0")}:00`, sessions: h.sessionCount }));
+  }, [data]);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-100">
       {/* Header */}
       <header className="bg-card border-b border-border shadow-card sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -91,19 +226,6 @@ const AdminReports = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-4 h-4" />
-                {notifications > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-destructive text-primary-foreground text-xs">
-                    {notifications}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button variant="ghost" size="sm">
-                <Settings className="w-4 h-4" />
-              </Button>
-
               <div className="flex items-center space-x-2 text-sm">
                 <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -171,278 +293,305 @@ const AdminReports = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Reports</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Select defaultValue="last-6-months">
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Last 6 Months" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="last-6-months">Last 6 Months</SelectItem>
-                  <SelectItem value="last-month">Last Month</SelectItem>
-                  <SelectItem value="last-year">Last Year</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select defaultValue="revenue">
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Revenue" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="revenue">Revenue</SelectItem>
-                  <SelectItem value="sessions">Sessions</SelectItem>
-                  <SelectItem value="users">Users</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button variant="outline">
-                <Filter className="w-4 h-4 mr-2" />
-                Advanced Filters
-              </Button>
-
-              <Button className="bg-primary text-white hover:bg-primary/90">
-                <Download className="w-4 h-4 mr-2" />
-                Export Report
-              </Button>
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold text-foreground">$340K</p>
-                    <p className="text-sm text-success">+18.2% vs last period</p>
-                  </div>
-                  <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 text-success" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Sessions</p>
-                    <p className="text-2xl font-bold text-foreground">8,590</p>
-                    <p className="text-sm text-primary">+12.5% vs last period</p>
-                  </div>
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Battery className="w-6 h-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Users</p>
-                    <p className="text-2xl font-bold text-foreground">4,324</p>
-                    <p className="text-sm text-warning">+8.7% vs last period</p>
-                  </div>
-                  <div className="w-12 h-12 bg-accent/50 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-accent-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg Session Value</p>
-                    <p className="text-2xl font-bold text-foreground">$39.6</p>
-                    <p className="text-sm text-success">+5.1% vs last period</p>
-                  </div>
-                  <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-warning" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Revenue & Sessions Trends */}
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2 text-primary" />
-                  Revenue & Session Trends
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="revenue" fill="hsl(var(--primary))" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Peak Hours Analysis */}
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2 text-primary" />
-                  Peak Hours Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-primary">18:00</div>
-                    <div className="text-sm text-muted-foreground">#1 peak</div>
-                    <div className="text-xs">156 sessions</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-primary">16:00</div>
-                    <div className="text-sm text-muted-foreground">#2 peak</div>
-                    <div className="text-xs">134 sessions</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-primary">14:00</div>
-                    <div className="text-sm text-muted-foreground">#3 peak</div>
-                    <div className="text-xs">112 sessions</div>
-                  </div>
-                </div>
-
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Insights</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Highest usage between 4-8 PM (evening commute)</li>
-                    <li>• Secondary peak at 8-10 AM (morning commute)</li>
-                    <li>• Lowest usage between 2-6 AM</li>
-                    <li>• Weekend patterns show more distributed usage</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Top Performing Stations */}
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="w-5 h-5 mr-2 text-primary" />
-                  Top Performing Stations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {topStations.map((station, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <span className="text-sm font-bold text-primary">{index + 1}</span>
-                      </div>
-                      <div>
-                        <div className="font-medium">{station.name}</div>
-                        <div className="text-sm text-muted-foreground">{station.sessions} sessions</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-success">{station.revenue}</div>
-                      <div className="flex items-center space-x-2">
-                        <Progress value={station.utilization} className="w-12 h-2" />
-                        <span className="text-xs text-muted-foreground">{station.utilization}%</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Subscription Distribution */}
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CreditCard className="w-5 h-5 mr-2 text-primary" />
-                  Subscription Distribution
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={subscriptionData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {subscriptionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  {subscriptionData.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-sm">{item.name}: {item.value}%</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Performance Summary */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Performance Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center bg-success/10 p-6 rounded-lg">
-                  <div className="text-4xl font-bold text-success">92%</div>
-                  <div className="text-muted-foreground">Average Station Uptime</div>
-                </div>
-                
-                <div className="text-center bg-primary/10 p-6 rounded-lg">
-                  <div className="text-4xl font-bold text-primary">76%</div>
-                  <div className="text-muted-foreground">Network Utilization</div>
-                </div>
-                
-                <div className="text-center bg-warning/10 p-6 rounded-lg">
-                  <div className="text-4xl font-bold text-warning">4.8</div>
-                  <div className="text-muted-foreground">Customer Satisfaction</div>
-                </div>
+        <main className="flex-1 p-8 bg-slate-100">
+          <div className="max-w-[1600px] mx-auto">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-4xl font-extrabold text-slate-900 tracking-tighter">Reports</h1>
+                {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-center gap-3 bg-white shadow-lg shadow-slate-900/10 rounded-full p-2.5">
+                <Select defaultValue="last-6-months">
+                  <SelectTrigger className="w-48 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
+                    <SelectValue placeholder="Last 6 Months" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/90 backdrop-blur-md">
+                    <SelectItem value="last-6-months">Last 6 Months</SelectItem>
+                    <SelectItem value="last-month">Last Month</SelectItem>
+                    <SelectItem value="last-year">Last Year</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select defaultValue="revenue">
+                  <SelectTrigger className="w-36 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
+                    <SelectValue placeholder="Revenue" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/90 backdrop-blur-md">
+                    <SelectItem value="revenue">Revenue</SelectItem>
+                    <SelectItem value="sessions">Sessions</SelectItem>
+                    <SelectItem value="users">Users</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button variant="outline" className="h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
+                  <Filter className="w-4 h-4 mr-2" />
+                  Advanced Filters
+                </Button>
+
+                <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 h-11 rounded-full px-6">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Report
+                </Button>
+              </div>
+            </div>
+
+            {/* KPI Cards */}
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+              variants={kpiContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <StatCard
+                title="Total Revenue"
+                value={fmtVND(data?.totalRevenue || 0)}
+                subtitle="from all time"
+                icon={<DollarSign className="w-6 h-6" />}
+                color="green"
+              />
+              <StatCard
+                title="Total Users"
+                value={data?.totalUsers ?? (loading ? "…" : 0)}
+                subtitle="drivers only"
+                icon={<Users className="w-6 h-6" />}
+                color="blue"
+              />
+              <StatCard
+                title="Total Stations"
+                value={data?.totalStations ?? (loading ? "…" : 0)}
+                subtitle="active + inactive"
+                icon={<MapPin className="w-6 h-6" />}
+                color="purple"
+              />
+              <StatCard
+                title="Total Energy"
+                value={`${(data?.totalEnergyKwh ?? 0).toLocaleString()} kWh`}
+                subtitle="delivered"
+                icon={<TrendingUp className="w-6 h-6" />}
+                color="yellow"
+              />
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
+              {/* Revenue Trends (6 months) */}
+              <motion.div className="lg:col-span-3" variants={kpiCardVariants} initial="hidden" animate="visible">
+                <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl h-full">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold flex items-center text-slate-900">
+                      <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                      Revenue Trends
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[400px]">
+                      {revenueData.length ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={revenueData} margin={{ top: 10, right: 0, left: 20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis
+                              stroke="#64748b"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(v) => `${Number(v) / 1000}k`}
+                            />
+                            <Tooltip
+                              content={<CustomTooltip />}
+                              cursor={{ fill: 'rgba(241, 245, 249, 0.7)' }}
+                            />
+                            <Bar dataKey="revenue" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">No revenue data.</div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Peak Hours Analysis */}
+              <motion.div className="lg:col-span-2" variants={kpiCardVariants} initial="hidden" animate="visible">
+                <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl h-full">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold flex items-center text-slate-900">
+                      <Clock className="w-5 h-5 mr-2 text-emerald-600" />
+                      Peak Hours Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[400px]">
+                      {hourlyUsage.length ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={hourlyUsage} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.7} />
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                            <XAxis dataKey="hour" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltipArea />} />
+                            <Area
+                              type="monotone"
+                              dataKey="sessions"
+                              name="Sessions"
+                              stroke="#10b981"
+                              strokeWidth={2.5}
+                              fillOpacity={1}
+                              fill="url(#colorSessions)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">No hourly data.</div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
+              {/* Top Performing Stations */}
+              <motion.div className="lg:col-span-3" variants={kpiCardVariants} initial="hidden" animate="visible">
+                <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl h-full">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold flex items-center text-slate-900">
+                      <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+                      Top Performing Stations
+                    </CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3 px-6 pb-6">
+                    {(() => {
+                      if (!topStations.length && !loading) {
+                        return <div className="text-sm text-slate-500">No station analytics.</div>;
+                      }
+
+                      return topStations.map((st, index) => (
+                        <div
+                          key={st.name + index}
+                          className="flex items-center justify-between p-4 bg-slate-100/80 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="w-9 h-9 bg-white border border-slate-200/80 rounded-lg flex items-center justify-center">
+                              <span className="text-sm font-bold text-blue-600">{index + 1}</span>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-900">{st.name}</div>
+                              <div className="text-sm text-slate-500">energy index</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <div className="font-semibold text-emerald-600">{fmtVND(st.revenue)}</div>
+                              <div className="text-xs text-slate-500">{fmtKwh(st.energy)}</div>
+                            </div>
+                            <div className="flex items-center space-x-2 w-28">
+                              <Progress value={st.utilization} className="w-full h-2 bg-slate-200 [&>div]:bg-blue-500" />
+                              <span className="text-sm text-slate-600 font-medium w-8">{st.utilization}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Subscription Distribution (mock) */}
+              <motion.div className="lg:col-span-2" variants={kpiCardVariants} initial="hidden" animate="visible">
+                <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold flex items-center text-slate-900">
+                      <CreditCard className="w-5 h-5 mr-2 text-blue-600" />
+                      Subscription Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 flex items-center justify-center -mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={subscriptionData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={110}
+                            paddingAngle={3}
+                            dataKey="value"
+                            labelLine={false}
+                            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                          >
+                            {subscriptionData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} className="focus:outline-none" />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4">
+                      {subscriptionData.map((item, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-sm font-medium text-slate-700">
+                            {item.name}: <span className="font-bold">{item.value}%</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </div>
         </main>
       </div>
     </div>
+  );
+};
+
+type StatCardProps = {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: ReactNode;
+  color: "blue" | "green" | "yellow" | "purple";
+};
+
+const StatCard = ({ title, value, subtitle, icon, color }: StatCardProps) => {
+  const colors = {
+    blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-l-blue-500", shadow: "shadow-blue-500/10" },
+    green: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-l-emerald-500", shadow: "shadow-emerald-500/10" },
+    yellow: { bg: "bg-yellow-50", text: "text-yellow-600", border: "border-l-yellow-500", shadow: "shadow-yellow-500/10" },
+    purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-l-purple-500", shadow: "shadow-purple-500/10" },
+  };
+  const c = colors[color];
+
+  return (
+    <motion.div variants={kpiCardVariants} className="h-full">
+      <Card className={`bg-white border-l-4 ${c.border} shadow-2xl ${c.shadow} rounded-2xl h-full`}>
+        <CardContent className="p-5 flex flex-col justify-between h-full">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-slate-500">{title}</p>
+              <p className={`text-4xl font-extrabold ${c.text}`}>{value}</p>
+            </div>
+            <div className={`w-16 h-16 bg-gradient-to-br from-white ${c.bg} rounded-2xl flex items-center justify-center ${c.text} flex-shrink-0`}>
+              {icon}
+            </div>
+          </div>
+          <p className={`text-sm font-medium ${c.text} opacity-80 mt-2`}>{subtitle}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };
 

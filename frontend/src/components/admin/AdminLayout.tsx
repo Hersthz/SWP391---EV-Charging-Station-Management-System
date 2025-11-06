@@ -14,6 +14,8 @@ import {
   Brain
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import api from "../../api/axios";
+import { toast } from "sonner";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -26,8 +28,15 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
   const location = useLocation();
   const [notifications] = useState(3);
   //<AdminLayout title="Station Management" actions={stationActions}>
-  const handleLogout = () => {
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout", {}, { _skipAuthRefresh: true });
+      localStorage.clear();
+      toast.success("Signed out successfully!");
+      navigate("/");
+    } catch {
+      toast.error("Logout failed!");
+    }
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -36,6 +45,7 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
     { path: "/admin", icon: BarChart3, label: "Dashboard" },
     { path: "/admin/stations", icon: MapPin, label: "Stations" },
     { path: "/admin/users", icon: Users, label: "Users" },
+    { path: "/admin/staff", icon: Users, label: "Staff" },
     { path: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
     { path: "/admin/reports", icon: Database, label: "Reports" },
     { path: "/admin/insights", icon: Brain, label: "AI Insights" }
@@ -60,19 +70,6 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-4 h-4" />
-                {notifications > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-destructive text-primary-foreground text-xs">
-                    {notifications}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button variant="ghost" size="sm">
-                <Settings className="w-4 h-4" />
-              </Button>
-
               <div className="flex items-center space-x-2 text-sm">
                 <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>

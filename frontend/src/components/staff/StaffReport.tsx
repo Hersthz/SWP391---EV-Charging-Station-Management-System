@@ -16,7 +16,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+// src/pages/staff/StaffReport.tsx
+import { useEffect, useMemo, useState, useRef } from "react";
 import StaffLayout from "./StaffLayout";
+import api from "../../api/axios";
 
 // Mock data for charts (ONE station)
 const usageData = [

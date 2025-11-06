@@ -1,5 +1,5 @@
 // src/pages/admin/AdminAddStation.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import api from "../../api/axios";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 
 // Map
@@ -20,12 +26,10 @@ import L from "leaflet";
 
 // Fix default marker icons for Leaflet in bundlers
 const defaultIcon = new L.Icon({
-  iconUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconRetinaUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
@@ -46,6 +50,8 @@ interface StationInput {
   latitude: number;
   longitude: number;
   pillars: PillarInput[];
+  imageUrl?: string;     // public image URL
+  imageBase64?: string;  // base64 when a local file is uploaded
 }
 
 const connectorOptions = ["CCS", "CHAdeMO", "Type2", "AC"] as const;
@@ -81,10 +87,13 @@ const AdminAddStation = () => {
   const [stationData, setStationData] = useState<StationInput>({
     stationName: "",
     address: "",
-    latitude: 10.7769,   // default HCMC center
+    latitude: 10.7769, // default HCMC center
     longitude: 106.7009,
     pillars: [],
   });
+
+  // image preview source 
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   // ===== Pillars =====
   const addPillar = () => {
@@ -107,9 +116,7 @@ const AdminAddStation = () => {
   const updatePillar = (index: number, field: keyof PillarInput, value: any) => {
     setStationData((prev) => ({
       ...prev,
-      pillars: prev.pillars.map((p, i) =>
-        i === index ? { ...p, [field]: value } : p
-      ),
+      pillars: prev.pillars.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
     }));
   };
 
@@ -118,9 +125,7 @@ const AdminAddStation = () => {
     setStationData((prev) => ({
       ...prev,
       pillars: prev.pillars.map((p, i) =>
-        i === pillarIndex
-          ? { ...p, connectors: [...p.connectors, { connectorType: "" }] }
-          : p
+        i === pillarIndex ? { ...p, connectors: [...p.connectors, { connectorType: "" }] } : p
       ),
     }));
   };
@@ -130,33 +135,44 @@ const AdminAddStation = () => {
       ...prev,
       pillars: prev.pillars.map((p, i) =>
         i === pillarIndex
-          ? {
-              ...p,
-              connectors: p.connectors.filter((_, ci) => ci !== connectorIndex),
-            }
+          ? { ...p, connectors: p.connectors.filter((_, ci) => ci !== connectorIndex) }
           : p
       ),
     }));
   };
 
-  const updateConnector = (
-    pillarIndex: number,
-    connectorIndex: number,
-    type: string
-  ) => {
+  const updateConnector = (pillarIndex: number, connectorIndex: number, type: string) => {
     setStationData((prev) => ({
       ...prev,
       pillars: prev.pillars.map((p, i) =>
         i === pillarIndex
           ? {
               ...p,
-              connectors: p.connectors.map((c, ci) =>
-                ci === connectorIndex ? { connectorType: type } : c
-              ),
+              connectors: p.connectors.map((c, ci) => (ci === connectorIndex ? { connectorType: type } : c)),
             }
           : p
       ),
     }));
+  };
+
+  // ===== Image handlers =====
+  const handleImageUrlChange = (val: string) => {
+    setStationData((prev) => ({ ...prev, imageUrl: val, imageBase64: undefined }));
+    setPreviewSrc(val || null);
+  };
+
+  const handleFileChange = (file?: File | null) => {
+    if (!file) {
+      setStationData((prev) => ({ ...prev, imageBase64: undefined }));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result);
+      setStationData((prev) => ({ ...prev, imageBase64: base64, imageUrl: undefined }));
+      setPreviewSrc(base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   // ===== Form submit =====
@@ -190,7 +206,6 @@ const AdminAddStation = () => {
     try {
       const payload: StationInput = {
         ...stationData,
-        // normalize numbers
         latitude: Number(stationData.latitude),
         longitude: Number(stationData.longitude),
         pillars: stationData.pillars.map((p) => ({
@@ -198,6 +213,8 @@ const AdminAddStation = () => {
           power: Number(p.power),
           pricePerKwh: Number(p.pricePerKwh),
         })),
+        imageUrl: stationData.imageUrl?.trim() || undefined,
+        imageBase64: stationData.imageBase64 || undefined,
       };
 
       const res = await api.post("/charging-stations/addStation", payload);
@@ -238,12 +255,22 @@ const AdminAddStation = () => {
     );
   };
 
+  const onCancel = () => {
+    setPreviewSrc(null);
+    navigate("/admin/stations");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/stations")} className="hover:bg-sky-50">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/admin/stations")}
+            className="hover:bg-sky-50"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -257,7 +284,9 @@ const AdminAddStation = () => {
             </span>
           </div>
 
-          <Badge variant="outline" className="px-3 py-2">Admin</Badge>
+          <Badge variant="outline" className="px-3 py-2">
+            Admin
+          </Badge>
         </div>
       </header>
 
@@ -296,7 +325,9 @@ const AdminAddStation = () => {
                     required
                     type="text"
                     value={stationData.stationName}
-                    onChange={(e) => setStationData({ ...stationData, stationName: e.target.value })}
+                    onChange={(e) =>
+                      setStationData({ ...stationData, stationName: e.target.value })
+                    }
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                     placeholder="e.g., Downtown Charging Hub"
                   />
@@ -308,7 +339,9 @@ const AdminAddStation = () => {
                     required
                     type="text"
                     value={stationData.address}
-                    onChange={(e) => setStationData({ ...stationData, address: e.target.value })}
+                    onChange={(e) =>
+                      setStationData({ ...stationData, address: e.target.value })
+                    }
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                     placeholder="e.g., 123 Main Street, District 1, HCMC"
                   />
@@ -340,7 +373,7 @@ const AdminAddStation = () => {
                       scrollWheelZoom
                     >
                       <TileLayer
-                        attribution='&copy; OpenStreetMap contributors'
+                        attribution="&copy; OpenStreetMap contributors"
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       />
                       <LocationPicker
@@ -368,7 +401,7 @@ const AdminAddStation = () => {
                     </MapContainer>
                   </div>
 
-                  {/* Manual inputs (kept for precision) */}
+                  {/* Manual inputs */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Latitude *</label>
@@ -378,7 +411,10 @@ const AdminAddStation = () => {
                         step="any"
                         value={stationData.latitude}
                         onChange={(e) =>
-                          setStationData({ ...stationData, latitude: parseFloat(e.target.value) })
+                          setStationData({
+                            ...stationData,
+                            latitude: parseFloat(e.target.value),
+                          })
                         }
                         className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                         placeholder="10.7769"
@@ -392,13 +428,78 @@ const AdminAddStation = () => {
                         step="any"
                         value={stationData.longitude}
                         onChange={(e) =>
-                          setStationData({ ...stationData, longitude: parseFloat(e.target.value) })
+                          setStationData({
+                            ...stationData,
+                            longitude: parseFloat(e.target.value),
+                          })
                         }
                         className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                         placeholder="106.7009"
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Station Image */}
+          <Card className="bg-white/80 backdrop-blur border-sky-200/60">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-100">
+                  <img
+                    alt="image icon"
+                    src="https://cdn-icons-png.flaticon.com/512/3342/3342137.png"
+                    className="w-5 h-5"
+                  />
+                </div>
+                <div>
+                  <CardTitle>Station Image (optional)</CardTitle>
+                  <CardDescription>Paste an image URL or upload a local file</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Image URL</label>
+                  <input
+                    type="url"
+                    value={stationData.imageUrl ?? ""}
+                    onChange={(e) => handleImageUrlChange(e.target.value)}
+                    placeholder="https://example.com/station.jpg"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Prefer a public CDN/S3 URL for best performance.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Upload file</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e.target.files?.[0])}
+                    className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    When a file is chosen, a <code>imageBase64</code> will be sent.
+                  </p>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="mt-2">
+                <label className="block text-sm font-medium mb-2">Preview</label>
+                <div className="rounded-xl border overflow-hidden bg-slate-50 grid place-items-center min-h-[180px]">
+                  {previewSrc ? (
+                    // eslint-disable-next-line jsx-a11y/alt-text
+                    <img src={previewSrc} className="max-h-[280px] w-full object-contain" loading="lazy" />
+                  ) : (
+                    <span className="text-sm text-slate-500 py-8">No image selected</span>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -411,7 +512,11 @@ const AdminAddStation = () => {
                 <CardTitle>Charging Pillars</CardTitle>
                 <CardDescription>Configure power, price and connectors</CardDescription>
               </div>
-              <Button type="button" onClick={addPillar} className="gap-2 bg-gradient-to-r from-sky-500 to-emerald-500 hover:opacity-90">
+              <Button
+                type="button"
+                onClick={addPillar}
+                className="gap-2 bg-gradient-to-r from-sky-500 to-emerald-500 hover:opacity-90"
+              >
                 <Plus className="w-4 h-4" />
                 Add Pillar
               </Button>
@@ -458,7 +563,9 @@ const AdminAddStation = () => {
                             type="number"
                             min={0}
                             value={pillar.power}
-                            onChange={(e) => updatePillar(pIndex, "power", parseFloat(e.target.value))}
+                            onChange={(e) =>
+                              updatePillar(pIndex, "power", parseFloat(e.target.value))
+                            }
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                             placeholder="250"
                           />
@@ -469,7 +576,7 @@ const AdminAddStation = () => {
                             required
                             type="number"
                             min={0}
-                            step="100"
+                            step={100}
                             value={pillar.pricePerKwh}
                             onChange={(e) =>
                               updatePillar(pIndex, "pricePerKwh", parseFloat(e.target.value))
@@ -533,7 +640,7 @@ const AdminAddStation = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/admin/stations")}
+              onClick={onCancel}
               className="h-11 rounded-xl"
             >
               Cancel

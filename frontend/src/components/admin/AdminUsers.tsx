@@ -1,748 +1,291 @@
-import { useState } from "react";
+// src/pages/admin/AdminUsersPage.tsx
+import { useEffect, useMemo, useState, ReactNode } from "react";
+import AdminLayout from "./AdminLayout";
+import api from "../../api/axios";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { Card, CardContent } from "../../components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
-import {
-  Search,
-  UserPlus,
-  Edit,
-  UserX,
-  Mail,
-  Phone,
-  Filter,
-  MoreHorizontal,
-  Shield,
-  Calendar,
-  CheckCircle
-} from "lucide-react";
-import AdminLayout from "./AdminLayout";
-import { toast } from "../../components/ui/use-toast";
-const AdminUsers = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all-roles");
-  const [statusFilter, setStatusFilter] = useState("all-status");
-  const [roleEditorOpen, setRoleEditorOpen] = useState(false);
-  const [editUserOpen, setEditUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  // Role Editor selections
-  const [roleEditorSelectedUserId, setRoleEditorSelectedUserId] = useState<string>("");
-  const [roleEditorSelectedRole, setRoleEditorSelectedRole] = useState<string>("");
-  const [newUser, setNewUser] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    role: "basic",
-    subscription: "pay-per-use"
-  });
-  const [addUserOpen, setAddUserOpen] = useState(false);
+import { useToast } from "../../hooks/use-toast";
+import { Search, Edit, UserX, Mail, Phone, Calendar, Loader2, Users, UserCheck, Star } from "lucide-react";
 
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.phone) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
+/* ===== Types ===== */
+type UserResponse = {
+  id: number;
+  fullName: string;
+  username: string;
+  email: string;
+  phone: string;
+  status: boolean;
+  isVerified: boolean;
+  roleName: string;
+  createdAt?: string | null;
+};
+type PageResp<T> = {
+  code?: string; message?: string;
+  data: { content: T[]; totalElements: number; totalPages: number; size: number; number: number; };
+};
 
-    // map role/subscription sang format hiển thị trong bảng
-    const roleMap: Record<string, string> = {
-      basic: "Basic User",
-      premium: "Premium User",
-      fleet: "Fleet Manager",
-    };
-    const subscriptionMap: Record<string, string> = {
-      "pay-per-use": "Pay-per-use",
-      basic: "Basic Monthly",
-      premium: "Premium Monthly",
-      enterprise: "Enterprise",
-    };
+/* ===== Role helpers (giống file cũ) ===== */
+const roleUiToBackend: Record<string, string> = {
+  "Basic User": "ROLE_USER",
+  "Premium User": "ROLE_PREMIUM",
+};
+const backendToRoleUi: Record<string, string> = {
+  ROLE_USER: "Basic User",
+  ROLE_PREMIUM: "Premium User",
+  USER: "Basic User",
+  PREMIUM: "Premium User",
+};
 
-    const nextId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
-    const now = new Date();
-    const joinDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+const formatDate = (iso?: string | null) => {
+  if (!iso) return "-";
+  const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
 
-    const newRow = {
-      id: nextId,
-      name: newUser.name.trim(),
-      email: newUser.email.trim(),
-      phone: newUser.phone.trim(),
-      joinDate,
-      role: roleMap[newUser.role] ?? "Basic User",
-      status: "Active",
-      sessions: 0,
-      subscription: subscriptionMap[newUser.subscription] ?? "Pay-per-use",
-    };
+export default function AdminUsersPage() {
+  const { toast } = useToast();
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
+  const [sessionsMap, setSessionsMap] = useState<Record<number, number>>({});
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all"|"basic"|"premium">("all");
 
-    setUsers(prev => [newRow, ...prev]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selected, setSelected] = useState<UserResponse | null>(null);
 
-    toast({
-      title: "User Created Successfully",
-      description: `${newRow.name} has been added to the system`,
-    });
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await api.get<UserResponse[]>("/user/getAll");
+        if (!mounted) return;
+        const raw = (res.data || [])
+          // chỉ user + premium
+          .filter(u => {
+            const ui = backendToRoleUi[u.roleName] || u.roleName;
+            return ui === "Basic User" || ui === "Premium User";
+          })
+          .sort((a,b) => (b.id??0)-(a.id??0));
+        setUsers(raw);
 
-    setAddUserOpen(false);
-    setNewUser({
-      name: "",
-      email: "",
-      phone: "",
-      role: "basic",
-      subscription: "pay-per-use",
-    });
-  };
-
-  const handleToggleStatus = (userId: number) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.status === "Active" ? "Suspended" : "Active";
-        toast({
-          title: `User ${newStatus}`,
-          description: `${u.name} has been ${newStatus.toLowerCase()}`,
+        // đếm sessions
+        raw.forEach(async (u) => {
+          try {
+            const page = await api.get<PageResp<any>>(`/session/user/${u.id}`, { params: { page:0, size:1 } });
+            const total = page.data?.data?.totalElements ?? 0;
+            setSessionsMap(m => ({...m,[u.id]: total}));
+          } catch {}
         });
-        return { ...u, status: newStatus };
+      } catch (e:any) {
+        toast({ title:"Load users failed", description:e?.response?.data?.message || "Không tải được danh sách", variant:"destructive" });
+      } finally {
+        if (mounted) setLoading(false);
       }
-      return u;
-    }));
-  };
+    })();
+    return () => { mounted = false; };
+  }, [toast]);
 
-  const openEditDialog = (user: any) => {
-    setSelectedUser({ ...user });
-    setEditUserOpen(true);
-  };
-
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@email.com",
-      phone: "+1 (555) 123-4567",
-      joinDate: "2023-01-15",
-      role: "Premium User",
-      status: "Active",
-      sessions: 147,
-      subscription: "Premium Monthly"
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      email: "sarah.j@email.com",
-      phone: "+1 (555) 234-5678",
-      joinDate: "2023-03-22",
-      role: "Basic User",
-      status: "Active",
-      sessions: 89,
-      subscription: "Pay-per-use"
-    },
-    {
-      id: 3,
-      name: "Mike Chen",
-      email: "mike.chen@company.com",
-      phone: "+1 (555) 345-6789",
-      joinDate: "2022-11-08",
-      role: "Fleet Manager",
-      status: "Active",
-      sessions: 523,
-      subscription: "Enterprise"
-    },
-    {
-      id: 4,
-      name: "Emma Wilson",
-      email: "emma.w@email.com",
-      phone: "+1 (555) 456-7890",
-      joinDate: "2024-02-14",
-      role: "Basic User",
-      status: "Suspended",
-      sessions: 23,
-      subscription: "Basic Monthly"
-    }
-  ]);
-
-  const handleEditUser = () => {
-    if (!selectedUser) return;
-
-    setUsers(users.map(u => u.id === selectedUser.id ? selectedUser : u));
-
-    toast({
-      title: "User Updated Successfully",
-      description: `${selectedUser.name}'s information has been updated`,
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return users.filter(u => {
+      const roleUi = backendToRoleUi[u.roleName] || u.roleName;
+      const matchSearch =
+        !term ||
+        u.fullName?.toLowerCase().includes(term) ||
+        u.email?.toLowerCase().includes(term) ||
+        u.username?.toLowerCase().includes(term);
+      const matchRole =
+        roleFilter === "all" ||
+        (roleFilter === "basic" && roleUi === "Basic User") ||
+        (roleFilter === "premium" && roleUi === "Premium User");
+      return matchSearch && matchRole;
     });
+  }, [users, search, roleFilter]);
 
-    setEditUserOpen(false);
-    setSelectedUser(null);
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Active':
-        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
-      case 'Suspended':
-        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Suspended</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const toggleStatus = async (u: UserResponse) => {
+    setLoadingMap(m => ({...m,[u.id]:true}));
+    const prev = u.status;
+    setUsers(list => list.map(x => x.id===u.id ? {...x, status: !x.status} : x));
+    try {
+      await api.put(`/admin/users/${u.id}/status`, null, { params: { active: !prev } });
+      toast({ title: !prev ? "Activated" : "Suspended" });
+    } catch (e:any) {
+      setUsers(list => list.map(x => x.id===u.id ? {...x, status: prev} : x));
+      toast({ title:"Update status failed", description: e?.response?.data?.message, variant:"destructive" });
+    } finally {
+      setLoadingMap(m => ({...m,[u.id]:false}));
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      'Premium User': {
-        className: "bg-warning/10 text-warning border-warning/20",
-        icon: "⭐",
-        text: "Premium User"
-      },
-      'Fleet Manager': {
-        className: "bg-primary/10 text-primary border-primary/20",
-        icon: "🚗",
-        text: "Fleet Manager"
-      },
-      'Basic User': {
-        className: "bg-muted/50 text-muted-foreground border-muted",
-        icon: "👤",
-        text: "Basic User"
-      }
-    };
-
-    const config = roleConfig[role as keyof typeof roleConfig];
-    if (!config) return <Badge variant="outline">{role}</Badge>;
-
-    return (
-      <Badge className={`${config.className} flex items-center gap-1`}>
-        <span>{config.icon}</span>
-        {config.text}
-      </Badge>
-    );
+  const saveRole = async () => {
+    if (!selected) return;
+    const ui = backendToRoleUi[selected.roleName] || selected.roleName;
+    const be = roleUiToBackend[ui] ?? "ROLE_USER";
+    try {
+      await api.post("/user/setRole", { username: selected.username, roleName: be, keepUserBaseRole: false });
+      setUsers(list => list.map(x => x.id===selected.id ? {...x, roleName: be} : x));
+      toast({ title: "Role updated" });
+      setEditOpen(false);
+    } catch (e:any) {
+      toast({ title:"Update role failed", description:e?.response?.data?.message, variant:"destructive" });
+    }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all-roles" ||
-      (roleFilter === "basic" && user.role === "Basic User") ||
-      (roleFilter === "premium" && user.role === "Premium User") ||
-      (roleFilter === "fleet" && user.role === "Fleet Manager");
-    const matchesStatus = statusFilter === "all-status" ||
-      user.status.toLowerCase() === statusFilter;
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  const userActions = (
-    <>
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-        <Input
-          placeholder="Search users by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9 w-80"
-        />
+  const header = (
+    <div className="flex items-center gap-3 bg-white rounded-full p-2.5 shadow">
+      <div className="relative flex-1">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Input className="pl-9 w-[320px] rounded-full bg-slate-100 border-0" placeholder="Search users…" value={search} onChange={(e)=>setSearch(e.target.value)} />
       </div>
-
-      <Select value={roleFilter} onValueChange={setRoleFilter}>
-        <SelectTrigger className="w-40">
+      <Select value={roleFilter} onValueChange={(v:any)=>setRoleFilter(v)}>
+        <SelectTrigger className="w-44 rounded-full border-0 bg-slate-100">
           <SelectValue placeholder="All Roles" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all-roles">All Roles</SelectItem>
+          <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="basic">Basic User</SelectItem>
           <SelectItem value="premium">Premium User</SelectItem>
-          <SelectItem value="fleet">Fleet Manager</SelectItem>
         </SelectContent>
       </Select>
-
-      <Select value={statusFilter} onValueChange={setStatusFilter}>
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="All Status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all-status">All Status</SelectItem>
-          <SelectItem value="active">Active</SelectItem>
-          <SelectItem value="suspended">Suspended</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Dialog open={roleEditorOpen} onOpenChange={setRoleEditorOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
-            <Shield className="w-4 h-4 mr-2" />
-            Role Editor
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <Shield className="w-5 h-5 mr-2 text-primary" />
-              Role Management System
-            </DialogTitle>
-            <DialogDescription>
-              Manage user roles and permissions for the platform
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="p-4">
-                  <div className="text-center space-y-2">
-                    <div className="text-3xl">👤</div>
-                    <h3 className="font-semibold text-foreground">Basic User</h3>
-                    <p className="text-xs text-muted-foreground">Standard access to charging stations</p>
-                    <Badge variant="outline" className="text-xs">
-                      {users.filter(u => u.role === "Basic User").length} users
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-warning/20 bg-warning/5">
-                <CardContent className="p-4">
-                  <div className="text-center space-y-2">
-                    <div className="text-3xl">⭐</div>
-                    <h3 className="font-semibold text-foreground">Premium User</h3>
-                    <p className="text-xs text-muted-foreground">Priority access & discounts</p>
-                    <Badge variant="outline" className="text-xs">
-                      {users.filter(u => u.role === "Premium User").length} users
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-secondary/20 bg-secondary/5">
-                <CardContent className="p-4">
-                  <div className="text-center space-y-2">
-                    <div className="text-3xl">🚗</div>
-                    <h3 className="font-semibold text-foreground">Fleet Manager</h3>
-                    <p className="text-xs text-muted-foreground">Manage multiple vehicles</p>
-                    <Badge variant="outline" className="text-xs">
-                      {users.filter(u => u.role === "Fleet Manager").length} users
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-foreground">Role Permissions</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-muted-foreground">Access charging stations</span>
-                  <div className="flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-muted-foreground">Priority booking</span>
-                  <div className="flex gap-2">
-                    <span className="w-4 h-4 text-muted-foreground">—</span>
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-muted-foreground">Fleet management</span>
-                  <div className="flex gap-2">
-                    <span className="w-4 h-4 text-muted-foreground">—</span>
-                    <span className="w-4 h-4 text-muted-foreground">—</span>
-                    <CheckCircle className="w-4 h-4 text-success" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={() => setRoleEditorOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
-        <DialogTrigger asChild>
-          <Button
-            className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:opacity-90 shadow-electric"
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add User
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <UserPlus className="w-5 h-5 mr-2 text-primary" />
-              Add New User
-            </DialogTitle>
-            <DialogDescription>
-              Create a new user account with basic information and permissions
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
-              <Input
-                id="name"
-                placeholder="John Doe"
-                value={newUser.name}
-                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                className="w-full"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email Address *</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john.doe@email.com"
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                className="w-full"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-sm font-medium">Phone Number *</Label>
-              <Input
-                id="phone"
-                placeholder="+1 (555) 123-4567"
-                value={newUser.phone}
-                onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                className="w-full"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium">User Role</Label>
-                <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
-                  <SelectTrigger id="role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basic">Basic User</SelectItem>
-                    <SelectItem value="premium">Premium User</SelectItem>
-                    <SelectItem value="fleet">Fleet Manager</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="subscription" className="text-sm font-medium">Subscription</Label>
-                <Select value={newUser.subscription} onValueChange={(value) => setNewUser({ ...newUser, subscription: value })}>
-                  <SelectTrigger id="subscription">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pay-per-use">Pay-per-use</SelectItem>
-                    <SelectItem value="basic">Basic Monthly</SelectItem>
-                    <SelectItem value="premium">Premium Monthly</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setAddUserOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddUser}
-              className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 text-primary-foreground hover:brightness-110 active:translate-y-[1px] focus-visible:ring-2 focus-visible:ring-primary/50 shadow-electric transition-all"
-            >
-              Create User
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 
   return (
-    <AdminLayout title="User Management" actions={userActions}>
-      {/* User Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card className="shadow-card border-0 bg-gradient-to-br from-primary/5 to-primary/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold text-primary">{users.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">👥</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card border-0 bg-gradient-to-br from-success/5 to-success/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold text-success">
-                  {users.filter(u => u.status === 'Active').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">✅</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card border-0 bg-gradient-to-br from-warning/5 to-warning/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Premium Users</p>
-                <p className="text-2xl font-bold text-warning">
-                  {users.filter(u => u.role === 'Premium User').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-warning/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">⭐</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card border-0 bg-gradient-to-br from-secondary/5 to-secondary/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Fleet Managers</p>
-                <p className="text-2xl font-bold text-secondary">
-                  {users.filter(u => u.role === 'Fleet Manager').length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">🚗</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* User Management Table */}
-      <Card className="shadow-card border-0 bg-gradient-card">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center text-lg">
-            <span className="text-xl mr-3">👥</span>
-            User Management ({filteredUsers.length} users)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50">
-                  <TableHead className="font-semibold">User Details</TableHead>
-                  <TableHead className="font-semibold">Contact Info</TableHead>
-                  <TableHead className="font-semibold">Role</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">Activity</TableHead>
-                  <TableHead className="font-semibold">Subscription</TableHead>
-                  <TableHead className="font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id} className="border-border/50 hover:bg-muted/30 transition-colors">
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium text-foreground">{user.name}</div>
-                        <div className="text-sm text-muted-foreground flex items-center">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          Joined {user.joinDate}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-2">
-                        <div className="flex items-center text-sm">
-                          <Mail className="w-3 h-3 mr-2 text-muted-foreground" />
-                          <span className="text-primary font-medium">{user.email}</span>
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Phone className="w-3 h-3 mr-2" />
-                          <span>{user.phone}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getRoleBadge(user.role)}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(user.status)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-primary">
-                          {user.sessions}
-                        </div>
-                        <div className="text-xs text-muted-foreground">sessions</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm font-medium text-foreground">
-                        {user.subscription}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-primary/20 text-primary hover:bg-primary/10"
-                          onClick={() => openEditDialog(user)}
-                        >
-                          <Edit className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={user.status === 'Active'
-                            ? 'text-destructive border-destructive/20 hover:bg-destructive/10'
-                            : 'text-success border-success/20 hover:bg-success/10'}
-                          onClick={() => handleToggleStatus(user.id)}
-                        >
-                          <UserX className="w-3 h-3 mr-1" />
-                          {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+    <AdminLayout title="Users" actions={header}>
+      <Card className="border-0 shadow-xl">
+        <CardContent className="p-0">
+          {/* KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 pb-0">
+            <Kpi title="Total Users" value={users.length} icon={<Users className="w-6 h-6" />} />
+            <Kpi title="Active Users" value={users.filter(u=>u.status).length} icon={<UserCheck className="w-6 h-6" />} />
+            <Kpi title="Premium Users" value={users.filter(u=>(backendToRoleUi[u.roleName]||u.roleName)==="Premium User").length} icon={<Star className="w-6 h-6" />} />
           </div>
+
+          {/* Table */}
+          {loading ? (
+            <div className="flex items-center justify-center h-72 text-slate-500 gap-2 p-6">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          ) : (
+            <div className="overflow-x-auto p-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sessions</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map(u=>{
+                    const sessions = sessionsMap[u.id] ?? 0;
+                    const uiRole = backendToRoleUi[u.roleName] || u.roleName;
+                    const roleBadge =
+                      <Badge className="bg-slate-100 text-slate-800 border-slate-200">{uiRole}</Badge>;
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          <div className="font-semibold">{u.fullName}</div>
+                          <div className="text-xs text-slate-500 flex items-center"><Calendar className="w-3 h-3 mr-1"/>Joined {formatDate(u.createdAt)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm flex items-center"><Mail className="w-3.5 h-3.5 mr-2"/>{u.email||"-"}</div>
+                          <div className="text-sm text-slate-600 flex items-center"><Phone className="w-3.5 h-3.5 mr-2"/>{u.phone||"-"}</div>
+                        </TableCell>
+                        <TableCell>{roleBadge}</TableCell>
+                        <TableCell>
+                          {u.status
+                            ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Active</Badge>
+                            : <Badge className="bg-red-100 text-red-700 border-red-200">Suspended</Badge>}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="font-semibold">{sessions}</div>
+                          <div className="text-xs text-slate-500">sessions</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" className="text-blue-600"
+                              onClick={()=>{ setSelected(u); setEditOpen(true); }}>
+                              <Edit className="w-3.5 h-3.5 mr-1.5"/> Edit
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                              disabled={!!loadingMap[u.id]}
+                              className={u.status?"text-red-600":"text-emerald-600"}
+                              onClick={()=>toggleStatus(u)}>
+                              {loadingMap[u.id] ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin"/> : <UserX className="w-3.5 h-3.5 mr-1.5"/>}
+                              {u.status?"Suspend":"Activate"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
-      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+
+      {/* Edit role dialog (Users) */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[520px] bg-white">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <Edit className="w-5 h-5 mr-2 text-primary" />
-              Edit User Information
-            </DialogTitle>
-            <DialogDescription>
-              Update user details and account settings
-            </DialogDescription>
+            <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name" className="text-sm font-medium">Full Name *</Label>
-                <Input
-                  id="edit-name"
-                  value={selectedUser.name}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-email" className="text-sm font-medium">Email Address *</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={selectedUser.email}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-phone" className="text-sm font-medium">Phone Number *</Label>
-                <Input
-                  id="edit-phone"
-                  value={selectedUser.phone}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
-                />
-              </div>
-
+          {selected && (
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-role" className="text-sm font-medium">User Role</Label>
-                  <Select
-                    value={selectedUser.role === "Basic User" ? "basic" : selectedUser.role === "Premium User" ? "premium" : "fleet"}
-                    onValueChange={(value) => {
-                      const roleMap: any = {
-                        "basic": "Basic User",
-                        "premium": "Premium User",
-                        "fleet": "Fleet Manager"
-                      };
-                      setSelectedUser({ ...selectedUser, role: roleMap[value] });
-                    }}
-                  >
-                    <SelectTrigger id="edit-role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basic">Basic User</SelectItem>
-                      <SelectItem value="premium">Premium User</SelectItem>
-                      <SelectItem value="fleet">Fleet Manager</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-subscription" className="text-sm font-medium">Subscription</Label>
-                  <Select
-                    value={selectedUser.subscription}
-                    onValueChange={(value) => setSelectedUser({ ...selectedUser, subscription: value })}
-                  >
-                    <SelectTrigger id="edit-subscription">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pay-per-use">Pay-per-use</SelectItem>
-                      <SelectItem value="Basic Monthly">Basic Monthly</SelectItem>
-                      <SelectItem value="Premium Monthly">Premium Monthly</SelectItem>
-                      <SelectItem value="Enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div><Label>Full name</Label><Input disabled value={selected.fullName} /></div>
+                <div><Label>Username</Label><Input disabled value={selected.username} /></div>
+                <div><Label>Email</Label><Input disabled value={selected.email||""} /></div>
+                <div><Label>Phone</Label><Input disabled value={selected.phone||""} /></div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-status" className="text-sm font-medium">Account Status</Label>
+                <Label>Role</Label>
                 <Select
-                  value={selectedUser.status}
-                  onValueChange={(value) => setSelectedUser({ ...selectedUser, status: value })}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Suspended">Suspended</SelectItem>
+                  value={(backendToRoleUi[selected.roleName] as "Basic User"|"Premium User") || "Basic User"}
+                  onValueChange={(ui)=>{ const be = roleUiToBackend[ui] ?? "ROLE_USER"; setSelected({...selected, roleName: be}); }}>
+                  <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="Basic User">Basic User</SelectItem>
+                    <SelectItem value="Premium User">Premium User</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           )}
-
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setEditUserOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditUser} className="bg-gradient-primary text-primary-foreground hover:opacity-90">
-              Save Changes
-            </Button>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={()=>setEditOpen(false)}>Cancel</Button>
+            <Button onClick={saveRole} className="bg-sky-500 text-white">Save</Button>
           </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>
   );
-};
+}
 
-export default AdminUsers;
+function Kpi({title,value,icon}:{title:string; value:number; icon:ReactNode}) {
+  return (
+    <Card className="border-0 shadow-md">
+      <CardContent className="p-5 flex items-center justify-between">
+        <div>
+          <p className="text-sm text-slate-500">{title}</p>
+          <p className="text-3xl font-extrabold text-slate-900">{value}</p>
+        </div>
+        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">{icon}</div>
+      </CardContent>
+    </Card>
+  );
+}

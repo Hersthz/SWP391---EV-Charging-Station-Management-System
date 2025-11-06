@@ -1,5 +1,6 @@
 package com.pham.basis.evcharging.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -7,15 +8,17 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
-    @Autowired
-    private UserService userService;
+
+    private final UserService userService;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest request) {
         OAuth2User oAuth2User = super.loadUser(request);
         var attrs = oAuth2User.getAttributes();
         String email = attrs.get("email") instanceof String ? (String) attrs.get("email") : null;
+        String url = attrs.get("picture") instanceof String ? (String) attrs.get("picture") : null;
         String name = null;
         if (attrs.get("name") instanceof String) {
             name = (String) attrs.get("name");
@@ -37,7 +40,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         if (email != null) {
-            userService.createOrUpdateFromOAuth(email, name != null ? name : email, emailVerified);
+            userService.createOrUpdateFromOAuth(email, name != null ? name : email, emailVerified,url);
         }
 
         return oAuth2User;
