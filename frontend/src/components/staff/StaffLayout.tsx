@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/axios";
+import { toast } from "sonner";
 
 interface StaffLayoutProps {
   children: ReactNode;
@@ -71,11 +72,13 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout", null, { withCredentials: true });
+      await api.post("/auth/logout", {}, { _skipAuthRefresh: true });
+      localStorage.clear();
+      toast.success("Signed out successfully!");
+      navigate("/");
     } catch {
-      // ignore
+      toast.error("Logout failed!");
     }
-    navigate("/");
   };
 
   const isActive = (path: string) => {

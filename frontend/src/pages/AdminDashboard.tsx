@@ -204,7 +204,7 @@ const AdminDashboard = () => {
                   description="Add new staff or manage permissions."
                   icon={<Shield className="w-6 h-6 text-red-600" />}
                   color="red"
-                  href="/admin/users" // Giả định trỏ đến trang users
+                  href="/admin/staff" 
                 />
               </CardContent>
             </Card>

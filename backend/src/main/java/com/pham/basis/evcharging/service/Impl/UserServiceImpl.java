@@ -226,46 +226,56 @@ public class UserServiceImpl implements UserService {
         return new SetUserRoleResponse(userName,targetRoleName,keepUserBaseRole);
     }
 
-        @Override
-        public CreateStaffResponse adminAddStaff(CreateStaffRequest req) {
+    @Override
+    public CreateStaffResponse adminAddStaff(CreateStaffRequest req) {
+        final String email    = req.getEmail().toLowerCase().trim();
+        final String username = req.getUsername().toLowerCase().trim();
+        final String phone    = req.getPhone().trim();
 
-            final String email    = req.getEmail().toLowerCase().trim();
-            final String username = req.getUsername().toLowerCase().trim();
-            final String phone    = req.getPhone().trim();
+        if (userRepository.existsByEmail(email))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        if (userRepository.existsByPhone(phone))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
+        if (userRepository.existsByUsername(username))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
 
-            if (userRepository.existsByEmail(email))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
-            if (userRepository.existsByPhone(phone))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
-            if (userRepository.existsByUsername(username))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists"); // 409 [web:20][web:3]
+        Role role = roleRepository.findById(req.getRoleId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId"));
 
-            Role role = roleRepository.findById(req.getRoleId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId")); // 400 [web:20]
+        // ✅ LẤY PWD ĐẦU VÀO, FALLBACK DEV "1", RỒI MÃ HOÁ
+        final String rawPwd = Optional.ofNullable(req.getPassword())
+                .map(String::trim)
+                .filter(p -> !p.isBlank())
+                .orElse("1"); // chỉ để dev
+        final String hashed = passwordEncoder.encode(rawPwd);
 
-            // Password: dùng input, nếu trống đặt "1" (dev); production nên generate ngẫu nhiên
-            final String rawPwd = Optional.ofNullable(req.getPassword())
-                    .map(String::trim)
-                    .filter(p -> !p.isBlank())
-                    .orElse("1"); // CHỈ nên dùng ở dev [web:14][web:17]
+        User u = new User();
+        u.setFullName(req.getFullName().trim());
+        u.setUsername(username);
+        u.setEmail(email);
+        u.setPhone(phone);
+        u.setRole(role);
+        u.setPassword(hashed);             // ✅ BẮT BUỘC: set password
+        u.setIsVerified(true);             // khuyến nghị mặc định đã xác minh khi admin tạo
+        u.setCreatedAt(LocalDateTime.now());
+        // nếu có cột status NOT NULL:
+        // u.setStatus(true);
 
-            User u = new User();
-            u.setFullName(req.getFullName().trim());
-            u.setUsername(username);
-            u.setEmail(email);
-            u.setPhone(phone);
-            u.setRole(role);
+        User saved = userRepository.save(u);
 
-            User saved = userRepository.save(u);           // JPA save [web:20]
-            CreateStaffResponse res = new CreateStaffResponse();
-            res.setUser_id(saved.getId());
-            res.setFull_name(saved.getFullName());
-            res.setUsername(saved.getUsername());
-            res.setEmail(saved.getEmail());
-            res.setPhone(saved.getPhone());
-            res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
-            return res;
-        }
+        // (tuỳ chọn) tạo ví cho staff nếu hệ thống yêu cầu
+        // walletService.createWallet(saved.getId());
+
+        CreateStaffResponse res = new CreateStaffResponse();
+        res.setUser_id(saved.getId());
+        res.setFull_name(saved.getFullName());
+        res.setUsername(saved.getUsername());
+        res.setEmail(saved.getEmail());
+        res.setPhone(saved.getPhone());
+        res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : 0);
+        return res;
+    }
+
 
     @Override
     public String checkPass(User user) {

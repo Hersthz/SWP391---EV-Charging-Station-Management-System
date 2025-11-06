@@ -114,19 +114,6 @@ const AdminInsights = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-4 h-4" />
-                {notifications > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-destructive text-primary-foreground text-xs">
-                    {notifications}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button variant="ghost" size="sm">
-                <Settings className="w-4 h-4" />
-              </Button>
-
               <div className="flex items-center space-x-2 text-sm">
                 <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>

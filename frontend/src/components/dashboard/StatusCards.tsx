@@ -1147,6 +1147,10 @@ const StatusCards = () => {
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
                   </div>
+                  {/* <<< ADDED: show estimated cost >>> */}
+                  <div>
+                    Cost ~ <b>{fmtVnd(est.estimatedCost)}</b>
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Cannot estimate.</div>
