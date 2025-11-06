@@ -39,6 +39,8 @@ interface SessionSnapshot {
   startTime: string; // ISO
   endTime?: string | null;
   currency?: string;
+  /** optional, để lưu method vào localStorage cho resume/receipt */
+  paymentMethod?: string;
 }
 
 type ReservationBrief = {
@@ -104,7 +106,7 @@ const ChargingSessionPage = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // Snapshot từ server
+  // Snapshot từ server / localStorage
   const [snap, setSnap] = useState<SessionSnapshot | null>(null);
 
   // local tick
@@ -221,7 +223,7 @@ const ChargingSessionPage = () => {
     };
   }, [reservationIdParam]);
 
-  // ====== Lấy snapshot + initial ======
+  // ====== Lấy snapshot + initial (HYDRATE từ localStorage nếu có) ======
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -230,29 +232,42 @@ const ChargingSessionPage = () => {
         return;
       }
       try {
-        // 1) seed từ localStorage ngay khi có sessionId
-        const meta = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
-        if (meta && !cancelled) {
-          const nowIso = new Date().toISOString();
-          setSnap(s => s ?? {
-            id: Number(sessionIdParam),
-            stationId: undefined,
-            pillarId: undefined,
-            driverUserId: undefined,
-            vehicleId: meta.vehicleId,
-            status: "ACTIVE",
-            energyCount: 0,
-            chargedAmount: 0,
-            ratePerKwh: undefined,
-            startTime: nowIso,
-            endTime: null,
-            currency: undefined,
-          });
-          if (typeof meta.initialSoc === "number") setInitialSocFromBE(meta.initialSoc);
-          setTargetSoc(1);
+        // 0) cố gắng HYDRATE từ session_last_{id}
+        const lastRaw = localStorage.getItem(`session_last_${sessionIdParam}`);
+        const lastSnap: SessionSnapshot | null = lastRaw ? JSON.parse(lastRaw) : null;
 
-          // 2) vehicle (nếu có id)
-          const effectiveVehicleId = meta.vehicleId ?? vehicleIdParam;
+        // 1) meta tối thiểu để biết vehicle/initialSoc cho lần đầu
+        const meta = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
+
+        if (!cancelled) {
+          if (lastSnap && lastSnap.id) {
+            // Ưu tiên dùng snapshot lưu cuối cùng
+            setSnap(lastSnap);
+            if (typeof meta?.initialSoc === "number") setInitialSocFromBE(meta.initialSoc);
+            setTargetSoc(1);
+          } else {
+            // Seed tối thiểu nếu chưa có gì lưu
+            const nowIso = new Date().toISOString();
+            setSnap(s => s ?? {
+              id: Number(sessionIdParam),
+              stationId: undefined,
+              pillarId: undefined,
+              driverUserId: undefined,
+              vehicleId: meta?.vehicleId,
+              status: "ACTIVE",
+              energyCount: 0,
+              chargedAmount: 0,
+              ratePerKwh: undefined,
+              startTime: nowIso,
+              endTime: null,
+              currency: undefined,
+            });
+            if (typeof meta?.initialSoc === "number") setInitialSocFromBE(meta.initialSoc);
+            setTargetSoc(1);
+          }
+
+          // fetch vehicle nếu biết id
+          const effectiveVehicleId = (lastSnap?.vehicleId ?? meta?.vehicleId ?? vehicleIdParam) as number | undefined;
           if (effectiveVehicleId) {
             const v = await fetchVehicleOfSession(Number(effectiveVehicleId));
             if (!cancelled && v) setVehicle(v);
@@ -270,6 +285,8 @@ const ChargingSessionPage = () => {
   /** === Start/Stop tick helpers === */
   const startTick = () => {
     if (!sessionIdParam || tickTimer.current) return;
+
+    // BẮT ĐẦU từ energy hiện có (được hydrate từ session_last_{id} nếu có)
     currentEnergyRef.current = Number(snap?.energyCount ?? 0);
 
     tickTimer.current = setInterval(async () => {
@@ -280,7 +297,7 @@ const ChargingSessionPage = () => {
           withCredentials: true,
         });
         const d = (data?.data ?? data) as any;
-        setSnap({
+        const nextSnap: SessionSnapshot = {
           id: d.id,
           stationId: d.stationId,
           pillarId: d.pillarId,
@@ -293,27 +310,12 @@ const ChargingSessionPage = () => {
           startTime: d.startTime,
           endTime: d.endTime ?? null,
           currency: d.currency,
-        });
+          paymentMethod: d.paymentMethod ?? d.payment_method,
+        };
+        setSnap(nextSnap);
 
-        // LƯU snapshot mới nhất để Receipt đọc
-        localStorage.setItem(
-          `session_last_${sessionIdParam}`,
-          JSON.stringify({
-            id: d.id,
-            stationId: d.stationId,
-            pillarId: d.pillarId,
-            driverUserId: d.driverUserId,
-            vehicleId: d.vehicleId,
-            status: d.status,
-            energyCount: Number(d.energyCount ?? 0),
-            chargedAmount: Number(d.chargedAmount ?? 0),
-            ratePerKwh: d.ratePerKwh,
-            startTime: d.startTime,
-            endTime: d.endTime ?? null,
-            currency: d.currency,
-            paymentMethod: d.paymentMethod ?? d.payment_method,
-          })
-        );
+        // LƯU snapshot mới nhất để Receipt & resume đọc
+        localStorage.setItem(`session_last_${sessionIdParam}`, JSON.stringify(nextSnap));
 
         const sn = normalizeSoc(d?.socNow);
         if (typeof sn === "number") setSocNowFromBE(sn);
@@ -335,7 +337,7 @@ const ChargingSessionPage = () => {
           try {
             const { data } = await api.post(`/session/${sessionIdParam}/stop`, {}, { withCredentials: true });
             const stopPayload = data?.data ?? data;
-            
+
             // >>> AUTO-DEDUCT WALLET IF PREPAID <<<
             const prevLast = JSON.parse(localStorage.getItem(`session_last_${sessionIdParam}`) || "null");
             const total = Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? 0);
@@ -378,7 +380,7 @@ const ChargingSessionPage = () => {
 
             const meta = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
 
-            const finalSnap = {
+            const finalSnap: SessionSnapshot = {
               id: Number(sessionIdParam),
               stationId:   prevLast?.stationId ?? snap?.stationId ?? stopPayload?.stationId,
               pillarId:    prevLast?.pillarId  ?? snap?.pillarId  ?? stopPayload?.pillarId,
@@ -432,7 +434,37 @@ const ChargingSessionPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionIdParam]);
 
+  // Nếu thiếu sessionId nhưng có reservationId → thử khôi phục từ localStorage
+  useEffect(() => {
+    if (!sessionIdParam && reservationIdParam) {
+      const sid = findSessionIdByReservation(reservationIdParam);
+      if (sid) {
+        navigate(
+          `/charging?sessionId=${encodeURIComponent(sid)}&reservationId=${reservationIdParam}` +
+            (vehicleIdParam ? `&vehicleId=${vehicleIdParam}` : "") +
+            (initialSocParam != null ? `&initialSoc=${initialSocParam}` : ""),
+          { replace: true }
+        );
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionIdParam, reservationIdParam]);
+
   // ====== helpers ======
+  function findSessionIdByReservation(reservationId: number): string | null {
+    try {
+      const prefix = "session_meta_";
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) || "";
+        if (!k.startsWith(prefix)) continue;
+        const sid = k.slice(prefix.length);
+        const meta = JSON.parse(localStorage.getItem(k) || "null");
+        if (meta && Number(meta.reservationId) === Number(reservationId)) return String(sid);
+      }
+    } catch {}
+    return null;
+  }
+
   async function fetchVehicleOfSession(vehicleId: number): Promise<VehicleBrief | null> {
     try {
       const me = await api.get("/auth/me", { withCredentials: true });
@@ -506,7 +538,7 @@ const ChargingSessionPage = () => {
       }
 
       const nowIso = stopPayload?.endTime || new Date().toISOString();
-      const finalSnap = {
+      const finalSnap: SessionSnapshot = {
         id: snap?.id ?? Number(sessionIdParam),
         stationId: snap?.stationId,
         pillarId: snap?.pillarId,
@@ -542,10 +574,6 @@ const ChargingSessionPage = () => {
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </button>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-gradient-to-br from-primary to-emerald-500 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />

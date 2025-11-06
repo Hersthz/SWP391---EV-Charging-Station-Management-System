@@ -36,6 +36,8 @@ import WalletTopupResult from "./pages/WalletTopupResult";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import StationReviewPage from "./pages/StationReviewPage";
 import StaffReservations from "./components/staff/StaffReservations";
+import StaffPayment from "./components/staff/StaffPayment";
+import AdminKyc from "./components/admin/AdminKyc";
 
 const queryClient = new QueryClient();
 
@@ -52,9 +54,10 @@ const App = () => (
           <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/staff/monitor" element={<StaffStationMonitor />} />
           <Route path="/staff/reservations" element={<StaffReservations />} />
+          <Route path="/staff/payments" element={<StaffPayment />} />
           <Route path="/staff/incidents" element={<StaffIncidents />} />
           <Route path="/staff/reports" element={<StaffReport />} />
-          <Route path="/map" element={<StationMap />} />
+          <Route path="/map" element={<StationMap />} />  
           <Route path="/booking" element={<Booking />} />
           <Route path="/booking/:id" element={<Booking />} />
           <Route path="/profile" element={<Profile />} />
@@ -65,6 +68,7 @@ const App = () => (
           <Route path="/admin/stations" element={<AdminStations />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/staff" element={<AdminStaff />} />
+          <Route path="/admin/kyc" element={<AdminKyc />} />
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/insights" element={<AdminInsights />} />

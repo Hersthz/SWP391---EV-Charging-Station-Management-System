@@ -270,20 +270,6 @@ const StaffDashboard = () => {
             )}
           </div>
         </div>
-        <div className="flex gap-3 shrink-0">
-          <Button onClick={() => navigate("/staff/stations")} className="shadow-lg shadow-primary/30">
-            <Eye className="w-4 h-4 mr-2" />
-            View Station Details
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => navigate("/staff/incidents")}
-            className="shadow-lg shadow-destructive/30"
-          >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Report Issue
-          </Button>
-        </div>
       </div>
 
       {/* ===== MAIN GRID ===== */}

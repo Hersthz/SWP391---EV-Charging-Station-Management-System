@@ -11,7 +11,8 @@ import {
   Users,
   CreditCard,
   Database,
-  Brain
+  Brain,
+  ShieldCheck
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/axios";
@@ -46,6 +47,7 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
     { path: "/admin/stations", icon: MapPin, label: "Stations" },
     { path: "/admin/users", icon: Users, label: "Users" },
     { path: "/admin/staff", icon: Users, label: "Staff" },
+    { path: "/admin/kyc", icon: ShieldCheck, label: "KYC" },
     { path: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
     { path: "/admin/reports", icon: Database, label: "Reports" },
     { path: "/admin/insights", icon: Brain, label: "AI Insights" }
