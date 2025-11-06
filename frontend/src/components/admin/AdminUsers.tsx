@@ -34,6 +34,11 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 /* =========================
   Types: khớp BE hiện có
 ========================= */
+type Station = {
+  id: number;
+  name: string;
+};
+
 type UserResponse = {
   id: number;
   fullName: string;
@@ -122,6 +127,8 @@ const AdminUsers = () => {
   const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
   const [sessionsMap, setSessionsMap] = useState<Record<number, number>>({});
 
+  const [stations, setStations] = useState<Station[]>([]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "basic" | "premium" | "fleet">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
@@ -137,6 +144,8 @@ const AdminUsers = () => {
     username: "",
     email: "",
     phone: "",
+    password: "",
+    stationId: "" as string | "", // để Select xài string
   });
   const [submittingAdd, setSubmittingAdd] = useState(false);
 
@@ -152,7 +161,7 @@ const AdminUsers = () => {
         if (!isMounted) return;
         const list = (res.data || []).sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
         setUsers(list);
-
+        // lấy số session
         Promise.all(
           list.map(async (u) => {
             try {
@@ -166,6 +175,16 @@ const AdminUsers = () => {
             }
           })
         ).catch(() => undefined);
+        // ====== MỚI: fetch station ======
+        try {
+          const stRes = await api.get<Station[]>("/station/getAll"); // đổi endpoint nếu BE m khác
+          if (isMounted) {
+            setStations(stRes.data || []);
+          }
+        } catch {
+          // không có station thì thôi
+        }
+        // ================================
       } catch (e: any) {
         toast({
           title: "Load users failed",
@@ -284,16 +303,42 @@ const AdminUsers = () => {
     const roleName = roleUiToBackend[chosenUi] ?? "ROLE_USER";
 
     try {
+      // 1. set role như cũ
       await api.post("/user/setRole", {
         username: u.username,
         roleName,
         keepUserBaseRole: false,
       });
 
+      // 2. nếu là staff/fleet và có stationId thì assign thêm
+      if (
+        (roleName === "ROLE_FLEET_MANAGER" || roleName === "STAFF") &&
+        // @ts-ignore
+        u.stationId
+      ) {
+        await api.post("/station-managers/assign", {
+          userId: u.id,
+          // @ts-ignore
+          stationId: u.stationId,
+        });
+      }
+
       toast({ title: "Updated", description: "Role has been updated." });
       setEditOpen(false);
 
-      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, roleName } : x)));
+      // cập nhật lại state
+      setUsers((list) =>
+        list.map((x) =>
+          x.id === u.id
+            ? {
+              ...x,
+              roleName,
+              // @ts-ignore
+              stationId: (u as any).stationId ?? (x as any).stationId,
+            }
+            : x
+        )
+      );
     } catch (e: any) {
       toast({
         title: "Update role failed",
@@ -302,7 +347,6 @@ const AdminUsers = () => {
       });
     }
   };
-
   const addStaff = async () => {
     if (!addPayload.fullName || !addPayload.username || !addPayload.email || !addPayload.phone) {
       toast({
@@ -318,7 +362,14 @@ const AdminUsers = () => {
       const list = await api.get<UserResponse[]>("/user/getAll");
       setUsers(list.data || []);
       setAddOpen(false);
-      setAddPayload({ fullName: "", username: "", email: "", phone: "" });
+      setAddPayload({
+        fullName: "",
+        username: "",
+        email: "",
+        phone: "",
+        password: "",
+        stationId: "",
+      });
       toast({ title: "Staff created", description: "Tạo nhân viên thành công." });
     } catch (e: any) {
       toast({
@@ -425,7 +476,39 @@ const AdminUsers = () => {
                   onChange={(e) => setAddPayload((p) => ({ ...p, phone: e.target.value }))}
                 />
               </div>
+
             </div>
+
+          </div>
+          {/* MỚI: Password */}
+          <div className="space-y-2">
+            <Label htmlFor="password">Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              value={addPayload.password}
+              onChange={(e) => setAddPayload((p) => ({ ...p, password: e.target.value }))}
+            />
+          </div>
+
+          {/* MỚI: Station */}
+          <div className="space-y-2">
+            <Label>Station</Label>
+            <Select
+              value={addPayload.stationId}
+              onValueChange={(val) => setAddPayload((p) => ({ ...p, stationId: val }))}
+            >
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Chose station" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {stations.map((st) => (
+                  <SelectItem key={st.id} value={String(st.id)}>
+                    {st.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setAddOpen(false)}>
@@ -650,6 +733,36 @@ const AdminUsers = () => {
                     <Input value={selectedUser.status ? "Active" : "Suspended"} disabled />
                   </div>
                 </div>
+                {(
+                  selectedUser.roleName === "ROLE_FLEET_MANAGER" ||
+                  selectedUser.roleName === "FLEET_MANAGER" ||
+                  selectedUser.roleName === "STAFF"
+                ) && (
+                    <div className="space-y-2">
+                      <Label>Station</Label>
+                      <Select
+                        value={(selectedUser as any).stationId ? String((selectedUser as any).stationId) : ""}
+                        onValueChange={(val) =>
+                          setSelectedUser({
+                            ...selectedUser,
+                            // @ts-ignore: thêm field mới
+                            stationId: val ? Number(val) : null,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Chose Station" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {stations.map((st) => (
+                            <SelectItem key={st.id} value={String(st.id)}>
+                              {st.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
               </div>
             )}
 
