@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
   const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
   const [sessionsMap, setSessionsMap] = useState<Record<number, number>>({});
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all"|"basic"|"premium">("all");
+  
 
   const [stations, setStations] = useState<Station[]>([]);
 
