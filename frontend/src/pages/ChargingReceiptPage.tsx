@@ -242,18 +242,13 @@ const ChargingReceiptPage = () => {
     });
   };
 
+  const mustPay = payRequired && (snap?.chargedAmount ?? 0) > 0;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40 print:hidden">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </button>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-gradient-to-br from-primary to-emerald-500 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
@@ -358,12 +353,20 @@ const ChargingReceiptPage = () => {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-3 justify-end mt-6 print:hidden">
-          {payRequired && (snap?.chargedAmount ?? 0) > 0 && (
+          {mustPay && (
             <Button onClick={goToPayment} className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
               Pay now
             </Button>
           )}
-          <Button variant="outline" onClick={() => navigate("/dashboard")}><ArrowLeft className="w-4 h-4 mr-2" />Back to Home</Button>
+
+          {/* Ẩn Back khi bắt buộc thanh toán */}
+          {!mustPay && (
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          )}
+          
           <Button variant="outline" onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share</Button>
           <Button variant="outline" onClick={onPrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
           <Button onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download PDF</Button>

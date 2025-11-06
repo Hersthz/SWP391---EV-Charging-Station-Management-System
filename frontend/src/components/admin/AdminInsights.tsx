@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Calendar,
   Target,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -154,6 +155,22 @@ const AdminInsights = () => {
               <span>Users</span>
             </Link>
             
+            <Link 
+              to="/admin/staff" 
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              <span>Staff</span>
+            </Link>
+
+            <Link 
+              to="/admin/kyc" 
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>KYC</span>
+            </Link>
+
             <Link 
               to="/admin/subscriptions" 
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

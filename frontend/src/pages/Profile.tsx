@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User, Mail, Phone, Shield, Key, Bell, Globe, Sun, Car, Plus, Edit, Trash2,
-  Battery, Zap, Save, ArrowLeft, Camera, CreditCard, PlugZap
+  Battery, Zap, Save, ArrowLeft, Camera, CreditCard, PlugZap,IdCard
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -840,6 +840,25 @@ const Profile = () => {
                       {isChangingPwd ? "Processing..." : "Change password"}
                     </Button>
                   </div>
+                </div>
+                
+                {/* KYC quick access */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-sky-50/60 border border-sky-200">
+                  <div className="flex items-center gap-3">
+                    <IdCard className="w-5 h-5 text-sky-600" />
+                    <div>
+                      <p className="font-medium">Identity verification (KYC)</p>
+                      <p className="text-sm text-muted-foreground">
+                        Verify once to unlock higher limits and faster payments.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => navigate("/kyc")}
+                    className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
+                  >
+                    Go to KYC
+                  </Button>
                 </div>
               </CardContent>
             </Card>

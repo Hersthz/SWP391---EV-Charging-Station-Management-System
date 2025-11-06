@@ -612,7 +612,7 @@ const StatusCards = () => {
     }
   };
 
-  /* NEW: Cancel (SCHEDULED only) */
+  /* Cancel (SCHEDULED only) */
   const onCancel = async (r: ReservationItem) => {
     try {
       if (USE_MOCK) {
@@ -688,6 +688,24 @@ const StatusCards = () => {
     setEst(null);
     setPmOpen(true);
   };
+
+  // Tìm sessionId đang chạy từ localStorage theo reservationId
+  function findSessionIdByReservation(reservationId: number): string | null {
+    try {
+      const prefix = "session_meta_";
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) || "";
+        if (!k.startsWith(prefix)) continue;
+        const sid = k.slice(prefix.length); // phần sau prefix chính là sessionId
+        const meta = JSON.parse(localStorage.getItem(k) || "null");
+        if (meta && Number(meta.reservationId) === Number(reservationId)) {
+          return String(sid);
+        }
+      }
+    } catch {}
+    return null;
+  }
+
 
   async function fetchEstimateFor(r?: ReservationItem, vehId?: number, socNowOverride?: number) {
     if (!r || !vehId || !r.pillarId || !r.connectorId) {
@@ -821,7 +839,7 @@ const StatusCards = () => {
               </Button>
             ))}
 
-          {/* NEW: Cancel for SCHEDULED (before arrival window ideally) */}
+          {/* Cancel for SCHEDULED (before arrival window ideally) */}
           {r.status === "SCHEDULED" && (
             <Button
               size="sm"
@@ -890,6 +908,40 @@ const StatusCards = () => {
               <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
             </Button>
           )}
+
+          {r.status === "CHARGING" && (
+            <Button
+              size="sm"
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                UI.CHARGING.btn,
+                UI.CHARGING.btnGlow,
+                "transition-all active:scale-[.98]"
+              ].join(" ")}
+              onClick={() => {
+                const sid = findSessionIdByReservation(r.reservationId);
+                if (sid) {
+                  navigate(`/charging?sessionId=${encodeURIComponent(sid)}&reservationId=${r.reservationId}`);
+                } else {
+                  toast({
+                    title: "Cannot find current session",
+                    description: "Phiên sạc đang chạy không tìm thấy trên máy. Thử mở lại từ mục gần đây hoặc vào QR/Start.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              title="Re-open the active charging session"
+            >
+              <span className="relative z-10 flex items-center">
+                <Zap className="w-4 h-4 mr-1" /> Return to session
+              </span>
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
+            </Button>
+          )}
+
 
           {r.status === "COMPLETED" && (
             <Button size="sm" variant="outline" className={["relative overflow-hidden rounded-full px-4 h-9", UI.COMPLETED.btn, UI.COMPLETED.btnGlow].join(" ")} onClick={() => gotoReview(r)}>

@@ -660,7 +660,7 @@ export default function AdminStaffPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Staff</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>

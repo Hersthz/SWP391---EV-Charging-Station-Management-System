@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   TrendingUp,
   CalendarClock,
+  DollarSign,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/axios";
@@ -94,6 +95,7 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
       { path: "/staff", icon: BarChart3, label: "Dashboard" },
       { path: "/staff/monitor", icon: MapPin, label: "Monitor Station" },
       { path: "/staff/reservations", icon: CalendarClock, label: "Reservations" },
+      { path: "/staff/payments", icon: DollarSign, label: "Payments" },
       { path: "/staff/incidents", icon: AlertTriangle, label: "Incidents" },
       { path: "/staff/reports", icon: TrendingUp, label: "Reports" },
     ],

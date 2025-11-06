@@ -1370,7 +1370,7 @@ export default function BookingPage() {
                   Continue to Payment
                 </Button>
               )}
-
+  
               {currentStep === "summary" && (
                 <Button
                   onClick={confirmAndCreateBooking}
@@ -1379,8 +1379,7 @@ export default function BookingPage() {
                     disabled:opacity-50 disabled:shadow-none disabled:translate-y-0"
                   disabled={submitting || loadingDetail}
                 >
-                  <QrCode className="w-5 h-5 mr-2" />
-                  {submitting ? "Processing..." : "Pay & Hold Reservation"}
+                  {submitting ? "Processing..." : "Confirm"}
                 </Button>
               )}
             </div>
