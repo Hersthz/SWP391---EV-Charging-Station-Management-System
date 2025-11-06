@@ -35,6 +35,7 @@ import SessionPaymentResult from "./pages/SessionPaymentResult";
 import WalletTopupResult from "./pages/WalletTopupResult";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import StationReviewPage from "./pages/StationReviewPage";
+import StaffReservations from "./components/staff/StaffReservations";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/staff/monitor" element={<StaffStationMonitor />} />
+          <Route path="/staff/reservations" element={<StaffReservations />} />
           <Route path="/staff/incidents" element={<StaffIncidents />} />
           <Route path="/staff/reports" element={<StaffReport />} />
           <Route path="/map" element={<StationMap />} />

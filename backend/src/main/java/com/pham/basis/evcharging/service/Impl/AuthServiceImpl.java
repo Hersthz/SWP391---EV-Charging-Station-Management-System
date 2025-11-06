@@ -84,6 +84,7 @@ public class AuthServiceImpl implements AuthService {
                 .isVerified(user.getIsVerified())
                 .email(user.getEmail())
                 .dateOfBirth(user.getDateOfBirth())
+                .url(user.getUrl())
                 .build();
         return ResponseEntity.ok(resp);
     }

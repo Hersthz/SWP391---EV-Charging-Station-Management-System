@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
-import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -20,7 +20,7 @@ import { useToast } from "../hooks/use-toast";
 import api from "../api/axios";
 import { ChatBot } from "./ChatBot";
 
-/* types */
+/* ===== Types ===== */
 type Vehicle = {
   id: number;
   make: string;
@@ -33,8 +33,8 @@ type Vehicle = {
   battery?: number;
   range?: number;
   isPrimary?: boolean;
-  acMaxKw?: number;   
-  dcMaxKw?: number;   
+  acMaxKw?: number;
+  dcMaxKw?: number;
 };
 
 type VehicleBE = {
@@ -53,10 +53,10 @@ type VehicleBE = {
   range?: number;
   battery?: number;
   isPrimary?: boolean;
-  ac_max_kw?: number; 
-  dc_max_kw?: number; 
-  acMaxKw?: number;   
-  dcMaxKw?: number;   
+  ac_max_kw?: number;
+  dc_max_kw?: number;
+  acMaxKw?: number;
+  dcMaxKw?: number;
 };
 
 type VehicleForm = {
@@ -70,7 +70,7 @@ type VehicleForm = {
   variant?: string;
 };
 
-/* helpers */
+/* ===== Helpers ===== */
 const clampPct = (n?: number) =>
   typeof n === "number" && !Number.isNaN(n) ? Math.max(0, Math.min(100, Math.round(n))) : undefined;
 
@@ -114,11 +114,12 @@ const mapVehicleBEToUI = (v: VehicleBE): Vehicle => {
     range: typeof v.range === "number" ? v.range : undefined,
     battery: typeof v.battery === "number" ? v.battery : undefined,
     isPrimary: !!v.isPrimary,
-    acMaxKw: ac,  
-    dcMaxKw: dc,  
+    acMaxKw: ac,
+    dcMaxKw: dc,
   };
 };
 
+/* ===== Component ===== */
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -132,7 +133,12 @@ const Profile = () => {
   const [fullName, setFullName] = useState(localStorage.getItem("fullName") || "UserRandom");
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
-  const [date, setDate] = useState(localStorage.getItem("date") || "");
+  // Use HTML date input friendly value (yyyy-MM-dd). If LS contains other format, keep empty.
+  const [date, setDate] = useState<string>(localStorage.getItem("date") || "");
+
+  // avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const initials = useMemo(
     () =>
@@ -178,13 +184,17 @@ const Profile = () => {
         setFullName(data.fullName ?? fullName);
         setEmail(data.email ?? email);
         setPhone(data.phone ?? phone);
-        setDate(data.date ?? date);
+        // BE returns LocalDate; map to yyyy-MM-dd string
+        if (data.dateOfBirth) {
+          setDate(String(data.dateOfBirth)); // already yyyy-MM-dd from BE
+          localStorage.setItem("date", String(data.dateOfBirth));
+        }
+        if (data.url) setAvatarUrl(data.url as string);
 
         // vehicles
         setLoadingVehicles(true);
         const uid: number | undefined = (data?.user_id ?? data?.id) as number | undefined;
         if (!uid) throw new Error("No userId");
-
         const vRes = await api.get(`/vehicle/${uid}`, { withCredentials: true });
         const raw = (vRes?.data?.data ?? vRes?.data ?? []) as VehicleBE[];
         setVehicles(raw.map(mapVehicleBEToUI));
@@ -197,28 +207,94 @@ const Profile = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // PROFILE – edit & save
+  /* ================= PROFILE ================= */
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // normalize browser date value to yyyy-MM-dd (LocalDate string for BE)
+  const normalizeDate = (v: string) => {
+    if (!v) return "";
+    // If input type="date" generally gives yyyy-MM-dd already
+    // If user typed dd/MM/yyyy -> try to convert
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[1]}-${m[2]}`;
+    return v;
+  };
+
+  const handleChooseAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setAvatarFile(f);
+    // optimistic preview
+    const url = URL.createObjectURL(f);
+    setAvatarUrl(url);
+  };
 
   const handleSaveProfile = async () => {
     try {
       setIsSavingProfile(true);
+
+      // Build multipart body exactly as BE expects:
+      // - part "data": JSON { full_name, phone, email, date_of_birth }
+      // - part "file": optional avatar
+      const formData = new FormData();
+      const payload = {
+        full_name: fullName.trim(),
+        phone: phone?.trim() || "",
+        email: email.trim(),
+        date_of_birth: normalizeDate(date) || null,
+      };
+      formData.append(
+        "data",
+        new Blob([JSON.stringify(payload)], { type: "application/json" })
+      );
+      if (avatarFile) {
+        formData.append("file", avatarFile);
+      }
+
+      const { data } = await api.post("/user/update-profile", formData, {
+        withCredentials: true,
+        headers: {
+          // override default "application/json" from axios instance
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // BE returns UpdateUserResponse { fullName, email, phone, dateOfBirth, url }
+      const newName = data?.fullName ?? fullName;
+      const newEmail = data?.email ?? email;
+      const newPhone = data?.phone ?? phone;
+      const newDob = data?.dateOfBirth ? String(data.dateOfBirth) : date;
+      const newUrl = data?.url ?? avatarUrl;
+
+      setFullName(newName);
+      setEmail(newEmail);
+      setPhone(newPhone);
+      setDate(newDob || "");
+      setAvatarUrl(newUrl);
+      setAvatarFile(null);
+
+      localStorage.setItem("fullName", newName);
+      localStorage.setItem("email", newEmail);
+      localStorage.setItem("phone", newPhone);
+      localStorage.setItem("date", newDob || "");
+
       setIsEditingProfile(false);
-      const payload = { fullName: fullName.trim(), email, phone, date };
-      const { data } = await api.post("/user/update-profile", payload, { withCredentials: true });
-      localStorage.setItem("fullName", data.fullName ?? fullName);
-      localStorage.setItem("email", data.email ?? email);
-      localStorage.setItem("phone", data.phone ?? phone);
-      localStorage.setItem("date", data.date ?? date);
       toast({ title: "Profile updated", description: "Saved to server." });
     } catch (err: any) {
+      // keep editing mode so user can retry
       setIsEditingProfile(true);
-      toast({ title: "Error", description: err?.response?.data?.message ?? "Update failed", variant: "destructive" });
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        "Unexpected server error";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setIsSavingProfile(false);
     }
   };
 
+  /* ================= PASSWORD ================= */
   const handleChangePassword = async () => {
     if (!passwords.current || !passwords.new || !passwords.confirm)
       return toast({ title: "Missing fields", description: "Please fill all password fields.", variant: "destructive" });
@@ -228,9 +304,10 @@ const Profile = () => {
     try {
       setIsChangingPwd(true);
       await api.post("/user/change-password", {
-        current_password: passwords.current,
-        new_password: passwords.new,
-      });
+        currentPassword: passwords.current,
+        newPassword: passwords.new,
+        confirmPassword: passwords.confirm,
+      }, { withCredentials: true });
       toast({ title: "Password changed", description: "Your password has been updated successfully." });
       setPasswords({ current: "", new: "", confirm: "" });
     } catch (err: any) {
@@ -241,7 +318,7 @@ const Profile = () => {
     }
   };
 
-  // VEHICLES - ADD, EDIT, DELETE
+  /* ================= VEHICLES ================= */
   const openAdd = () => {
     setForm({ make: "", model: "", currentSoc: 50, batteryCapacityKwh: 60, acMaxKw: 7.4, dcMaxKw: 50, year: "", variant: "" });
     setIsAddVehicleOpen(true);
@@ -256,7 +333,7 @@ const Profile = () => {
       const payload = {
         make: form.make.trim(),
         model: form.model.trim(),
-        currentSoc: Number(form.currentSoc), // % (BE /100)
+        currentSoc: Number(form.currentSoc),
         batteryCapacityKwh: Number(form.batteryCapacityKwh),
         acMaxKw: toNumberOrUndef(form.acMaxKw),
         dcMaxKw: toNumberOrUndef(form.dcMaxKw),
@@ -272,8 +349,8 @@ const Profile = () => {
         socNowPct: toPercent(created.currentSoc),
         batteryCapacityKwh: toNumberOrUndef(created.batteryCapacityKwh),
         isPrimary: vehicles.length === 0,
-        acMaxKw: toNumberOrUndef(created.acMaxKw ?? created.ac_max_kw), 
-        dcMaxKw: toNumberOrUndef(created.dcMaxKw ?? created.dc_max_kw), 
+        acMaxKw: toNumberOrUndef(created.acMaxKw ?? created.ac_max_kw),
+        dcMaxKw: toNumberOrUndef(created.dcMaxKw ?? created.dc_max_kw),
       };
       setVehicles((prev) => [v, ...prev]);
       setIsAddVehicleOpen(false);
@@ -292,8 +369,8 @@ const Profile = () => {
       model: v.model,
       currentSoc: typeof v.socNowPct === "number" ? v.socNowPct : 50,
       batteryCapacityKwh: v.batteryCapacityKwh ?? 60,
-      acMaxKw: v.acMaxKw,   
-      dcMaxKw: v.dcMaxKw,   
+      acMaxKw: v.acMaxKw,
+      dcMaxKw: v.dcMaxKw,
       year: v.year,
       variant: v.variant,
     });
@@ -324,8 +401,8 @@ const Profile = () => {
                 model: updated.model,
                 socNowPct: toPercent(updated.currentSoc),
                 batteryCapacityKwh: toNumberOrUndef(updated.batteryCapacityKwh),
-                acMaxKw: toNumberOrUndef(updated.acMaxKw ?? updated.ac_max_kw), 
-                dcMaxKw: toNumberOrUndef(updated.dcMaxKw ?? updated.dc_max_kw), 
+                acMaxKw: toNumberOrUndef(updated.acMaxKw ?? updated.ac_max_kw),
+                dcMaxKw: toNumberOrUndef(updated.dcMaxKw ?? updated.dc_max_kw),
               }
             : x
         )
@@ -413,13 +490,37 @@ const Profile = () => {
               <CardContent className="space-y-6">
                 <div className="flex items-center space-x-6">
                   <div className="relative group">
-                    <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-electric">
-                      <AvatarFallback className="bg-sky-500 text-white text-xl font-bold">{initials}</AvatarFallback>
+                    <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-electric overflow-hidden">
+                      {avatarUrl ? (
+                        <AvatarImage src={avatarUrl} alt="avatar" className="object-cover" />
+                      ) : (
+                        <AvatarFallback className="bg-sky-500 text-white text-xl font-bold">
+                          {initials}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
-                    <Button size="sm" className="absolute -bottom-1 -right-1 rounded-full w-8 h-8 p-0 bg-sky-500 hover:bg-sky-600">
-                      <Camera className="w-4 h-4 text-white" />
-                    </Button>
+
+                    {/* Camera button only when editing */}
+                    {isEditingProfile && (
+                      <>
+                        <input
+                          id="avatar-input"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleChooseAvatar}
+                        />
+                        <Button
+                          size="sm"
+                          className="absolute -bottom-1 -right-1 rounded-full w-8 h-8 p-0 bg-sky-500 hover:bg-sky-600"
+                          onClick={() => document.getElementById("avatar-input")?.click()}
+                        >
+                          <Camera className="w-4 h-4 text-white" />
+                        </Button>
+                      </>
+                    )}
                   </div>
+
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">{fullName}</h3>
                     <p className="text-sm text-muted-foreground">{email}</p>
@@ -433,30 +534,64 @@ const Profile = () => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="fullName">Full name</Label>
-                      <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={!isEditingProfile} className={!isEditingProfile ? "bg-slate-50" : ""} />
+                      <Input
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        disabled={!isEditingProfile}
+                        className={!isEditingProfile ? "bg-slate-50" : ""}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!isEditingProfile} className={!isEditingProfile ? "bg-slate-50" : ""} />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={!isEditingProfile}
+                        className={!isEditingProfile ? "bg-slate-50" : ""}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone</Label>
-                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!isEditingProfile} className={!isEditingProfile ? "bg-slate-50" : ""} />
+                      <Input
+                        id="phone"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        disabled={!isEditingProfile}
+                        className={!isEditingProfile ? "bg-slate-50" : ""}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="date">Date</Label>
-                      <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!isEditingProfile} className={!isEditingProfile ? "bg-slate-50" : ""} />
+                      <Input
+                        id="date"
+                        type="date"
+                        value={date || ""}
+                        onChange={(e) => setDate(e.target.value)}
+                        disabled={!isEditingProfile}
+                        className={!isEditingProfile ? "bg-slate-50" : ""}
+                      />
                     </div>
                   </div>
 
                   <div className="flex justify-end gap-3">
                     {isEditingProfile ? (
-                      <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
+                      <Button
+                        onClick={handleSaveProfile}
+                        disabled={isSavingProfile}
+                        className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white"
+                      >
                         <Save className="w-4 h-4 mr-2" />
                         {isSavingProfile ? "Saving..." : "Save changes"}
                       </Button>
                     ) : (
-                      <Button variant="outline" onClick={() => setIsEditingProfile(true)} className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditingProfile(true)}
+                        className="shadow-sm bg-gradient-to-r from-sky-500 to-emerald-500 text-white"
+                      >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
@@ -664,7 +799,7 @@ const Profile = () => {
             </Card>
           </TabsContent>
 
-          {/* security */}
+          {/* SECURITY */}
           <TabsContent value="security" className="space-y-6 animate-fade-in">
             <Card className="shadow-electric border-0 bg-gradient-card">
               <CardHeader>
@@ -706,54 +841,11 @@ const Profile = () => {
                     </Button>
                   </div>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground">Two-Factor Authentication</h3>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
-                    <div>
-                      <p className="font-medium">2FA Authentication</p>
-                      <p className="text-sm text-muted-foreground">Enhance your security with two-factor authentication</p>
-                    </div>
-                    <Switch />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground">Login Sessions</h3>
-                  <div className="p-4 rounded-lg bg-muted/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">Windows - Chrome</p>
-                      <Badge className="bg-success/10 text-success border-success/20">Active</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Hanoi, Vietnam • Today 2:30 PM</p>
-                  </div>
-                  <Button variant="outline" className="w-full text-destructive border-destructive hover:bg-destructive hover:text-white transition-colors">
-                    Log out from all other devices
-                  </Button>
-                </div>
-
-                <Card className="border border-sky-100 bg-white shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-sky-600" />
-                      Identity Verification (KYC)
-                    </CardTitle>
-                    <CardDescription>Verify once to unlock bookings & payments</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">Status: <span className="font-medium">Unknown / Pending</span></div>
-                    <Button onClick={() => navigate("/kyc")} className="bg-sky-600 hover:bg-sky-700 text-white">Verify now</Button>
-                  </CardContent>
-                </Card>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* preferences */}
+          {/* PREFERENCES */}
           <TabsContent value="preferences" className="space-y-6 animate-fade-in">
             <Card className="shadow-electric border-0 bg-gradient-card">
               <CardHeader>
@@ -773,28 +865,6 @@ const Profile = () => {
                     </div>
                   </div>
                   <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Push notifications</p>
-                      <p className="text-sm text-muted-foreground">Get browser/device notifications</p>
-                    </div>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Promotions & offers</p>
-                      <p className="text-sm text-muted-foreground">Receive information about discounts</p>
-                    </div>
-                  </div>
-                  <Switch />
                 </div>
               </CardContent>
             </Card>
