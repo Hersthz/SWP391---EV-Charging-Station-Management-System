@@ -18,6 +18,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oAuth2User = super.loadUser(request);
         var attrs = oAuth2User.getAttributes();
         String email = attrs.get("email") instanceof String ? (String) attrs.get("email") : null;
+        String url = attrs.get("picture") instanceof String ? (String) attrs.get("picture") : null;
         String name = null;
         if (attrs.get("name") instanceof String) {
             name = (String) attrs.get("name");
@@ -39,7 +40,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         if (email != null) {
-            userService.createOrUpdateFromOAuth(email, name != null ? name : email, emailVerified);
+            userService.createOrUpdateFromOAuth(email, name != null ? name : email, emailVerified,url);
         }
 
         return oAuth2User;

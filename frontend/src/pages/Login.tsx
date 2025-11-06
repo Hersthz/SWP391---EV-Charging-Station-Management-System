@@ -68,6 +68,14 @@ const Login = () => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
+  useEffect(() => {
+    api.post("/auth/logout", {}, { _skipAuthRefresh: true } as any).catch(() => {});
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("role");
+    localStorage.removeItem("full_name");
+  }, []);
+
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
@@ -78,48 +86,14 @@ const Login = () => {
       return;
     }
     setIsLoading(true);
-    // Demo accounts 
-    if (username === "driver1" && password === "123") {
-      try { await api.post("/auth/logout").catch(() => { }); }
-      finally {
-        toast.success("Demo login successful (Driver)!");
-        localStorage.setItem("isDemo", "true");
-        localStorage.setItem("currentUser", "driver1");
-        localStorage.setItem("role", "USER");
-        navigate("/dashboard");
-        setIsLoading(false);
-        return;
-      }
-    }
-    if (username === "admin1" && password === "123") {
-      try { await api.post("/auth/logout").catch(() => { }); }
-      finally {
-        toast.success("Demo login successful (Admin)!");
-        localStorage.setItem("isDemo", "true");
-        localStorage.setItem("currentUser", "admin1");
-        localStorage.setItem("role", "ADMIN");
-        navigate("/admin");
-        setIsLoading(false);
-        return;
-      }
-    }
-    if (username === "staff1" && password === "123") {
-      try { await api.post("/auth/logout").catch(() => { }); }
-      finally {
-        toast.success("Demo login successful (Staff)!");
-        localStorage.setItem("isDemo", "true");
-        localStorage.setItem("currentUser", "staff1");
-        localStorage.setItem("role", "STAFF");
-        navigate("/staff");
-        setIsLoading(false);
-        return;
-      }
-    }
+    
     try {
-      await api.post("/auth/login", { username, password });
+      await api.post("/auth/logout", {}, { _skipAuthRefresh: true } as any).catch(() => {});
+
+      await api.post("/auth/login", { username, password }, { _skipAuthRefresh: true } as any);
       let meData = null;
       try {
-        const meRes = await api.get<any>("/auth/me");
+        const meRes = await api.get("/auth/me", { _skipAuthRefresh: true } as any);
         meData = meRes.data;
       } catch (meErr) {
         console.warn("Could not fetch /auth/me after login", meErr);
@@ -129,9 +103,11 @@ const Login = () => {
       const fullNameResp = meData?.full_name ?? meData?.fullName ?? "";
       const roleRespRaw = meData?.role ?? meData?.roleName ?? meData?.role_name ?? "";
       const roleResp = String(roleRespRaw).toUpperCase();
+      
       if (usernameResp) localStorage.setItem("currentUser", String(usernameResp));
       if (roleResp) localStorage.setItem("role", String(roleResp));
       if (fullNameResp) localStorage.setItem("full_name", String(fullNameResp));
+
       toast.success("Login successful!");
       if (roleResp === "ADMIN") navigate("/admin");
       else if (roleResp === "STAFF") navigate("/staff");

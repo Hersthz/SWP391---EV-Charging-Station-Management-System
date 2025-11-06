@@ -1,44 +1,26 @@
-// src/pages/admin/AdminUsers.tsx
-import { useEffect, useMemo, useState, useCallback, ReactNode } from "react";
+// src/pages/admin/AdminUsersPage.tsx
+import { useEffect, useMemo, useState, ReactNode } from "react";
 import AdminLayout from "./AdminLayout";
 import api from "../../api/axios";
-
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { useToast } from "../../hooks/use-toast";
-import {
-  Search,
-  Shield,
-  Edit,
-  UserX,
-  UserPlus,
-  Mail,
-  Phone,
-  Calendar,
-  CheckCircle,
-  Loader2,
-  Users,
-  UserCheck,
-  Star,
-  Truck,
-} from "lucide-react";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
-
+import { Search, Edit, UserX, Mail, Phone, Calendar, Loader2, Users, UserCheck, Star } from "lucide-react";
 
 /* =========================
   Types: khớp BE hiện có
-========================= */
 type Station = {
   id: number;
   name: string;
 };
 
+/* ===== Types ===== */
 type UserResponse = {
   id: number;
   fullName: string;
@@ -48,84 +30,38 @@ type UserResponse = {
   status: boolean;
   isVerified: boolean;
   roleName: string;
-  dateOfBirth?: string | null;
   createdAt?: string | null;
 };
-
 type PageResp<T> = {
-  code: string;
-  message: string;
-  data: {
-    content: T[];
-    totalElements: number;
-    totalPages: number;
-    size: number;
-    number: number;
-  };
+  code?: string; message?: string;
+  data: { content: T[]; totalElements: number; totalPages: number; size: number; number: number; };
 };
 
-/* =========================
-  Helpers
-========================= */
+/* ===== Role helpers (giống file cũ) ===== */
 const roleUiToBackend: Record<string, string> = {
   "Basic User": "ROLE_USER",
   "Premium User": "ROLE_PREMIUM",
-  "Fleet Manager": "ROLE_FLEET_MANAGER",
 };
-
 const backendToRoleUi: Record<string, string> = {
   ROLE_USER: "Basic User",
   ROLE_PREMIUM: "Premium User",
-  ROLE_FLEET_MANAGER: "Fleet Manager",
   USER: "Basic User",
   PREMIUM: "Premium User",
-  FLEET_MANAGER: "Fleet Manager",
-  STAFF: "Fleet Manager",
-  ADMIN: "Admin",
 };
 
 const formatDate = (iso?: string | null) => {
   if (!iso) return "-";
-  try {
-    const d = new Date(iso);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  } catch {
-    return iso;
-  }
+  const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 };
 
-const kpiContainerVariants: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-};
-
-const kpiCardVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: [0.42, 0, 0.58, 1],
-    },
-  },
-};
-
-/* =========================
-  Component
-========================= */
-const AdminUsers = () => {
+export default function AdminUsersPage() {
   const { toast } = useToast();
-
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
   const [sessionsMap, setSessionsMap] = useState<Record<number, number>>({});
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all"|"basic"|"premium">("all");
 
   const [stations, setStations] = useState<Station[]>([]);
 
@@ -135,6 +71,7 @@ const AdminUsers = () => {
 
   const [roleEditorOpen, setRoleEditorOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [selected, setSelected] = useState<UserResponse | null>(null);
 
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
@@ -153,7 +90,7 @@ const AdminUsers = () => {
     Fetch users
   ========================= */
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
     (async () => {
       setLoading(true);
       try {
@@ -191,117 +128,51 @@ const AdminUsers = () => {
           description: e?.response?.data?.message || "Không thể tải danh sách người dùng",
           variant: "destructive",
         });
+      } catch (e:any) {
+        toast({ title:"Load users failed", description:e?.response?.data?.message || "Không tải được danh sách", variant:"destructive" });
       } finally {
-        if (isMounted) setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { mounted = false; };
   }, [toast]);
 
-  /* =========================
-    Filters
-  ========================= */
-  const filteredUsers = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return users.filter((u) => {
-      const roleUi = backendToRoleUi[u.roleName] || u.roleName || "-";
-      const statusStr = u.status ? "active" : "suspended";
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return users.filter(u => {
+      const roleUi = backendToRoleUi[u.roleName] || u.roleName;
       const matchSearch =
         !term ||
         u.fullName?.toLowerCase().includes(term) ||
         u.email?.toLowerCase().includes(term) ||
         u.username?.toLowerCase().includes(term);
-
       const matchRole =
         roleFilter === "all" ||
         (roleFilter === "basic" && roleUi === "Basic User") ||
-        (roleFilter === "premium" && roleUi === "Premium User") ||
-        (roleFilter === "fleet" && roleUi === "Fleet Manager");
-
-      const matchStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && statusStr === "active") ||
-        (statusFilter === "suspended" && statusStr === "suspended");
-
-      return matchSearch && matchRole && matchStatus;
+        (roleFilter === "premium" && roleUi === "Premium User");
+      return matchSearch && matchRole;
     });
-  }, [users, searchTerm, roleFilter, statusFilter]);
-
-  /* =========================
-    UI helpers
-  ========================= */
-  const getStatusBadge = (active: boolean) =>
-    active ? (
-      <Badge className="bg-emerald-100 text-emerald-700 font-medium py-1 px-3 rounded-full hover:bg-emerald-100 border border-emerald-200">Active</Badge>
-    ) : (
-      <Badge className="bg-red-100 text-red-700 font-medium py-1 px-3 rounded-full hover:bg-red-100 border border-red-200">Suspended</Badge>
-    );
-
-  const getRoleBadge = (roleName: string) => {
-    const ui = backendToRoleUi[roleName] || roleName || "—";
-    const cfg: Record<string, { cls: string; icon: ReactNode; text: string }> = {
-      "Premium User": { cls: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: <Star className="w-3.5 h-3.5" />, text: "Premium User" },
-      "Fleet Manager": { cls: "bg-blue-100 text-blue-800 border-blue-200", icon: <Truck className="w-3.5 h-3.5" />, text: "Fleet Manager" },
-      "Basic User": { cls: "bg-slate-100 text-slate-800 border-slate-200", icon: <Users className="w-3.5 h-3.5" />, text: "Basic User" },
-      Admin: { cls: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: <Shield className="w-3.5 h-3.5" />, text: "Admin" },
-    };
-    const c = cfg[ui] || { cls: "bg-slate-100 text-slate-800 border-slate-200", icon: <Users className="w-3.5 h-3.5" />, text: ui };
-    return (
-      <Badge className={`px-3 py-1.5 text-sm rounded-full font-medium ${c.cls} hover:${c.cls} border flex items-center gap-1.5`}>
-        {c.icon}
-        {c.text}
-      </Badge>
-    );
-  };
-
-  /* =========================
-    Actions
-  ========================= */
-  const openEdit = (u: UserResponse) => {
-    setSelectedUser(u);
-    setEditOpen(true);
-  };
+  }, [users, search, roleFilter]);
 
   const toggleStatus = async (u: UserResponse) => {
-    setLoadingMap((m) => ({ ...m, [u.id]: true }));
+    setLoadingMap(m => ({...m,[u.id]:true}));
     const prev = u.status;
-    setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, status: !x.status } : x)));
-
+    setUsers(list => list.map(x => x.id===u.id ? {...x, status: !x.status} : x));
     try {
       await api.put(`/admin/users/${u.id}/status`, null, { params: { active: !prev } });
-
-      toast({
-        title: !prev ? "Activated" : "Suspended",
-        description: `${u.fullName} has been ${!prev ? "activated" : "suspended"}.`,
-      });
-    } catch (e: any) {
-      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, status: prev } : x)));
-      toast({
-        title: "Update status failed",
-        description:
-          e?.response?.data?.message ||
-          "Không cập nhật được trạng thái. Hãy đảm bảo BE có endpoint PUT /admin/users/{id}/status.",
-        variant: "destructive",
-      });
+      toast({ title: !prev ? "Activated" : "Suspended" });
+    } catch (e:any) {
+      setUsers(list => list.map(x => x.id===u.id ? {...x, status: prev} : x));
+      toast({ title:"Update status failed", description: e?.response?.data?.message, variant:"destructive" });
     } finally {
-      setLoadingMap((m) => ({ ...m, [u.id]: false }));
+      setLoadingMap(m => ({...m,[u.id]:false}));
     }
   };
 
-  const saveEdit = async () => {
-    if (!selectedUser) return;
-    const u = selectedUser;
-
-    const uiRole = backendToRoleUi[u.roleName] || u.roleName;
-    const chosenUi =
-      uiRole === "Basic User" || uiRole === "Premium User" || uiRole === "Fleet Manager"
-        ? uiRole
-        : "Basic User";
-    const roleName = roleUiToBackend[chosenUi] ?? "ROLE_USER";
-
+  const saveRole = async () => {
+    if (!selected) return;
+    const ui = backendToRoleUi[selected.roleName] || selected.roleName;
+    const be = roleUiToBackend[ui] ?? "ROLE_USER";
     try {
       // 1. set role như cũ
       await api.post("/user/setRole", {
@@ -382,99 +253,131 @@ const AdminUsers = () => {
     }
   };
 
-  /* =========================
-    Header actions
-  ========================= */
-  const headerActions = (
-    <div className="flex items-center gap-3 bg-white shadow-lg shadow-slate-900/10 rounded-full p-2.5">
+  const header = (
+    <div className="flex items-center gap-3 bg-white rounded-full p-2.5 shadow">
       <div className="relative flex-1">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <Input
-          placeholder="Search users by name, email, username..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 w-full min-w-[320px] bg-slate-100 shadow-none border-0 rounded-full h-11 focus-visible:ring-sky-500"
-        />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Input className="pl-9 w-[320px] rounded-full bg-slate-100 border-0" placeholder="Search users…" value={search} onChange={(e)=>setSearch(e.target.value)} />
       </div>
-
-      <Select
-        value={roleFilter}
-        onValueChange={(v: any) => setRoleFilter(v)}
-      >
-        <SelectTrigger className="w-48 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
+      <Select value={roleFilter} onValueChange={(v:any)=>setRoleFilter(v)}>
+        <SelectTrigger className="w-44 rounded-full border-0 bg-slate-100">
           <SelectValue placeholder="All Roles" />
         </SelectTrigger>
-        <SelectContent className="bg-white/90 backdrop-blur-md">
+        <SelectContent>
           <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="basic">Basic User</SelectItem>
           <SelectItem value="premium">Premium User</SelectItem>
-          <SelectItem value="fleet">Fleet Manager</SelectItem>
         </SelectContent>
       </Select>
+    </div>
+  );
 
-      <Select
-        value={statusFilter}
-        onValueChange={(v: any) => setStatusFilter(v)}
-      >
-        <SelectTrigger className="w-48 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
-          <SelectValue placeholder="All Status" />
-        </SelectTrigger>
-        <SelectContent className="bg-white/90 backdrop-blur-md">
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="active">Active</SelectItem>
-          <SelectItem value="suspended">Suspended</SelectItem>
-        </SelectContent>
-      </Select>
+  return (
+    <AdminLayout title="Users" actions={header}>
+      <Card className="border-0 shadow-xl">
+        <CardContent className="p-0">
+          {/* KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 pb-0">
+            <Kpi title="Total Users" value={users.length} icon={<Users className="w-6 h-6" />} />
+            <Kpi title="Active Users" value={users.filter(u=>u.status).length} icon={<UserCheck className="w-6 h-6" />} />
+            <Kpi title="Premium Users" value={users.filter(u=>(backendToRoleUi[u.roleName]||u.roleName)==="Premium User").length} icon={<Star className="w-6 h-6" />} />
+          </div>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogTrigger asChild>
-          <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 h-11 rounded-full px-6">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Staff
-          </Button>
-        </DialogTrigger>
+          {/* Table */}
+          {loading ? (
+            <div className="flex items-center justify-center h-72 text-slate-500 gap-2 p-6">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          ) : (
+            <div className="overflow-x-auto p-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sessions</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map(u=>{
+                    const sessions = sessionsMap[u.id] ?? 0;
+                    const uiRole = backendToRoleUi[u.roleName] || u.roleName;
+                    const roleBadge =
+                      <Badge className="bg-slate-100 text-slate-800 border-slate-200">{uiRole}</Badge>;
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          <div className="font-semibold">{u.fullName}</div>
+                          <div className="text-xs text-slate-500 flex items-center"><Calendar className="w-3 h-3 mr-1"/>Joined {formatDate(u.createdAt)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm flex items-center"><Mail className="w-3.5 h-3.5 mr-2"/>{u.email||"-"}</div>
+                          <div className="text-sm text-slate-600 flex items-center"><Phone className="w-3.5 h-3.5 mr-2"/>{u.phone||"-"}</div>
+                        </TableCell>
+                        <TableCell>{roleBadge}</TableCell>
+                        <TableCell>
+                          {u.status
+                            ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Active</Badge>
+                            : <Badge className="bg-red-100 text-red-700 border-red-200">Suspended</Badge>}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="font-semibold">{sessions}</div>
+                          <div className="text-xs text-slate-500">sessions</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" className="text-blue-600"
+                              onClick={()=>{ setSelected(u); setEditOpen(true); }}>
+                              <Edit className="w-3.5 h-3.5 mr-1.5"/> Edit
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                              disabled={!!loadingMap[u.id]}
+                              className={u.status?"text-red-600":"text-emerald-600"}
+                              onClick={()=>toggleStatus(u)}>
+                              {loadingMap[u.id] ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin"/> : <UserX className="w-3.5 h-3.5 mr-1.5"/>}
+                              {u.status?"Suspend":"Activate"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit role dialog (Users) */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[520px] bg-white">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <UserPlus className="w-5 h-5 mr-2 text-sky-600" />
-              Add New Staff
-            </DialogTitle>
-            <DialogDescription>Tạo tài khoản nhân viên (dùng /user/add-staff)</DialogDescription>
+            <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name *</Label>
-              <Input
-                id="fullName"
-                value={addPayload.fullName}
-                onChange={(e) => setAddPayload((p) => ({ ...p, fullName: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="username">Username *</Label>
-              <Input
-                id="username"
-                value={addPayload.username}
-                onChange={(e) => setAddPayload((p) => ({ ...p, username: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={addPayload.email}
-                  onChange={(e) => setAddPayload((p) => ({ ...p, email: e.target.value }))}
-                />
+          {selected && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Full name</Label><Input disabled value={selected.fullName} /></div>
+                <div><Label>Username</Label><Input disabled value={selected.username} /></div>
+                <div><Label>Email</Label><Input disabled value={selected.email||""} /></div>
+                <div><Label>Phone</Label><Input disabled value={selected.phone||""} /></div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone *</Label>
-                <Input
-                  id="phone"
-                  value={addPayload.phone}
-                  onChange={(e) => setAddPayload((p) => ({ ...p, phone: e.target.value }))}
-                />
+                <Label>Role</Label>
+                <Select
+                  value={(backendToRoleUi[selected.roleName] as "Basic User"|"Premium User") || "Basic User"}
+                  onValueChange={(ui)=>{ const be = roleUiToBackend[ui] ?? "ROLE_USER"; setSelected({...selected, roleName: be}); }}>
+                  <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="Basic User">Basic User</SelectItem>
+                    <SelectItem value="Premium User">Premium User</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
             </div>
@@ -779,41 +682,18 @@ const AdminUsers = () => {
       </div>
     </AdminLayout>
   );
-};
+}
 
-type StatCardProps = {
-  title: string;
-  value: string | number;
-  icon: ReactNode;
-  color: "blue" | "green" | "yellow" | "purple";
-};
-
-const StatCard = ({ title, value, icon, color }: StatCardProps) => {
-  const colors = {
-    blue: { bg: "bg-blue-100", text: "text-blue-600", border: "border-l-blue-500", shadow: "shadow-blue-500/10" },
-    green: { bg: "bg-emerald-100", text: "text-emerald-600", border: "border-l-emerald-500", shadow: "shadow-emerald-500/10" },
-    yellow: { bg: "bg-yellow-100", text: "text-yellow-600", border: "border-l-yellow-500", shadow: "shadow-yellow-500/10" },
-    purple: { bg: "bg-purple-100", text: "text-purple-600", border: "border-l-purple-500", shadow: "shadow-purple-500/10" },
-  };
-  const c = colors[color];
-
+function Kpi({title,value,icon}:{title:string; value:number; icon:ReactNode}) {
   return (
-    <motion.div variants={kpiCardVariants}>
-      <Card className={`bg-white border-l-4 ${c.border} shadow-xl ${c.shadow} rounded-2xl`}>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-slate-500">{title}</p>
-              <p className={`text-4xl font-extrabold ${c.text}`}>{value}</p>
-            </div>
-            <div className={`w-16 h-16 bg-gradient-to-br from-white ${c.bg} rounded-2xl flex items-center justify-center ${c.text}`}>
-              {icon}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <Card className="border-0 shadow-md">
+      <CardContent className="p-5 flex items-center justify-between">
+        <div>
+          <p className="text-sm text-slate-500">{title}</p>
+          <p className="text-3xl font-extrabold text-slate-900">{value}</p>
+        </div>
+        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">{icon}</div>
+      </CardContent>
+    </Card>
   );
-};
-
-export default AdminUsers;
+}

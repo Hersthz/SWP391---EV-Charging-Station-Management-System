@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Bell, Settings, User, LogOut, Zap, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, User, LogOut, Zap, ShieldCheck } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   DropdownMenu,
@@ -16,11 +16,20 @@ const DashboardHeader = () => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const userId =
-    Number(localStorage.getItem("user_id") ||
-          localStorage.getItem("userId") ||
-          localStorage.getItem("id") || "");
-  const fullName = (localStorage.getItem("fullName") || "Unknown User").toString();
+  const userId = Number(
+    localStorage.getItem("user_id") ||
+      localStorage.getItem("userId") ||
+      localStorage.getItem("id") ||
+      ""
+  );
+
+  const [fullName, setFullName] = useState(
+    (localStorage.getItem("fullName") || "Unknown User").toString()
+  );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    localStorage.getItem("avatarUrl") || localStorage.getItem("url")
+  );
+
   const initials = useMemo(
     () =>
       fullName
@@ -33,9 +42,42 @@ const DashboardHeader = () => {
     [fullName]
   );
 
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await api.get("/auth/me", { withCredentials: true });
+        const raw =
+          (res?.data && typeof res.data === "object" && "data" in res.data
+            ? (res.data as any).data
+            : res?.data) ?? {};
+        const name = (raw.fullName as string) ?? localStorage.getItem("fullName");
+        const url =
+          (raw.url as string) ??
+          (raw.avatarUrl as string) ??
+          localStorage.getItem("avatarUrl") ??
+          localStorage.getItem("url");
+
+        if (!ignore) {
+          if (name) setFullName(name);
+          if (url) {
+            setAvatarUrl(url);
+            localStorage.setItem("avatarUrl", url);
+            localStorage.setItem("url", url);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout", {}, { withCredentials: true });
+      await api.post("/auth/logout", {}, { _skipAuthRefresh: true });
       localStorage.clear();
       toast.success("Signed out successfully!");
       navigate("/");
@@ -48,7 +90,6 @@ const DashboardHeader = () => {
     <header
       className={[
         "fixed top-0 left-0 right-0 z-50",
-        // Glass + subtle pattern
         "border-b border-white/25",
         "bg-[radial-gradient(1200px_800px_at_0%_-40%,rgba(14,165,233,.14),transparent_35%),",
         "radial-gradient(1200px_800px_at_100%_-60%,rgba(16,185,129,.14),transparent_35%),",
@@ -73,7 +114,9 @@ const DashboardHeader = () => {
           </div>
 
           <div className="flex flex-col text-left">
-            <span className="text-lg font-extrabold tracking-tight text-slate-900">ChargeHub</span>
+            <span className="text-lg font-extrabold tracking-tight text-slate-900">
+              ChargeHub
+            </span>
             <span className="text-[11px] text-slate-500 -mt-0.5 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
               secure & real-time
@@ -94,7 +137,7 @@ const DashboardHeader = () => {
             <Bell className="w-5 h-5 text-slate-700" />
           </Button>
 
-          {/* User Avatar  */}
+          {/* User Avatar */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
@@ -103,17 +146,29 @@ const DashboardHeader = () => {
                   "bg-white/75 backdrop-blur-sm border border-white/70",
                   "shadow-[0_10px_24px_-12px_rgba(2,6,23,.28)]",
                   "transition will-change-transform hover:scale-[1.03] active:scale-95",
-                  // 3D tilt on hover (very subtle)
                   "hover:[transform:perspective(800px)_rotateX(2deg)_rotateY(-2deg)]",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300",
+                  "overflow-hidden",
                 ].join(" ")}
                 aria-label="Open user menu"
                 title={fullName}
               >
-                <span className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-50/60 to-slate-100/60" />
-                <span className="relative z-[1] font-bold text-[11px] text-slate-700">
-                  {initials}
-                </span>
+                {/* If we have avatar image, show it; else show initials */}
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={fullName || "avatar"}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <>
+                    <span className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-50/60 to-slate-100/60" />
+                    <span className="relative z-[1] font-bold text-[11px] text-slate-700">
+                      {initials}
+                    </span>
+                  </>
+                )}
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
               </button>
             </DropdownMenuTrigger>
@@ -123,7 +178,10 @@ const DashboardHeader = () => {
               sideOffset={10}
               className="w-56 shadow-xl rounded-xl p-1"
             >
-              <DropdownMenuItem onClick={() => navigate("/profile")} className="rounded-lg">
+              <DropdownMenuItem
+                onClick={() => navigate("/profile")}
+                className="rounded-lg"
+              >
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </DropdownMenuItem>
@@ -139,9 +197,12 @@ const DashboardHeader = () => {
         </div>
       </div>
 
-      {/* Accent progress-like bar */}
       <div className="pointer-events-none h-[6px] bg-[linear-gradient(90deg,#0EA5E9,40%,#10B981,70%,#06B6D4)]" />
-      <NotificationModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} userId={userId}/>
+      <NotificationModal
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        userId={userId}
+      />
     </header>
   );
 };

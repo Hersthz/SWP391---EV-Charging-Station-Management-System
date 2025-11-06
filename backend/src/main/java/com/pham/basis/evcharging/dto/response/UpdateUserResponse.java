@@ -13,5 +13,5 @@ public class UpdateUserResponse {
     private String email;
     private String phone;
     private LocalDate dateOfBirth;
-
+    private String url;
 }

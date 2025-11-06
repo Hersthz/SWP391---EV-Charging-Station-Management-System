@@ -46,7 +46,6 @@ interface Station {
   longitude: number;
   status: string;
   pillars: Pillar[];
-  // Computed fields for display
   distance?: number;
   availablePorts?: number;
   totalPorts?: number;
@@ -54,6 +53,7 @@ interface Station {
   maxPrice?: number;
   maxPower?: number;
   connectorTypes?: string[];
+  url?: string;
 }
 
 type SortOption = "distance" | "price" | "power" | "availability";
@@ -86,6 +86,7 @@ interface ChargingStationSummaryResponse {
   minPower?: number;
   maxPower?: number;
   connectorTypes?: string[];
+  url?: string;
 }
 
 interface ChargingStationDetailResponse {
@@ -111,6 +112,7 @@ interface ChargingStationDetailResponse {
     connectors: { id?: number; status?: string; type: string }[];
   }[];
   reviews?: { id: string; userName: string; rating: number; comment: string; createdAt: string; }[];
+  url?: string;
 }
 
 /* =========================
@@ -218,12 +220,13 @@ const mapSummaryToStation = (s: ChargingStationSummaryResponse): Station => ({
   status: s.status,
   pillars: [],
   distance: s.distance,
-  availablePorts: s.availableConnectors ?? 0,   // <—
-  totalPorts: s.totalConnectors ?? 0,           // <—
+  availablePorts: s.availableConnectors ?? 0,  
+  totalPorts: s.totalConnectors ?? 0,           
   minPrice: s.minPrice ?? undefined,
   maxPrice: s.maxPrice ?? undefined,
   maxPower: s.maxPower ?? undefined,
   connectorTypes: s.connectorTypes ?? [],
+  url: s.url,
 });
 
 const mapDetailToStation = (d: ChargingStationDetailResponse): Station => {
@@ -247,12 +250,13 @@ const mapDetailToStation = (d: ChargingStationDetailResponse): Station => {
     status: d.status,
     pillars,
     distance: d.distance,
-    availablePorts: d.availableConnectors ?? availableFromPillars, // <—
-    totalPorts: d.totalConnectors ?? pillars.length,               // <—
+    availablePorts: d.availableConnectors ?? availableFromPillars, 
+    totalPorts: d.totalConnectors ?? pillars.length,               
     minPrice: d.minPrice ?? (pillars.length ? Math.min(...pillars.map(p => p.pricePerKwh)) : undefined),
     maxPrice: d.maxPrice ?? (pillars.length ? Math.max(...pillars.map(p => p.pricePerKwh)) : undefined),
     maxPower: d.maxPower ?? (pillars.length ? Math.max(...pillars.map(p => p.power)) : undefined),
     connectorTypes,
+    url: d.url,
   };
 };
 
@@ -670,8 +674,19 @@ const StationMap = () => {
                   className="cursor-pointer rounded-2xl border-slate-200 transition-all hover:shadow-[0_8px_24px_rgba(0,0,0,.08)]"
                 >
                   <div className="flex gap-4 p-4">
-                    <div className="relative w-48 h-36 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-blue-100 to-green-100 grid place-items-center">
-                      <span className="text-xs text-muted-foreground">Station preview</span>
+                    <div className="relative w-48 h-36 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-blue-100 to-green-100">
+                      {station.url ? (
+                        <img
+                          src={station.url}
+                          alt={station.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full grid place-items-center">
+                          <span className="text-xs text-muted-foreground">Station preview</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -789,14 +804,22 @@ const StationMap = () => {
                 }}
               >
                 <Popup>
-                  <div>
+                  <div style={{maxWidth: 220}}>
+                    {s.url && (
+                      <img
+                        src={s.url}
+                        alt={s.name}
+                        className="w-[120px] h-[70px] object-cover rounded mb-2 block"
+                        loading="lazy"
+                      />
+                    )}
                     <strong>{s.name}</strong><br />
                     {s.address}<br />
                     <span>{s.availablePorts}/{s.totalPorts} available</span><br />
                     <span>Up to {s.maxPower} kW</span><br />
                     <span>
                       {formatVND(s.minPrice)}/kWh
-                      {s.maxPrice && s.maxPrice !== s.minPrice ? ` - ${formatVND(s.maxPrice)}` : ''}
+                      {s.maxPrice && s.maxPrice !== s.minPrice ? ` - ${formatVND(s.maxPrice)}` : ""}
                     </span>
                   </div>
                 </Popup>
@@ -810,8 +833,22 @@ const StationMap = () => {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="w-[92vw] max-w-3xl p-0 overflow-hidden sm:rounded-2xl sm:max-h-[90vh] [&>button]:hidden">
           <div className="flex max-h-[82vh] flex-col">
-            {/* Header cover */}
-            <div className="relative h-20 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500">
+            {/* Header */}
+            <div className="relative h-24 md:h-28">
+              {selectedStation?.url ? (
+                <img
+                  src={selectedStation.url}
+                  alt={selectedStation?.name || "Station photo"}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500" />
+              )}
+
+              {/* overlay để chữ dễ đọc trên ảnh */}
+              <div className="absolute inset-0 bg-black/25" />
+
               <DialogClose asChild>
                 <button
                   type="button"
@@ -823,6 +860,7 @@ const StationMap = () => {
                 </button>
               </DialogClose>
 
+              {/* Title & status */}
               <div className="relative z-10 flex h-full items-end gap-3 px-5 pb-4">
                 <div className="grid h-12 w-12 place-items-center rounded-xl bg-white text-slate-700 shadow">
                   <span className="text-sm font-bold">{initials(selectedStation?.name)}</span>

@@ -21,4 +21,5 @@ public class UserResponse {
     private String roleName;
     private LocalDate dateOfBirth;
     private LocalDateTime createdAt;
+    private String url;
 }
