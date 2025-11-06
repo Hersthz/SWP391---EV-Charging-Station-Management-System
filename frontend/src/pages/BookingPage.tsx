@@ -60,6 +60,7 @@ type ConnectorDto = {
   type?: string;
   connectorType?: string;
   name?: string;
+  status?: string; // ⬅️ thêm để nắm trạng thái connector
 };
 type PillarDto = {
   id: number | string;
@@ -126,7 +127,7 @@ function toNum(x: number | string | undefined): number | undefined {
 const HOLD_RATE_PER_MIN = 300;
 
 /* =========================
-   Time helpers + TimePicker
+   Time helpers 
 ========================= */
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 const toHM = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -137,14 +138,14 @@ const addMinutes = (hm: string, m: number) => {
   d.setMinutes(d.getMinutes() + m);
   return toHM(d);
 };
-const roundToStep = (hm: string, step = 5) => {
+const roundToStep = (hm: string, step = 1) => {
   const [H, M] = hm.split(":").map(Number);
   const rounded = Math.round(M / step) * step;
   const h = (H + Math.floor(rounded / 60)) % 24;
   const m = rounded % 60;
   return `${pad(h)}:${pad(m)}`;
 };
-const nowHM = (step = 5) => {
+const nowHM = (step = 1) => {
   const d = new Date();
   return roundToStep(`${pad(d.getHours())}:${pad(d.getMinutes())}`, step);
 };
@@ -156,182 +157,6 @@ const isToday = (yyyyMmDd?: string) => {
 const hmToMinutes = (hm: string) => {
   const [H, M] = hm.split(":").map(Number);
   return H * 60 + M;
-};
-
-type TimePickerProps = {
-  label?: string;
-  value: string;
-  onChange: (v: string) => void;
-  date?: string; // yyyy-MM-dd
-  step?: number; // minutes
-  minHM?: string | null; // clamp min HM
-  maxHM?: string | null; // clamp max HM
-  suggest?: string[]; // quick presets
-};
-
-// === TimePicker ===
-const TimePicker = ({
-  label,
-  value,
-  onChange,
-  date,
-  step = 5,
-  minHM = null,
-  maxHM = null,
-  suggest = ["Now", "+15", "+30", "+60"],
-}: TimePickerProps) => {
-  const [open, setOpen] = useState(false);
-
-  const todayMin = isToday(date) ? nowHM(step) : null;
-  const effectiveMin = minHM ?? todayMin;
-
-  const [minH, minM] = effectiveMin ? effectiveMin.split(":").map(Number) : [undefined, undefined];
-
-  const hours = Array.from({ length: 24 }, (_, i) => pad(i));
-  const minutes = Array.from({ length: Math.floor(60 / step) }, (_, i) => pad(i * step));
-
-  const clampByMinMax = (hm: string) => {
-    let v = hm;
-    if (effectiveMin && hmToMinutes(v) < hmToMinutes(effectiveMin)) v = effectiveMin;
-    if (maxHM && hmToMinutes(v) > hmToMinutes(maxHM)) v = maxHM;
-    return v;
-  };
-
-  const pick = (h: string, m: string) => {
-    let H = Number(h);
-    let M = Number(m);
-    if (effectiveMin && minH !== undefined && minM !== undefined && H === minH && M < minM) {
-      M = minM;
-    }
-    let v = `${pad(H)}:${pad(M)}`;
-    v = clampByMinMax(v);
-    onChange(v);
-    setOpen(false);
-  };
-
-  const pressPreset = (preset: string) => {
-    let v = value || nowHM(step);
-    if (preset === "Now") v = nowHM(step);
-    if (preset.startsWith("+")) {
-      const mins = Number(preset.slice(1));
-      v = addMinutes(value || nowHM(step), mins);
-      v = roundToStep(v, step);
-    }
-    v = clampByMinMax(v);
-    onChange(v);
-  };
-
-  const [hCur, mCur] = (value || "").split(":");
-  const btnText = value ? value : "--:--";
-
-  const hourDisabled = (h: string) => {
-    if (!effectiveMin) return false;
-    const H = Number(h);
-    return H < Number(minH);
-  };
-
-  const minuteDisabled = (m: string, hPicked?: string) => {
-    if (!effectiveMin) return false;
-    const H = Number(hPicked ?? hCur ?? new Date().getHours());
-    const M = Number(m);
-    if (minH === undefined || minM === undefined) return false;
-    if (H < minH) return true;
-    if (H > minH) return false;
-    return M < minM;
-  };
-
-  return (
-    <div className="relative">
-      {label && <div className="text-sm font-medium text-zinc-700 mb-1">{label}</div>}
-
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg text-left text-zinc-900
-          hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-      >
-        {btnText}
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className="absolute z-40 mt-1 w-[320px] rounded-xl border border-zinc-200 bg-white shadow-xl p-3"
-          >
-            <div className="mb-2 flex gap-2">
-              {suggest.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => pressPreset(s)}
-                  className="px-3 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-sm text-zinc-700 transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="max-h-48 overflow-auto rounded-lg border border-zinc-200">
-                {hours.map((h) => {
-                  const disabled = hourDisabled(h);
-                  return (
-                    <button
-                      key={h}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => pick(h, mCur ?? "00")}
-                      className={[
-                        "w-full px-3 py-2 text-left hover:bg-zinc-100 text-zinc-800 transition-colors",
-                        h === hCur ? "bg-emerald-50 text-emerald-700 font-semibold" : "",
-                        disabled ? "opacity-40 cursor-not-allowed" : "",
-                      ].join(" ")}
-                    >
-                      {h}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="max-h-48 overflow-auto rounded-lg border border-zinc-200">
-                {minutes.map((m) => {
-                  const disabled = minuteDisabled(m);
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => pick(hCur ?? pad(new Date().getHours()), m)}
-                      className={[
-                        "w-full px-3 py-2 text-left hover:bg-zinc-100 text-zinc-800 transition-colors",
-                        m === mCur ? "bg-emerald-50 text-emerald-700 font-semibold" : "",
-                        disabled ? "opacity-40 cursor-not-allowed" : "",
-                      ].join(" ")}
-                    >
-                      {m}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="text-sm px-3 py-1.5 rounded-md hover:bg-zinc-100 text-zinc-600 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
 };
 
 /* =========================
@@ -461,6 +286,7 @@ export default function BookingPage() {
               id: c.id ?? c.connectorId ?? c.type ?? c.connectorType ?? c.name,
               type: c.type ?? c.connectorType ?? c.name,
               name: c.name ?? c.type ?? c.connectorType ?? `C-${idx + 1}`,
+              status: c.status ?? c.connectorStatus ?? c.state ?? "Available", // ⬅️ thêm status
             })),
           })),
         };
@@ -549,47 +375,59 @@ export default function BookingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pillars UI
+  // Pillars UI 
   type PillarUI = {
     code: string;
     name: string;
     pillarId: number | string;
-    status: "available" | "occupied" | "maintenance";
-    power?: string;
-    connectorLabels: string[];
+    connectorChips: { id: string | number; name: string; status?: string }[];
+    availableCount: number;
+    totalCount: number;
     defaultConnector?: { id: string | number; name: string } | null;
   };
 
   const pillarsUI: PillarUI[] = useMemo(() => {
     if (!stationDetail?.pillars?.length) return [];
     return stationDetail.pillars.map((p, idx) => {
-      const list = p.connectors ?? [];
-      const labels = Array.from(new Set(list.map((c) => labelOf(c).toUpperCase())));
-      const first = list[0];
+      const list = (p.connectors ?? []) as ConnectorDto[];
+
+      const chips = list.map((c) => ({
+        id: c.id!,
+        name: String(c.name ?? c.type ?? c.id),
+        status: (c.status || "").toString(),
+      }));
+
+      const availableCount = chips.filter((c) => c.status.toLowerCase() === "available").length;
+      const totalCount = chips.length;
+
+      // default: connector available đầu tiên (nếu có) hoặc connector đầu tiên
+      const firstAvail = chips.find((c) => c.status.toLowerCase() === "available") || chips[0];
+
       return {
         code: String(p.code ?? `P${idx + 1}`),
         name: String(p.name ?? p.code ?? `P${idx + 1}`),
         pillarId: p.id!,
-        status: "available",
-        power: undefined,
-        connectorLabels: labels,
-        defaultConnector: first ? { id: first.id, name: String(first.name ?? first.type ?? first.id) } : null,
+        connectorChips: chips,
+        availableCount,
+        totalCount,
+        defaultConnector: firstAvail ? { id: firstAvail.id, name: firstAvail.name } : null,
       };
     });
   }, [stationDetail]);
 
-  // Connectors for selected pillar
+  // Connectors cho pillar đã chọn 
   const normalizedConnectors = useMemo(() => {
     if (stationDetail?.pillars?.length && selectedPillarCode) {
       const pillar = stationDetail.pillars.find((p, i) =>
         (p.code ?? p.name ?? `P${i + 1}`).toString().toLowerCase() === selectedPillarCode.toLowerCase()
       );
-      const list = pillar?.connectors ?? [];
-      const dedup = new Map<string, { id: string | number; name: string }>();
+      const list = (pillar?.connectors ?? []) as ConnectorDto[];
+
+      const dedup = new Map<string, { id: string | number; name: string; status?: string }>();
       list.forEach((c) => {
         const label = labelOf(c);
         const key = label.toLowerCase();
-        if (!dedup.has(key)) dedup.set(key, { id: c.id ?? key, name: label });
+        if (!dedup.has(key)) dedup.set(key, { id: c.id ?? key, name: label, status: c.status });
       });
       return Array.from(dedup.values());
     }
@@ -956,11 +794,12 @@ export default function BookingPage() {
                 <input
                   type="date"
                   value={bookingDate}
+                  min={new Date().toISOString().slice(0, 10)} // ⬅️ KHÓA QUÁ KHỨ
                   onChange={(e) => {
                     const val = e.target.value;
                     setBookingDate(val);
-                    if (isToday(val) && startTime && hmToMinutes(startTime) < hmToMinutes(nowHM(5))) {
-                      const nw = nowHM(5);
+                    if (isToday(val) && startTime && hmToMinutes(startTime) < hmToMinutes(nowHM(1))) {
+                      const nw = nowHM(1);
                       setStartTime(nw);
                       if (!endTime || hmToMinutes(endTime) <= hmToMinutes(nw)) {
                         setEndTime(addMinutes(nw, 30));
@@ -971,31 +810,42 @@ export default function BookingPage() {
                 />
               </div>
 
-              <TimePicker
-                label="Start time"
-                value={startTime}
-                onChange={(v) => {
-                  setStartTime(v);
-                  if (!endTime) setEndTime(addMinutes(v, 30));
-                  else if (hmToMinutes(endTime) <= hmToMinutes(v)) setEndTime(addMinutes(v, 15));
-                }}
-                date={bookingDate}
-                step={5}
-                suggest={["Now", "+15", "+30", "+60"]}
-              />
+              {/* START TIME: input time chuẩn */}
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-zinc-700">Start time</div>
+                <input
+                  type="time"
+                  value={startTime}
+                  step={60} // 1 phút
+                  min={isToday(bookingDate) ? nowHM(1) : undefined}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setStartTime(v);
+                    if (!endTime || hmToMinutes(endTime) <= hmToMinutes(v)) {
+                      setEndTime(addMinutes(v, 15));
+                    }
+                  }}
+                  className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
 
-              <TimePicker
-                label="End time"
-                value={endTime}
-                onChange={(v) => {
-                  if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
-                    setEndTime(addMinutes(startTime, 15));
-                  } else setEndTime(v);
-                }}
-                date={bookingDate}
-                step={5}
-                minHM={startTime || null}
-              />
+              {/* END TIME: min = startTime */}
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-zinc-700">End time</div>
+                <input
+                  type="time"
+                  value={endTime}
+                  step={60}
+                  min={startTime || undefined}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
+                      setEndTime(addMinutes(startTime, 15));
+                    } else setEndTime(v);
+                  }}
+                  className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
             </div>
 
             {/* Duration */}
@@ -1089,16 +939,14 @@ export default function BookingPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {pillarsUI.map((p) => {
             const active = selectedPillarCode === p.code;
-            const isAvailable = p.status === "available";
             return (
               <motion.div
                 key={String(p.pillarId)}
-                whileHover={isAvailable ? { scale: 1.03 } : {}}
-                whileTap={isAvailable ? { scale: 0.98 } : {}}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <Card
                   onClick={() => {
-                    if (!isAvailable) return;
                     setSelectedPillarCode(p.code);
                     setSelectedPillarId(
                       typeof p.pillarId === "string" && /^\d+$/.test(p.pillarId)
@@ -1108,50 +956,50 @@ export default function BookingPage() {
                     setSelectedConnectorId("");
                     setSelectedConnectorIdNum(null);
                     setSelectedConnectorLabel("");
-                    if (p.defaultConnector && p.connectorLabels?.length === 1) {
+                    if (p.defaultConnector) {
                       setSelectedConnectorId(String(p.defaultConnector.id));
                       setSelectedConnectorIdNum(p.defaultConnector.id);
                       setSelectedConnectorLabel(p.defaultConnector.name);
                     }
                   }}
                   className={[
-                    "transition-all duration-200 rounded-xl overflow-hidden text-center",
+                    "transition-all duration-200 rounded-xl overflow-hidden text-center cursor-pointer",
                     active
                       ? "border-2 border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-500/10"
-                      : !isAvailable
-                        ? "border border-zinc-200 bg-zinc-100 opacity-60 cursor-not-allowed"
-                        : "border border-zinc-200/70 bg-white hover:border-emerald-500 hover:shadow-lg hover:shadow-zinc-900/10 cursor-pointer",
+                      : "border border-zinc-200/70 bg-white hover:border-emerald-500 hover:shadow-lg hover:shadow-zinc-900/10",
                   ].join(" ")}
                 >
                   <CardContent className="p-5">
                     <div className="font-semibold text-lg text-zinc-800">{p.name}</div>
+
+                    {/* chips connector theo status */}
                     <div className="flex flex-wrap gap-1.5 justify-center mt-2 min-h-[22px]">
-                      {p.connectorLabels.length ? (
-                        p.connectorLabels.map((lbl) => (
-                          <span
-                            key={lbl}
-                            className="px-2 py-0.5 rounded-full border border-zinc-300 bg-white text-xs leading-5 text-zinc-600"
-                          >
-                            {lbl}
-                          </span>
-                        ))
+                      {p.connectorChips.length ? (
+                        p.connectorChips.map((c) => {
+                          const st = (c.status || "").toLowerCase();
+                          const cls =
+                            st === "available"
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                              : st === "occupied"
+                              ? "border-amber-300 bg-amber-50 text-amber-700"
+                              : "border-slate-300 bg-slate-50 text-slate-600";
+                          return (
+                            <span key={String(c.id)} className={`px-2 py-0.5 rounded-full border text-xs leading-5 ${cls}`}>
+                              {c.name}
+                            </span>
+                          );
+                        })
                       ) : (
                         <span className="text-xs text-zinc-400">—</span>
                       )}
                     </div>
-                    {p.power && <div className="text-xs font-medium text-emerald-700 mt-1">{p.power}</div>}
+
+                    {/* tóm tắt available theo connector */}
                     <Badge
                       variant="default"
-                      className={[
-                        "mt-3 text-xs rounded-full capitalize font-medium px-3 py-1 border",
-                        isAvailable
-                          ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-                          : p.status === "occupied"
-                            ? "bg-red-500/10 text-red-700 border-red-500/20"
-                            : "bg-amber-500/10 text-amber-700 border-amber-500/20",
-                      ].join(" ")}
+                      className="mt-3 text-xs rounded-full font-medium px-3 py-1 border bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
                     >
-                      {isAvailable ? "available" : p.status === "occupied" ? "occupied" : "maintenance"}
+                      {p.availableCount}/{p.totalCount} available
                     </Badge>
                   </CardContent>
                 </Card>
@@ -1170,24 +1018,34 @@ export default function BookingPage() {
           <div className="flex flex-wrap gap-3">
             {normalizedConnectors.map((c) => {
               const active = selectedConnectorId === String(c.id);
+              const st = (c.status || "").toLowerCase();
+              const disabled = st && st !== "available";
+
+              const activeCls =
+                "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 scale-105";
+              const normalCls =
+                "bg-white border border-zinc-300 text-zinc-700 hover:border-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-700";
+              const disabledCls = "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed";
+
               return (
                 <motion.button
                   key={String(c.id)}
                   onClick={() => {
+                    if (disabled) return;
                     setSelectedConnectorId(String(c.id));
                     setSelectedConnectorIdNum(c.id);
                     setSelectedConnectorLabel(c.name);
                   }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={disabled ? {} : { scale: 1.05 }}
+                  whileTap={disabled ? {} : { scale: 0.95 }}
+                  disabled={disabled}
                   className={[
                     "px-6 h-10 rounded-full text-sm font-medium transition-all duration-300 transform",
-                    active
-                      ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 scale-105"
-                      : "bg-white border border-zinc-300 text-zinc-700 hover:border-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-700",
+                    disabled ? disabledCls : active ? activeCls : normalCls,
                   ].join(" ")}
+                  title={c.status ? `Status: ${c.status}` : undefined}
                 >
-                  {c.name}
+                  {c.name}{c.status ? ` · ${c.status}` : ""}
                 </motion.button>
               );
             })}
