@@ -21,11 +21,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     @Query("SELECT r FROM Reservation r WHERE " +
-            "r.pillar.id = :pillarId AND " +
+            "r.connector.id = :pillarId AND " +
             "r.status IN ('PENDING', 'SCHEDULED') AND " +
             "(:startTime < r.endTime AND :endTime > r.startTime)")
     List<Reservation> findOverlappingReservations(
-            @Param("pillarId") Long pillarId,
+            @Param("connectorId") Long connectorId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
@@ -40,5 +40,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByStatusInAndStartTimeBefore(List<String> statuses, LocalDateTime
             time);
     List<Reservation> findByStationIdOrderByCreatedAtDesc(Long stationId);
+
+    List<Reservation> findByStatusIn(List<String> statuses);
+
+    List<Reservation> findByStationId(Long stationId);
 }
 

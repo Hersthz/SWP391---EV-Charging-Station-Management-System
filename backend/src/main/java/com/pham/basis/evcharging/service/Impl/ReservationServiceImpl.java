@@ -55,7 +55,6 @@ public class ReservationServiceImpl implements ReservationService {
         //kiểm tra chồng reservation
         checkForOverlappingReservations(request);
 
-
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiredAt = request.getEndTime().plusMinutes(15);
 
@@ -202,7 +201,7 @@ public class ReservationServiceImpl implements ReservationService {
     private void checkForOverlappingReservations(ReservationRequest req) {
         List<Reservation> existingReservations = reservationRepository
                 .findOverlappingReservations(
-                        req.getPillarId(),
+                        req.getConnectorId(),
                         req.getStartTime(),
                         req.getEndTime().plusMinutes(15)
                 );
@@ -263,6 +262,29 @@ public class ReservationServiceImpl implements ReservationService {
                     r.getStation().getName(), GRACE_MINUTES);
             notificationService.createNotification(r.getUser().getId(), "RESERVATION_EXPIRED", msg);
         });
+
+        reservationRepository.findByStatusIn(
+                        List.of("VERIFYING", "VERIFIED", "PLUGGED", "CHARGING", "SCHEDULED"))
+                .stream()
+                .filter(r -> r.getEndTime() != null && r.getEndTime().isBefore(now))
+                .forEach(r -> {
+                    r.setStatus("EXPIRED");
+                    r.setExpiredAt(now);
+                    reservationRepository.save(r);
+                    if (r.getConnector() != null) {
+                        r.getConnector().setStatus("AVAILABLE");
+                        connectorRepository.save(r.getConnector());
+                    }
+                    String msg = String.format(
+                            "Your reservation at %s has expired because the end time has passed.",
+                            r.getStation().getName()
+                    );
+                    notificationService.createNotification(
+                            r.getUser().getId(),
+                            "RESERVATION_EXPIRED",
+                            msg
+                    );
+                });
         //Gửi 1 notification trước start 5 phút
         reservationRepository.findByStatus("SCHEDULED").stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getNotifiedBeforeStart()))

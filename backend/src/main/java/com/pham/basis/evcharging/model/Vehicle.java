@@ -30,6 +30,9 @@ public class Vehicle {
 
     private Double efficiency;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     //FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

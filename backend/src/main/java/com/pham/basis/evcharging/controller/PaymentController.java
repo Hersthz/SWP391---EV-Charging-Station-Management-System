@@ -8,6 +8,7 @@ import com.pham.basis.evcharging.dto.response.PaymentResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
 import com.pham.basis.evcharging.exception.AppException;
+import com.pham.basis.evcharging.model.PaymentTransaction;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.service.PaymentService;
@@ -127,6 +128,17 @@ public class PaymentController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/getPaymentS/{stationId}")
+    public ResponseEntity<ApiResponse<List<PaymentTransactionResponse>>> getPaymentByStaion(@PathVariable Long stationId) {
+        List<PaymentTransactionResponse> payment = paymentService.getAllPaymentTransactionByStation(stationId);
+        return ResponseEntity.ok(new ApiResponse<>("200", "Get payment by station", payment));
+    }
+
+    @PutMapping("/pay/{id}")
+    public ResponseEntity<ApiResponse<String>> pay(@PathVariable Long id) {
+        paymentService.updatePaymentStatus(id);
+        return ResponseEntity.ok(new ApiResponse<>("200", "Payment status updated to SUCCESS", null));
+    }
 }
 
 

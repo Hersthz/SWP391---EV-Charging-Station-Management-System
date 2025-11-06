@@ -209,7 +209,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
         // check overlaps
         List<Reservation> overlaps = reservationRepo.findOverlappingReservations(
-                reservation.getPillar().getId(), reservation.getStartTime(), desiredEndWithGrace);
+                reservation.getConnector().getId(), reservation.getStartTime(), desiredEndWithGrace);
         overlaps = overlaps.stream()
                 .filter(r -> !r.getId().equals(reservation.getId()))
                 .collect(Collectors.toList());
