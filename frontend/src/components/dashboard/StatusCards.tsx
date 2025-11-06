@@ -15,7 +15,8 @@ import {
   ArrowRight,
   ShieldAlert,
   Check,
-  PlugZap
+  PlugZap,
+  XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -25,10 +26,10 @@ import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 
-/** Toggle to always use mock data for quick UI preview */
+/** Toggle mock for quick preview */
 const USE_MOCK = false;
 
-/** ===== Types ===== */
+/* ===== Types ===== */
 type Vehicle = {
   id: number;
   userId?: number;
@@ -38,7 +39,7 @@ type Vehicle = {
   acMaxKw?: number;
   dcMaxKw?: number;
   efficiency?: number;
-  currentSoc?: number; // %  (đã đổi từ socNow)
+  currentSoc?: number; // %
   socTarget?: number;
 };
 
@@ -73,10 +74,7 @@ interface ReservationItem {
   startTime: string;
   status: ReservationStatus;
   holdFee?: number;
-  payment?: {
-    depositTransactionId?: string;
-    paid: boolean;
-  };
+  payment?: { depositTransactionId?: string; paid: boolean };
 }
 
 interface MyReservationsResponse {
@@ -84,7 +82,7 @@ interface MyReservationsResponse {
   nextBooking?: Partial<ReservationItem>;
 }
 
-/** ===== Backend DTO ===== */
+/* ===== Backend DTO ===== */
 interface ReservationResponseBE {
   reservationId: number;
   stationId: number;
@@ -102,7 +100,7 @@ interface ReservationResponseBE {
   payment?: { paid?: boolean; depositTransactionId?: string };
 }
 
-/** ===== Mock data ===== */
+/* ===== Mock ===== */
 const MOCK_RESERVATIONS: MyReservationsResponse = {
   items: [
     {
@@ -150,7 +148,7 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
   },
 };
 
-/** ===== Helpers ===== */
+/* ===== Helpers ===== */
 const fmtDateTime = (iso?: string) => (iso ? new Date(iso).toLocaleString() : "");
 const fmtVnd = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 const isArrivableNow = (startIso: string) => Date.now() >= new Date(startIso).getTime();
@@ -181,7 +179,6 @@ function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   if (s === "PLUGGED") return "PLUGGED";
   if (s === "CHARGING") return "CHARGING";
   if (s === "COMPLETED") return "COMPLETED";
-
   if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
     return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
   }
@@ -218,11 +215,10 @@ function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefine
     .filter((i) => new Date(i.startTime).getTime() > Date.now())
     .sort((a, b) => +new Date(a.startTime) - +new Date(b.startTime));
   const n = future[0];
-  if (!n) return undefined;
-  return { stationName: n.stationName, pillarCode: n.pillarCode, connectorType: n.connectorType, startTime: n.startTime };
+  return n ? { stationName: n.stationName, pillarCode: n.pillarCode, connectorType: n.connectorType, startTime: n.startTime } : undefined;
 }
 
-/** ===== UI palette per status (stripe + card + badge + button) ===== */
+/* ===== UI palette per status ===== */
 type UIConf = {
   stripe: string;
   ring: string;
@@ -369,7 +365,7 @@ const UI: Record<ReservationStatus, UIConf> = {
 };
 
 const StatusCards = () => {
-  // GIỮ LẠI TẤT CẢ state và logic cũ (chỉ thay UI/layout)
+  /* ===== State (kept) ===== */
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
@@ -404,7 +400,7 @@ const StatusCards = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Load reservations + KYC
+  /* ===== Load reservations + KYC ===== */
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -464,7 +460,7 @@ const StatusCards = () => {
     };
   }, [toast]);
 
-  // countdown for QR token
+  /* ===== QR countdown ===== */
   useEffect(() => {
     if (!qrOpen || secondsLeft <= 0) return;
     const t = setInterval(() => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
@@ -473,25 +469,15 @@ const StatusCards = () => {
 
   const activeCount = useMemo(
     () =>
-      items.filter(
-        (i) =>
-          i.status === "CONFIRMED" ||
-          i.status === "SCHEDULED" ||
-          i.status === "PENDING_PAYMENT" ||
-          i.status === "VERIFYING" ||
-          i.status === "VERIFIED" ||
-          i.status === "PLUGGED" ||
-          i.status === "CHARGING"
+      items.filter((i) =>
+        ["CONFIRMED", "SCHEDULED", "PENDING_PAYMENT", "VERIFYING", "VERIFIED", "PLUGGED", "CHARGING"].includes(i.status)
       ).length,
     [items]
   );
 
-  // ====== Actions (logic giữ nguyên) ======
-  const gotoReview = (r: ReservationItem) => {
-    navigate(`/stations/${r.stationId}/review`, {
-      state: { stationName: r.stationName, pillarCode: r.pillarCode },
-    });
-  };
+  /* ===== Actions (kept logic, minor fixes) ===== */
+  const gotoReview = (r: ReservationItem) =>
+    navigate(`/stations/${r.stationId}/review`, { state: { stationName: r.stationName, pillarCode: r.pillarCode } });
 
   const onStartChargingAPI = async (reservationId: number) => {
     try {
@@ -514,8 +500,7 @@ const StatusCards = () => {
         targetSoc: 1,
         paymentMethod: payChannel === "wallet" ? "WALLET" : "VNPAY",
       };
-
-      const { data } = await api.post("/session/create", payload);
+      const { data } = await api.post("/session/create", payload, { withCredentials: true });
       const ret = data?.data ?? data;
       const sid = ret?.sessionId ?? ret?.id;
       if (!sid) throw new Error("Invalid start response (missing sessionId).");
@@ -528,7 +513,6 @@ const StatusCards = () => {
         `session_meta_${sid}`,
         JSON.stringify({ vehicleId, initialSoc: initialSocFrac, targetSoc: targetSocFrac, reservationId })
       );
-
       localStorage.setItem(
         `reservation_cache_${reservationId}`,
         JSON.stringify({
@@ -554,8 +538,7 @@ const StatusCards = () => {
   };
 
   const onPayNow = (r: ReservationItem) => {
-    const amount =
-      (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
+    const amount = (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
     navigate("/reservation/deposit", {
       state: {
         reservationId: r.reservationId,
@@ -583,10 +566,8 @@ const StatusCards = () => {
       setQrOpen(true);
       return;
     }
-
     try {
       if (!currentUserId) throw new Error("Cannot determine current user id.");
-
       const { data } = await api.post(
         "/api/token/create",
         { userId: currentUserId, reservationId: r.reservationId },
@@ -631,6 +612,23 @@ const StatusCards = () => {
     }
   };
 
+  /* NEW: Cancel (SCHEDULED only) */
+  const onCancel = async (r: ReservationItem) => {
+    try {
+      if (USE_MOCK) {
+        setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "CANCELLED" } : x)));
+        toast({ title: "Reservation cancelled (mock)" });
+        return;
+      }
+      await api.post(`/book/cancel/${r.reservationId}`, {}, { withCredentials: true });
+      setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "CANCELLED" } : x)));
+      toast({ title: "Reservation cancelled" });
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || "Cannot cancel reservation.";
+      toast({ title: "Action failed", description: msg, variant: "destructive" });
+    }
+  };
+
   const openPayment = async (r: ReservationItem) => {
     setPmResId(r.reservationId);
 
@@ -656,7 +654,7 @@ const StatusCards = () => {
 
     let enriched = r;
     try {
-      const { data } = await api.post(`/book/${r.reservationId}`, { withCredentials: true });
+      const { data } = await api.post(`/book/${r.reservationId}`, {}, { withCredentials: true });
       const d = data?.data ?? data ?? {};
       enriched = {
         ...r,
@@ -738,7 +736,7 @@ const StatusCards = () => {
     if (r) await openQrFor(r);
   };
 
-  /** ===== Row renderer: phiên bản “wow” ===== */
+  /* ===== Row renderer ===== */
   const renderReservation = (r: ReservationItem) => {
     const ready = r.status === "CONFIRMED";
     const scheduled = r.status === "SCHEDULED";
@@ -751,33 +749,15 @@ const StatusCards = () => {
         className={[
           "group relative grid grid-cols-[10px_1fr_auto] items-stretch gap-0 rounded-2xl",
           "bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/75",
-          "border border-white/40 ring-1", ui.ring,
+          "border border-white/40 ring-1",
+          ui.ring,
           "transition-all duration-300",
           "hover:-translate-y-[2px] hover:shadow-[0_28px_90px_-34px_rgba(2,6,23,.35)]",
-          ui.glow
+          ui.glow,
         ].join(" ")}
         style={{ minHeight: 104 }}
       >
-        {/* Animated border halo (conic gradient runs on hover) */}
-        <span
-          aria-hidden
-          className={[
-            "pointer-events-none absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-            "bg-[conic-gradient(var(--tw-gradient-stops))] animate-[spin_8s_linear_infinite]",
-            `from-transparent via-transparent to-transparent`
-          ].join(" ")}
-          style={{
-            WebkitMask:
-              "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-            WebkitMaskComposite: "xor",
-            maskComposite: "exclude",
-            padding: 1,
-            // @ts-ignore
-            ["--tw-gradient-from" as any]: "transparent",
-            ["--tw-gradient-stops" as any]: `var(--tw-gradient-from), theme(colors.transparent), theme(colors.transparent)`,
-          }}
-        />
-        {/* left stripe with animated gradient */}
+        {/* left stripe */}
         <div className={`rounded-l-2xl bg-gradient-to-b ${ui.stripe} relative overflow-hidden`}>
           <span className="absolute inset-0 bg-[linear-gradient(transparent,rgba(255,255,255,.25),transparent)] animate-[shine_2.4s_ease-in-out_infinite]" />
         </div>
@@ -791,9 +771,7 @@ const StatusCards = () => {
             </div>
           </div>
 
-          <h4 className="mt-2 font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 tracking-tight">
-            {r.stationName}
-          </h4>
+          <h4 className="mt-2 font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 tracking-tight">{r.stationName}</h4>
 
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="outline" className="text-xs rounded-full border-dashed">{`Port ${r.pillarCode}`}</Badge>
@@ -812,24 +790,20 @@ const StatusCards = () => {
           {ready && (
             <Button
               size="sm"
-              className={[
-                "relative overflow-hidden rounded-full px-4 h-9", ui.btn, ui.btnGlow,
-                "transition-all active:scale-[.98]"
-              ].join(" ")}
+              className={["relative overflow-hidden rounded-full px-4 h-9", ui.btn, ui.btnGlow, "transition-all active:scale-[.98]"].join(
+                " "
+              )}
               onClick={() => openPayment(r)}
             >
               <span className="relative z-10 flex items-center">
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
               </span>
-              <span
-                aria-hidden
-                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
-              />
+              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
             </Button>
           )}
 
-          {scheduled && (
-            isArrivableNow(r.startTime) ? (
+          {scheduled &&
+            (isArrivableNow(r.startTime) ? (
               <Button
                 size="sm"
                 className={["relative overflow-hidden rounded-full px-4 h-9", UI.SCHEDULED.btn, UI.SCHEDULED.btnGlow].join(" ")}
@@ -845,7 +819,19 @@ const StatusCards = () => {
               <Button size="sm" variant="outline" className="rounded-full px-4 h-9 border-amber-200 text-amber-700" disabled>
                 <Clock className="w-4 h-4 mr-1" /> Not yet
               </Button>
-            )
+            ))}
+
+          {/* NEW: Cancel for SCHEDULED (before arrival window ideally) */}
+          {r.status === "SCHEDULED" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full px-4 h-9 border-rose-200 text-rose-700 hover:bg-rose-50"
+              onClick={() => onCancel(r)}
+              title="Cancel this reservation"
+            >
+              <XCircle className="w-4 h-4 mr-1" /> Cancel
+            </Button>
           )}
 
           {r.status === "VERIFYING" && (
@@ -890,7 +876,12 @@ const StatusCards = () => {
           {r.status === "PENDING_PAYMENT" && (
             <Button
               size="sm"
-              className={["relative overflow-hidden rounded-full px-4 h-9", UI.PENDING_PAYMENT.btn, UI.PENDING_PAYMENT.btnGlow, "animate-[pulse_2.5s_ease-in-out_infinite]"].join(" ")}
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                UI.PENDING_PAYMENT.btn,
+                UI.PENDING_PAYMENT.btnGlow,
+                "animate-[pulse_2.5s_ease-in-out_infinite]",
+              ].join(" ")}
               onClick={() => onPayNow(r)}
             >
               <span className="relative z-10 flex items-center">
@@ -901,12 +892,7 @@ const StatusCards = () => {
           )}
 
           {r.status === "COMPLETED" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className={["relative overflow-hidden rounded-full px-4 h-9", UI.COMPLETED.btn, UI.COMPLETED.btnGlow].join(" ")}
-              onClick={() => gotoReview(r)}
-            >
+            <Button size="sm" variant="outline" className={["relative overflow-hidden rounded-full px-4 h-9", UI.COMPLETED.btn, UI.COMPLETED.btnGlow].join(" ")} onClick={() => gotoReview(r)}>
               Review <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           )}
@@ -921,11 +907,11 @@ const StatusCards = () => {
 
   return (
     <section className="space-y-6">
-      {/* === Header row === */}
+      {/* header */}
       <div className="flex items-center justify-between">
         <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">Today’s Overview</h2>
 
-        {/* Next Booking compact pill */}
+        {/* next booking pill */}
         <div className="hidden sm:flex items-center gap-3">
           <span className="text-sm text-slate-600">Next Booking</span>
           {next?.startTime ? (
@@ -945,12 +931,14 @@ const StatusCards = () => {
               )}
             </div>
           ) : (
-            <Badge variant="outline" className="rounded-full text-slate-600">No upcoming</Badge>
+            <Badge variant="outline" className="rounded-full text-slate-600">
+              No upcoming
+            </Badge>
           )}
         </div>
       </div>
 
-      {/* === My Reservations === */}
+      {/* reservations */}
       <Card className="rounded-2xl border border-slate-200/70 shadow-[0_22px_60px_-20px_rgba(2,6,23,.15)]">
         <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent rounded-t-2xl">
           <CardTitle className="flex items-center justify-between">
@@ -959,7 +947,9 @@ const StatusCards = () => {
                 <Calendar className="w-5 h-5 text-primary" />
               </div>
               <span className="text-lg">My Reservations</span>
-              <Badge variant="outline" className="ml-2 border-primary/30 text-primary rounded-full">Core</Badge>
+              <Badge variant="outline" className="ml-2 border-primary/30 text-primary rounded-full">
+                Core
+              </Badge>
             </div>
             {!loading && <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>}
           </CardTitle>
@@ -975,14 +965,12 @@ const StatusCards = () => {
           ) : items.length === 0 ? (
             <div className="p-6 text-sm text-muted-foreground">You have no reservations yet.</div>
           ) : (
-            <div className="space-y-4 max-h-[560px] overflow-y-auto pr-1 nice-scroll">
-              {items.map(renderReservation)}
-            </div>
+            <div className="space-y-4 max-h-[560px] overflow-y-auto pr-1 nice-scroll">{items.map(renderReservation)}</div>
           )}
         </CardContent>
       </Card>
 
-      {/* === QR Dialog === */}
+      {/* QR dialog */}
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1028,14 +1016,12 @@ const StatusCards = () => {
               </Button>
             </div>
 
-            <div className="text-xs text-muted-foreground">
-              Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}
-            </div>
+            <div className="text-xs text-muted-foreground">Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}</div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* === Payment Dialog === */}
+      {/* Payment dialog */}
       <Dialog open={pmOpen} onOpenChange={setPmOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1051,7 +1037,7 @@ const StatusCards = () => {
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* Method */}
+            {/* method */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Method</div>
               <div className="grid grid-cols-2 gap-2">
@@ -1079,7 +1065,7 @@ const StatusCards = () => {
               </div>
             </div>
 
-            {/* Channel */}
+            {/* channel */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Payment</div>
               {payFlow === "prepaid" ? (
@@ -1105,7 +1091,7 @@ const StatusCards = () => {
               )}
             </div>
 
-            {/* Vehicle */}
+            {/* vehicle */}
             <div className="space-y-2">
               <div className="text-sm font-medium">Charging Vehicle</div>
               <select
@@ -1132,7 +1118,7 @@ const StatusCards = () => {
               </select>
             </div>
 
-            {/* SOC (read-only) */}
+            {/* SOC ro */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Current SOC</div>
@@ -1141,7 +1127,7 @@ const StatusCards = () => {
               <input type="range" min={0} max={100} step={1} value={currentSoc} disabled readOnly className="w-full opacity-70 cursor-not-allowed" />
             </div>
 
-            {/* Target SOC – 100% */}
+            {/* target fixed 100% */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">SOC Target</div>
@@ -1150,7 +1136,7 @@ const StatusCards = () => {
               <input type="range" max={100} value={100} readOnly disabled className="w-full opacity-70 cursor-not-allowed" />
             </div>
 
-            {/* Estimate */}
+            {/* estimate */}
             <div className="rounded-xl border p-3 bg-muted/40">
               {!vehicleId || !pmResId ? (
                 <div className="text-sm text-muted-foreground">Select vehicle to estimate.</div>
@@ -1161,7 +1147,10 @@ const StatusCards = () => {
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
                   </div>
-                  
+                  {/* <<< ADDED: show estimated cost >>> */}
+                  <div>
+                    Cost ~ <b>{fmtVnd(est.estimatedCost)}</b>
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Cannot estimate.</div>

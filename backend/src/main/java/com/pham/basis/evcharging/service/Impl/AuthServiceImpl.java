@@ -41,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getUsername())
                 .phone(user.getPhone())
                 .roleName(user.getRole() != null ? user.getRole().getName() : null)
+                .url(null)
                 .build();
     }
 
@@ -58,7 +59,6 @@ public class AuthServiceImpl implements AuthService {
             walletService.createWallet(user.getId());
             return null;
         });
-        userService.createDefaultVehiclesForUser(user);
         userService.save(user);
         tokenService.removeTokenByUser(user);
         return ResponseEntity.ok(Map.of("message", "Email verified"));
@@ -84,6 +84,7 @@ public class AuthServiceImpl implements AuthService {
                 .isVerified(user.getIsVerified())
                 .email(user.getEmail())
                 .dateOfBirth(user.getDateOfBirth())
+                .url(user.getUrl())
                 .build();
         return ResponseEntity.ok(resp);
     }

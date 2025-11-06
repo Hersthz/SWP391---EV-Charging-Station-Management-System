@@ -2,8 +2,11 @@ package com.pham.basis.evcharging.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class EstimateRequest {
 
     @NotNull(message = "Vehicle ID is required")

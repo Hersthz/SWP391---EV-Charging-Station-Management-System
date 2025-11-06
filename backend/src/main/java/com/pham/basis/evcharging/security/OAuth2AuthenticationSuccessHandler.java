@@ -41,12 +41,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
+        String url = oauthUser.getAttribute("picture");
 
         User user = userService.findByEmail(email);
-        if (user == null) {
-            userService.createOrUpdateFromOAuth(email, name, true);
-            user = userService.findByEmail(email);
-        }
 
         String role = user.getRole() != null ? user.getRole().getName() : "USER";
 

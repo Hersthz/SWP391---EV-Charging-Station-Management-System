@@ -8,12 +8,15 @@ import com.pham.basis.evcharging.dto.request.UpdateUserRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.exception.AppException;
+import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.Role;
 import com.pham.basis.evcharging.model.Vehicle;
 import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.RoleRepository;
 import com.pham.basis.evcharging.repository.VehicleRepository;
+import com.pham.basis.evcharging.service.CloudinaryService;
+import com.pham.basis.evcharging.repository.*;
 import com.pham.basis.evcharging.service.UserService;
 import com.pham.basis.evcharging.service.WalletService;
 import jakarta.transaction.Transactional;
@@ -22,10 +25,12 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 
 import java.io.InputStream;
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,9 +43,8 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
-    private final VehicleRepository vehicleRepository;
-    private final ObjectMapper objectMapper;
-    private final Random random = new Random();
+    private final CloudinaryService cloudinaryService;
+    private final ChargingStationRepository chargingStationRepository;
 
     @Override
     public User createUser(UserCreationRequest request) {
@@ -63,13 +67,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User login(String username, String password) {
-        User user = userRepository.findUserByUsername(username);
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new AppException.UnauthorizedException("Invalid username or password"));
 
-        if (user == null) {
-            throw new AppException.UnauthorizedException("Invalid username or password");
-        }
         if (user.getPassword() == null || "null".equals(user.getPassword())) {
-            throw new AppException.BadRequestException("This account uses Google login");
+            throw new AppException.BadRequestException("Account registered with Google. Please login with Google");
         }
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new AppException.UnauthorizedException("Invalid username or password");
@@ -83,7 +85,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void createOrUpdateFromOAuth(String email, String full_name, boolean emailVerified) {
+    public void createOrUpdateFromOAuth(String email, String full_name, boolean emailVerified, String url) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
             User u = new User();
@@ -95,10 +97,10 @@ public class UserServiceImpl implements UserService {
             Role defaultRole = roleRepository.getReferenceById(1);
             u.setRole(defaultRole);
             u.setCreatedAt(LocalDateTime.now());
+            u.setUrl(url);
             userRepository.save(u);
             if (emailVerified) {
                 walletService.createWallet(u.getId());
-                createDefaultVehiclesForUser(u);
             }
         } else {
             boolean changed = false;
@@ -106,7 +108,9 @@ public class UserServiceImpl implements UserService {
                 user.setIsVerified(true);
                 changed = true;
                 walletService.createWallet(user.getId());
-                createDefaultVehiclesForUser(user);
+            }
+            if (user.getUrl() == null && url != null) {
+                user.setUrl(url);
             }
             if (changed) userRepository.save(user);
         }
@@ -119,52 +123,63 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByUsername(String username) {
-        return userRepository.findUserByUsername(username);
+        return userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
     }
 
     @Override
-    public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request) {
-        User user = userRepository.findUserByUsername(userName);
-        if (user == null) {
-            throw new RuntimeException("User not found");
-        }
+    public UpdateUserResponse updateUserProfile(String userName, UpdateUserRequest request, MultipartFile file) {
+        User user = userRepository.findUserByUsername(userName)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
+        // Update fullName
         user.setFullName(request.getFull_name());
-        //Kiem tra phone number
-        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-            // Does exist?
-            User existingUser = userRepository.findByPhone(request.getPhone());
-            if (existingUser != null && !existingUser.getUsername().equals(userName)) {
-                throw new RuntimeException("The phone number has already been used by another account");
-            }
-            user.setPhone(request.getPhone());
-        }
+
+        // Update phone
+        Optional.ofNullable(request.getPhone())
+                .filter(p -> !p.trim().isEmpty())
+                .ifPresent(phone -> {
+                    User u = userRepository.findByPhone(phone);
+                    if (u != null && !u.getUsername().equals(userName)) {
+                        throw new RuntimeException("Phone already used by another account");
+                    }
+                    user.setPhone(phone);
+                });
+
+        // Update email
         if (!user.getEmail().equals(request.getEmail())) {
-            User existingUser = userRepository.findByEmail(request.getEmail());
-            if (existingUser != null && !existingUser.getUsername().equals(userName)) {
-                throw new RuntimeException("The email has already been used by another account");
+            User u = userRepository.findByEmail(request.getEmail());
+            if (u != null && !u.getUsername().equals(userName)) {
+                throw new RuntimeException("Email already used by another account");
             }
-            //can verify khi doi email
             user.setEmail(request.getEmail());
             user.setIsVerified(true);
         }
         user.setDateOfBirth(request.getDate_of_birth());
-        User updatedUser = userRepository.save(user);
-        UpdateUserResponse data = new UpdateUserResponse();
-        data.setFullName(updatedUser.getFullName());
-        data.setEmail(updatedUser.getEmail());
-        data.setPhone(updatedUser.getPhone());
-        data.setDateOfBirth(updatedUser.getDateOfBirth());
 
-        return data;
+        // Upload avatar if exists
+        if (file != null && !file.isEmpty()) {
+            String url = cloudinaryService.uploadFile(file, "avatars");
+            user.setUrl(url);
+        }
+
+        User updatedUser = userRepository.save(user);
+
+        return new UpdateUserResponse(
+                updatedUser.getFullName(),
+                updatedUser.getEmail(),
+                updatedUser.getPhone(),
+                updatedUser.getDateOfBirth(),
+                updatedUser.getUrl()
+        );
     }
 
-    @Override
-    public ChangePasswordResponse changePassword(String username, ChangePasswordRequest request) {
-        User user = userRepository.findUserByUsername(username);
 
-        if (user == null) {
-            throw new AppException.NotFoundException("User not found");
-        }
+    @Override
+    public ChangePasswordResponse changePassword(String userName, ChangePasswordRequest request) {
+        User user = userRepository.findUserByUsername(userName)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
         // Trường hợp account đăng nhập bằng Google
         if (user.getPassword() == null || "null".equals(user.getPassword())) {
             return new ChangePasswordResponse(false,
@@ -189,12 +204,10 @@ public class UserServiceImpl implements UserService {
         return new ChangePasswordResponse(true, "Password changed successfully");
     }
 
-
-    public SetUserRoleResponse setRoleForUser(String username, String targetRoleName, boolean keepUserBaseRole) {
-        User user = userRepository.findUserByUsername(username);
-        if (user == null) {
-            throw new IllegalArgumentException("User not found: " + username);
-        }
+    @Override
+    public SetUserRoleResponse setRoleForUser(String userName, String targetRoleName, boolean keepUserBaseRole) {
+        User user = userRepository.findUserByUsername(userName)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
 
         Role targetRole = roleRepository.findByName(targetRoleName);
         if (targetRole == null) {
@@ -210,49 +223,70 @@ public class UserServiceImpl implements UserService {
                 newRoles.add(baseUser);
             }
         }
-        return new SetUserRoleResponse(username,targetRoleName,keepUserBaseRole);
+        return new SetUserRoleResponse(userName,targetRoleName,keepUserBaseRole);
     }
 
-        @Override
-        public CreateStaffResponse adminAddStaff(CreateStaffRequest req) {
+    @Override
+    public CreateStaffResponse adminAddStaff(CreateStaffRequest req) {
+        final String email    = req.getEmail().toLowerCase().trim();
+        final String username = req.getUsername().toLowerCase().trim();
+        final String phone    = req.getPhone().trim();
 
-            final String email    = req.getEmail().toLowerCase().trim();
-            final String username = req.getUsername().toLowerCase().trim();
-            final String phone    = req.getPhone().trim();
+        if (userRepository.existsByEmail(email))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        if (userRepository.existsByPhone(phone))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
+        if (userRepository.existsByUsername(username))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
 
-            if (userRepository.existsByEmail(email))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
-            if (userRepository.existsByPhone(phone))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone already exists");
-            if (userRepository.existsByUsername(username))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists"); // 409 [web:20][web:3]
+        Role role = roleRepository.findById(req.getRoleId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId"));
 
-            Role role = roleRepository.findById(req.getRoleId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid roleId")); // 400 [web:20]
+        // ✅ LẤY PWD ĐẦU VÀO, FALLBACK DEV "1", RỒI MÃ HOÁ
+        final String rawPwd = Optional.ofNullable(req.getPassword())
+                .map(String::trim)
+                .filter(p -> !p.isBlank())
+                .orElse("1"); // chỉ để dev
+        final String hashed = passwordEncoder.encode(rawPwd);
 
-            // Password: dùng input, nếu trống đặt "1" (dev); production nên generate ngẫu nhiên
-            final String rawPwd = Optional.ofNullable(req.getPassword())
-                    .map(String::trim)
-                    .filter(p -> !p.isBlank())
-                    .orElse("1"); // CHỈ nên dùng ở dev [web:14][web:17]
+        User u = new User();
+        u.setFullName(req.getFullName().trim());
+        u.setUsername(username);
+        u.setEmail(email);
+        u.setPhone(phone);
+        u.setRole(role);
+        u.setPassword(hashed);             // ✅ BẮT BUỘC: set password
+        u.setIsVerified(true);             // khuyến nghị mặc định đã xác minh khi admin tạo
+        u.setCreatedAt(LocalDateTime.now());
+        // nếu có cột status NOT NULL:
+        // u.setStatus(true);
 
-            User u = new User();
-            u.setFullName(req.getFullName().trim());
-            u.setUsername(username);
-            u.setEmail(email);
-            u.setPhone(phone);
-            u.setRole(role);
+        User saved = userRepository.save(u);
 
-            User saved = userRepository.save(u);           // JPA save [web:20]
-            CreateStaffResponse res = new CreateStaffResponse();
-            res.setUser_id(saved.getId());
-            res.setFull_name(saved.getFullName());
-            res.setUsername(saved.getUsername());
-            res.setEmail(saved.getEmail());
-            res.setPhone(saved.getPhone());
-            res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : null);
-            return res;
+        // (tuỳ chọn) tạo ví cho staff nếu hệ thống yêu cầu
+        // walletService.createWallet(saved.getId());
+
+        CreateStaffResponse res = new CreateStaffResponse();
+        res.setUser_id(saved.getId());
+        res.setFull_name(saved.getFullName());
+        res.setUsername(saved.getUsername());
+        res.setEmail(saved.getEmail());
+        res.setPhone(saved.getPhone());
+        res.setRoleCode(saved.getRole() != null ? saved.getRole().getId() : 0);
+        return res;
+    }
+
+
+    @Override
+    public String checkPass(User user) {
+        if (user == null) return null;
+
+        String pass = user.getPassword();
+        if (pass == null || "null".equalsIgnoreCase(pass)) {
+            return "GOOGLE";
         }
+        return "REGISTER";
+    }
 
     @Override
     public List<UserResponse> getAllUsers() {
@@ -269,66 +303,54 @@ public class UserServiceImpl implements UserService {
                         .roleName(user.getRole().getName())
                         .dateOfBirth(user.getDateOfBirth())
                         .createdAt(user.getCreatedAt())
+                        .url(user.getUrl())
                         .build())
                 .toList();
     }
 
     @Override
-    public void createDefaultVehiclesForUser(User user) {
-        try {
-            //User only
-            if (!user.getRole().getName().equalsIgnoreCase("USER")) {
-                return;
-            }
-            if (vehicleRepository.existsByUserId((user.getId()))) {
-                System.out.println("User already has vehicles, skip creating new ones.");
-                return;
-            }
-            ClassPathResource resource = new ClassPathResource("data/vehicles.json");
-            if (!resource.exists()) {
-                System.err.println("File not found: data/vehicles.json");
-                return;
-            }
-
-            List<Vehicle> templates;
-            try (InputStream is = resource.getInputStream()) {
-                templates = objectMapper.readValue(is, new TypeReference<List<Vehicle>>() {});
-            }
-
-            if (templates.isEmpty()) {
-                System.err.println("Vehicle JSON empty!");
-                return;
-            }
-
-            int numVehicles = 2;
-            Collections.shuffle(templates);
-
-            List<Vehicle> vehicles = templates.stream()
-                    .limit(numVehicles)
-                    .map(template -> {
-                        Vehicle v = new Vehicle();
-                        System.out.println("HELLOOOOOOOOO" + template.getCurrentSoc());
-                        v.setUser(user);
-                        v.setMake(template.getMake());
-                        v.setModel(template.getModel());
-                        v.setBatteryCapacityKwh(template.getBatteryCapacityKwh());
-                        v.setCurrentSoc(template.getCurrentSoc());
-                        v.setAcMaxKw(template.getAcMaxKw());
-                        v.setDcMaxKw(template.getDcMaxKw());
-                        v.setEfficiency(template.getEfficiency());
-                        return v;
-                    })
-                    .collect(Collectors.toList());
-
-            vehicleRepository.saveAll(vehicles);
-            System.out.println("Created " + numVehicles + " vehicles for verified user: " + user.getUsername());
-
-        } catch (Exception e) {
-            System.err.println("Error creating vehicles for user " + user.getUsername());
-            e.printStackTrace();
+    public String toggleBlockUser(Long id, Principal principal) {
+        User admin = findByUsername(principal.getName());
+        if (!admin.getRole().getName().equals("ADMIN")) {
+            throw new AppException.ForbiddenException("Not allowed");
         }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
+        boolean newStatus = !user.getStatus();
+        user.setStatus(newStatus);
+        userRepository.save(user);
+
+        return newStatus ? "User unblocked" : "User blocked";
     }
 
+
+    @Override
+    public AssignStationResponse assignStationToUser(Long userId, Long stationId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException.NotFoundException("User not found"));
+
+        ChargingStation station = chargingStationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException.NotFoundException("Charging station not found"));
+
+        // Nếu trạm đã có manager khác thì báo lỗi
+        if (station.getManager() != null && !station.getManager().getId().equals(userId)) {
+            throw new AppException.BadRequestException("This station already has another manager assigned.");
+        }
+
+        // Gán user làm manager của trạm
+        station.setManager(user);
+        chargingStationRepository.save(station);
+
+        return AssignStationResponse.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .stationId(station.getId())
+                .stationName(station.getName())
+                .message("Station assigned to user successfully.")
+                .build();
+    }
 }
 
 

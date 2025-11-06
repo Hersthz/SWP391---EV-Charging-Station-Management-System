@@ -12,6 +12,7 @@ import com.pham.basis.evcharging.model.ChargingStation;
 import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.repository.ChargingStationRepository;
 import com.pham.basis.evcharging.service.ChargingStationService;
+import com.pham.basis.evcharging.service.CloudinaryService;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
@@ -35,6 +37,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
     private final ChargingStationRepository stationRepository;
     private final StationMapper stationMapper;
+    private final CloudinaryService cloudinaryService;
 
 
     @Override
@@ -88,7 +91,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
     }
 
     @Override
-    public ChargingStationDetailResponse addStation( StationRequest request) {
+    public ChargingStationDetailResponse addStation(StationRequest request, MultipartFile file) {
         // Validate request
         validateAddStationRequest(request);
 
@@ -99,6 +102,10 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         station.setLatitude(request.getLatitude());
         station.setLongitude(request.getLongitude());
         station.setStatus("AVAILABLE");
+        if (file != null && !file.isEmpty()) {
+            String url = cloudinaryService.uploadFile(file, "stations");
+            station.setUrl(url);
+        }
 
         // Add pillars and connectors (if provided)
         if (request.getPillars() != null && !request.getPillars().isEmpty()) {

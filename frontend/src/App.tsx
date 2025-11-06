@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStations from "./components/admin/AdminStations";
 import AdminUsers from "./components/admin/AdminUsers";
+import AdminStaff from "./components/admin/AdminStaff";
 import AdminSubscriptions from "./components/admin/AdminSubscriptions";
 import AdminReports from "./components/admin/AdminReports";
 import AdminInsights from "./components/admin/AdminInsights";
@@ -34,6 +35,7 @@ import SessionPaymentResult from "./pages/SessionPaymentResult";
 import WalletTopupResult from "./pages/WalletTopupResult";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import StationReviewPage from "./pages/StationReviewPage";
+import StaffReservations from "./components/staff/StaffReservations";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
           <Route path="/staff/monitor" element={<StaffStationMonitor />} />
+          <Route path="/staff/reservations" element={<StaffReservations />} />
           <Route path="/staff/incidents" element={<StaffIncidents />} />
           <Route path="/staff/reports" element={<StaffReport />} />
           <Route path="/map" element={<StationMap />} />
@@ -61,6 +64,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stations" element={<AdminStations />} />
           <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/staff" element={<AdminStaff />} />
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/insights" element={<AdminInsights />} />

@@ -43,7 +43,7 @@ public class AuthController {
     private boolean cookieSecure;
 
     private String cookieSameSite() {
-        return "None";
+        return cookieSecure ? "None" : "Lax";
     }
 
     @PostMapping("/register")

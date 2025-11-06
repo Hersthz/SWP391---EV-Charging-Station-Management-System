@@ -5,6 +5,7 @@ import com.pham.basis.evcharging.dto.response.ReservationResponse;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
+import com.pham.basis.evcharging.service.NotificationService;
 import com.pham.basis.evcharging.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -28,6 +30,10 @@ public class ReservationServiceImpl implements ReservationService {
     private final ChargerPillarRepository chargerPillarRepository;
     private final ConnectorRepository connectorRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final WalletRepository walletRepository;
+    private final NotificationService notificationService;
+
+    private static final long GRACE_MINUTES = 15;
     @Override
     public ReservationResponse createReservation(ReservationRequest request) {
 
@@ -101,6 +107,59 @@ public class ReservationServiceImpl implements ReservationService {
         return toResponse(saved);
     }
 
+    @Override
+    @Transactional
+    public void cancel(Long id, User user) {
+        Reservation reservation = reservationRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new AppException.BadRequestException("Reservation not found"));
+
+        if (!reservation.getStatus().equals("SCHEDULED")) {
+            throw new AppException.BadRequestException("Reservation cannot be cancelled");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        Duration diff = Duration.between(reservation.getCreatedAt(), now);
+        long minutes = diff.toMinutes();
+
+        BigDecimal refundAmount = BigDecimal.ZERO;
+        BigDecimal systemEarn = BigDecimal.ZERO;
+        BigDecimal paid = reservation.getHoldFee();
+
+        if (minutes <= 10) {
+            refundAmount = paid;                  // 100%
+            systemEarn = BigDecimal.ZERO;
+        } else if (minutes <= 60) {
+            refundAmount = paid.multiply(BigDecimal.valueOf(0.5)); // 50%
+            systemEarn = paid.subtract(refundAmount);
+        } else {
+            refundAmount = BigDecimal.ZERO;                  // 0%
+            systemEarn = paid;
+        }
+
+        // Handle refund (service call)
+        if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+            walletRepository.addBalance(user.getId(), refundAmount);
+        }
+
+        reservation.setStatus("CANCELLED");
+        reservation.setHoldFee(systemEarn);
+        reservation.setExpiredAt(now);
+        reservationRepository.save(reservation);
+    }
+
+    @Override
+    public List<ReservationResponse> getReservationByStation(Long stationId) {
+        chargingStationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException.BadRequestException("Station not found"));
+
+        List<Reservation> reservations = reservationRepository
+                .findByStationIdOrderByCreatedAtDesc(stationId);
+
+        return reservations.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     private ReservationResponse toResponse(Reservation saved) {
         return ReservationResponse.builder()
                 .reservationId(saved.getId())
@@ -132,12 +191,12 @@ public class ReservationServiceImpl implements ReservationService {
             throw new AppException.BadRequestException("Reservations can only be made within 7 days from today");
         }
 
-        // kiem tra min
-        long durationMinutes = ChronoUnit.MINUTES.between(req.getStartTime(), req.getEndTime());
-
-        if (durationMinutes < 15) {
-            throw new AppException.BadRequestException("Minimum reservation time is 15 minutes");
-        }
+//        // kiem tra min
+//        long durationMinutes = ChronoUnit.MINUTES.between(req.getStartTime(), req.getEndTime());
+//
+//        if (durationMinutes < 15) {
+//            throw new AppException.BadRequestException("Minimum reservation time is 15 minutes");
+//        }
     }
 
     private void checkForOverlappingReservations(ReservationRequest req) {
@@ -164,9 +223,9 @@ public class ReservationServiceImpl implements ReservationService {
     public void autoUpdateConnectorStatus() {
         LocalDateTime now = LocalDateTime.now();
 
-        // 1) PENDING > 10 phút -> EXPIRED
+        // PENDING > 5 phút -> EXPIRED
         reservationRepository.findByStatus("PENDING").stream()
-                .filter(r -> r.getCreatedAt().isBefore(now.minusMinutes(10)))
+                .filter(r -> r.getCreatedAt().isBefore(now.minusMinutes(5)))
                 .forEach(r -> {
                     r.setStatus("EXPIRED");
                     reservationRepository.save(r);
@@ -176,7 +235,7 @@ public class ReservationServiceImpl implements ReservationService {
                     }
                 });
 
-        // 2) SCHEDULED tới giờ -> VERIFYING + OCCUPIED
+        // SCHEDULED tới giờ -> VERIFYING + OCCUPIED
         reservationRepository.findByStatus("SCHEDULED").stream()
                 .filter(r -> r.getStartTime().isBefore(now))
                 .forEach(r -> {
@@ -187,33 +246,36 @@ public class ReservationServiceImpl implements ReservationService {
                         connectorRepository.save(r.getConnector());
                     }
                 });
+        //Trễ > GRACE_MINUTES phút sau start cho VERIFYING / VERIFIED / PLUGGED → EXPIRED
+        List<String> middleStates = List.of("VERIFYING", "VERIFIED", "PLUGGED");
+        LocalDateTime expireBefore = now.minusMinutes(GRACE_MINUTES);
+        List<Reservation> toExpire = reservationRepository.findByStatusInAndStartTimeBefore(middleStates, expireBefore);
+        toExpire.forEach(r -> {
+            r.setStatus("EXPIRED");
+            r.setExpiredAt(now); // hoặc canceledAt nếu bạn thêm trường riêng
+            reservationRepository.save(r);
 
-        // 3) VERIFYING quá endTime -> EXPIRED
-        reservationRepository.findByStatus("VERIFYING").stream()
-                .filter(r -> r.getEndTime().isBefore(now))
+            if (r.getConnector() != null) {
+                r.getConnector().setStatus("AVAILABLE");
+                connectorRepository.save(r.getConnector());
+            }
+            String msg = String.format("Your reservation at %s has been canceled because you did not start charging within %d minutes after the scheduled start.",
+                    r.getStation().getName(), GRACE_MINUTES);
+            notificationService.createNotification(r.getUser().getId(), "RESERVATION_EXPIRED", msg);
+        });
+        //Gửi 1 notification trước start 5 phút
+        reservationRepository.findByStatus("SCHEDULED").stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getNotifiedBeforeStart()))
+                .filter(r -> r.getStartTime().isAfter(now) && r.getStartTime().isBefore(now.plusMinutes(5)))
                 .forEach(r -> {
-                    r.setStatus("EXPIRED");
+                    notificationService.createNotification(
+                            r.getUser().getId(),
+                            "Reservation Reminder",
+                            "Your charging reservation will start in less than 5 minutes. If you are more than 15 minutes late after the start time, the system will automatically cancel your reservation."
+                    );
+                    r.setNotifiedBeforeStart(true);
                     reservationRepository.save(r);
-                    if (r.getConnector() != null) {
-                        r.getConnector().setStatus("AVAILABLE");
-                        connectorRepository.save(r.getConnector());
-                    }
                 });
-
-        // 4) VERIFIED / PLUGGED quá endTime -> EXPIRED
-        List<String> expiringStates = List.of("VERIFIED", "PLUGGED");
-        expiringStates.forEach(st ->
-                reservationRepository.findByStatus(st).stream()
-                        .filter(r -> r.getEndTime().isBefore(now))
-                        .forEach(r -> {
-                            r.setStatus("EXPIRED");
-                            reservationRepository.save(r);
-                            if (r.getConnector() != null) {
-                                r.getConnector().setStatus("AVAILABLE");
-                                connectorRepository.save(r.getConnector());
-                            }
-                        })
-        );
     }
 
 

@@ -532,15 +532,6 @@ const AdminStations = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
-                                onClick={() => navigate(`/admin/stations/${s.id}`)}
-                              >
-                                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                                Details
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
                                 onClick={() => navigateToStation(s)}
                               >
                                 Focus

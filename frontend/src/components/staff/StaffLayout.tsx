@@ -9,9 +9,11 @@ import {
   MapPin,
   AlertTriangle,
   TrendingUp,
+  CalendarClock,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/axios";
+import { toast } from "sonner";
 
 interface StaffLayoutProps {
   children: ReactNode;
@@ -71,11 +73,13 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout", null, { withCredentials: true });
+      await api.post("/auth/logout", {}, { _skipAuthRefresh: true });
+      localStorage.clear();
+      toast.success("Signed out successfully!");
+      navigate("/");
     } catch {
-      // ignore
+      toast.error("Logout failed!");
     }
-    navigate("/");
   };
 
   const isActive = (path: string) => {
@@ -89,6 +93,7 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
     () => [
       { path: "/staff", icon: BarChart3, label: "Dashboard" },
       { path: "/staff/monitor", icon: MapPin, label: "Monitor Station" },
+      { path: "/staff/reservations", icon: CalendarClock, label: "Reservations" },
       { path: "/staff/incidents", icon: AlertTriangle, label: "Incidents" },
       { path: "/staff/reports", icon: TrendingUp, label: "Reports" },
     ],
@@ -185,7 +190,6 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 shadow-md shadow-cyan-500/30 flex items-center justify-center">
-                {/* decorative spark icon */}
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">

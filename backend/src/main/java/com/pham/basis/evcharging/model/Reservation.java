@@ -36,6 +36,9 @@ public class Reservation {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
+    @Column(name = "notified_before_start")
+    private Boolean notifiedBeforeStart = false;
+
     //FK
     @OneToOne(mappedBy = "reservation")
     private ChargingSession chargingSession;

@@ -15,7 +15,7 @@ import java.util.Optional;
 // @Repository: đánh dấu class là tầng truy xuất dữ liệu (DAO)
 // Không cần dùng khi kế thừa JpaRepository, vì Spring Data JPA đã tự thêm.
 public interface UserRepository extends JpaRepository<User,Long> {
-    User findUserByUsername(String username);
+    Optional<User> findUserByUsername(String username);
 // JpaRepository đã có sẵn các method cơ bản:
 // findAll(), findById(), save(), deleteById()...
     User findByEmail(String email);
