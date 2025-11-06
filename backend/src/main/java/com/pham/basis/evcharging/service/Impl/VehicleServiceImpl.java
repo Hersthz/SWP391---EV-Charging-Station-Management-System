@@ -19,10 +19,9 @@ public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository vehicleRepository;
 
-    @Override
     @Transactional(readOnly = true)
     public List<Vehicle> getVehiclesByUserId(Long userId) {
-        return vehicleRepository.findByUserId(userId);
+        return vehicleRepository.findByUserIdAndActiveTrue(userId);
     }
 
     @Override
@@ -54,7 +53,10 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public void deleteVehicle(Long id, User user) {
-        vehicleRepository.deleteByIdAndUser(id, user);
+        Vehicle v = vehicleRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new AppException.NotFoundException("Vehicle not found"));
+        v.setActive(false);
+        vehicleRepository.save(v);
     }
 
     @Override

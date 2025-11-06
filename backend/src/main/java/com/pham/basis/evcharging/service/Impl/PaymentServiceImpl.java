@@ -7,10 +7,7 @@ import com.pham.basis.evcharging.dto.response.PaymentResultResponse;
 import com.pham.basis.evcharging.dto.response.PaymentTransactionResponse;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.mapper.PaymentTransactionMapper;
-import com.pham.basis.evcharging.model.ChargingSession;
-import com.pham.basis.evcharging.model.PaymentTransaction;
-import com.pham.basis.evcharging.model.Reservation;
-import com.pham.basis.evcharging.model.Wallet;
+import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
 import com.pham.basis.evcharging.service.NotificationService;
 import com.pham.basis.evcharging.service.PaymentService;
@@ -45,6 +42,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final VNPayConfig vnpayConfig;
     private final ReservationRepository reservationRepo;
     private final ChargingSessionRepository  chargingSessionRepo;
+    private final ChargingStationRepository  chargingStationRepo;
     private final NotificationService notificationService;
     private final PaymentTransactionMapper mapper;
 
@@ -581,5 +579,35 @@ public class PaymentServiceImpl implements PaymentService {
     public Page<PaymentTransactionResponse> getAllPaymentTransaction(Pageable pageable) {
         return txRepo.findAll(pageable)
                 .map(mapper::toResponse);
+    }
+
+    @Override
+    public List<PaymentTransactionResponse> getAllPaymentTransactionByStation(Long stationId) {
+        ChargingStation station = chargingStationRepo.findById(stationId)
+                .orElseThrow(() -> new AppException.NotFoundException("Charging station not found"));
+
+        List<Reservation> reservations = reservationRepo.findByStationId(station.getId());
+        List<Long> reservationIds = reservations.stream()
+                .map(Reservation::getId)
+                .toList();
+
+        List<PaymentTransaction> payments = txRepo.findByTypeAndReferenceIdIn("RESERVATION",reservationIds);
+        return payments.stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public void updatePaymentStatus(Long id) {
+        PaymentTransaction payment = txRepo.findById(id)
+                .orElseThrow(() -> new AppException.NotFoundException("Payment not found"));
+
+        if ("SUCCESS".equals(payment.getStatus())) {
+            throw new AppException.BadRequestException("Payment already marked as SUCCESS");
+        }
+
+        payment.setStatus("SUCCESS");
+        payment.setUpdatedAt(LocalDateTime.now());
+        txRepo.save(payment);
     }
 }

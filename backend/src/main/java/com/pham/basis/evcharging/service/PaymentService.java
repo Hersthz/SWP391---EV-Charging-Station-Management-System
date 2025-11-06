@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface PaymentService {
     PaymentResponse createPayment(PaymentCreateRequest req, Long userId, String clientIp);
 
@@ -19,6 +21,7 @@ public interface PaymentService {
 
     Page<PaymentTransactionResponse> getPaymentTransactionByUserId(Long userId, Pageable pageable);
     Page<PaymentTransactionResponse> getAllPaymentTransaction(Pageable pageable);
-    PaymentTransaction getPaymentEntity(Long paymentId);
+    List<PaymentTransactionResponse> getAllPaymentTransactionByStation(Long stationId);
+    void updatePaymentStatus(Long id);
 }
 

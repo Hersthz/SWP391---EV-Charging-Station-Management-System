@@ -12,9 +12,9 @@ import java.util.Optional;
 public interface VehicleRepository extends JpaRepository<Vehicle,Long> {
     List<Vehicle> findByUserId(Long userId);
 
-    boolean existsByUserId(Long userId);
-
-    void deleteByIdAndUser(Long id, User user);
-
     Optional<Vehicle> findByIdAndUserUsername(Long id, String username);
+
+    Optional<Vehicle> findByIdAndUser(Long id, User user);
+
+    List<Vehicle> findByUserIdAndActiveTrue(Long userId);
 }
