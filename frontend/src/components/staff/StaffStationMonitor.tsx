@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import {
@@ -27,6 +26,7 @@ import StaffLayout from "./StaffLayout";
 import api from "../../api/axios";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
 
 /* ==================== Types (giữ nguyên với bổ sung status cho Connector) ==================== */
 type ConnectorDto = { id: number; type: string; status?: string | null };
@@ -161,6 +161,7 @@ const StaffStationMonitor = () => {
   const [userId, setUserId] = useState<number | undefined>(undefined);
   const [stationId, setStationId] = useState<number | undefined>(getQueryStationId());
 
+  // timer hiển thị giờ
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);

@@ -237,7 +237,7 @@ const StaffReport = () => {
     );
   };
 
-  // ===== UI =====
+const Report = () => {
   return (
     <StaffLayout title="Report Management">
       <div
@@ -412,7 +412,7 @@ const StaffReport = () => {
                     <Line
                       type="monotone"
                       dataKey="energy"
-                      stroke="hsl(var(--primary)/0.4)"
+                      stroke="hsl(var(--electric))"
                       strokeWidth={2}
                       name="Energy (kWh)"
                     />
@@ -477,6 +477,7 @@ const StaffReport = () => {
                       labelLine={false}
                       label={({ name, value }) => `${name}: ${value}`}
                       outerRadius={80}
+                      fill="#8884d8"
                       dataKey="value"
                     >
                       {statusDistribution.map((entry, index) => (
@@ -539,4 +540,4 @@ const StaffReport = () => {
   );
 };
 
-export default StaffReport;
+export default Report;
