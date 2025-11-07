@@ -63,7 +63,6 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse createPayment(PaymentCreateRequest req, Long userId, String clientIp) {
         log.info("Creating payment - Type: {}, Method: {}, User: {}",
                 req.getType(), req.getMethod(), userId);
-
         try {
             validatePaymentRequest(req);
 
