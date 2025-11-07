@@ -2,6 +2,7 @@ package com.pham.basis.evcharging.service;
 
 import com.pham.basis.evcharging.dto.request.EstimateRequest;
 import com.pham.basis.evcharging.dto.response.EstimateResponse;
+import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.model.Vehicle;
@@ -27,14 +28,14 @@ public class ChargingEstimatorService {
     public EstimateResponse estimate(EstimateRequest req) {
         // Load vehicle
         Vehicle v = vehicleRepo.findById(req.getVehicleId())
-                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + req.getVehicleId()));
+                .orElseThrow(() -> new AppException.NotFoundException("Vehicle not found: " + req.getVehicleId()));
         // Load connector
         Connector c = connectorRepo.findById(req.getConnectorId())
-                .orElseThrow(() -> new IllegalArgumentException("Connector not found: " + req.getConnectorId()));
+                .orElseThrow(() -> new  AppException.NotFoundException("Connector not found: " + req.getConnectorId()));
 
         // Determine pillar
         ChargerPillar pillar = (req.getPillarId() != null)
-                ? pillarRepo.findById(req.getPillarId()).orElseThrow(() -> new IllegalArgumentException("Pillar not found: " + req.getPillarId()))
+                ? pillarRepo.findById(req.getPillarId()).orElseThrow(() -> new  AppException.NotFoundException("Pillar not found: " + req.getPillarId()))
                 : c.getPillar();
 
         if (pillar == null) {
