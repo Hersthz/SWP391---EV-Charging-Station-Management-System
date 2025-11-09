@@ -73,6 +73,8 @@ public class ChargingSession {
 
     @Column(name = "initial_soc")
     private Double initialSoc;
+
+
     // ------
     @PrePersist
     public void onCreate() {

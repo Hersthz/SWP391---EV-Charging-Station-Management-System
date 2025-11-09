@@ -18,7 +18,7 @@ public interface ChargingSessionService {
 
     ChargingStopResponse stopChargingSession(Long sessionId);
 
-    PaymentResponse createPaymentForSession(Long sessionId, String clientIp);
+    PaymentResponse createPaymentForSession(Long sessionId, String clientIp, String voucherCode);
 
     AdjustTargetSocResponse adjustTargetSocForSession(Long sessionId, Double targetSoc);
     Page<ChargingSession> getAllU(Long userId, Integer size, Integer page);

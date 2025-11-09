@@ -7,9 +7,9 @@ import java.time.LocalDate;
 @Data
 public class VoucherRequest {
     private String code;
-    private Integer discountPercent;
     private Double discountAmount;
-    private Integer maxUses;
+    private int requiredPoints;
+    private String description;
     private LocalDate startDate;
     private LocalDate endDate;
     private String status; // "ACTIVE", "INACTIVE", "EXPIRED"

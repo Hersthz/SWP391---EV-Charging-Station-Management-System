@@ -1,17 +1,13 @@
 package com.pham.basis.evcharging.dto.response;
 
-import lombok.Builder;
-import lombok.Data;
-
+import lombok.*;
 import java.time.LocalDateTime;
 
-@Data
-@Builder
+@Getter @Setter @AllArgsConstructor @Builder
 public class UserVoucherResponse {
-    private String voucherCode;
-    private Integer discountPercent;
-    private Double discountAmount;
-    private String status;
+    private String code;
+    private String description;
+    private double discountAmount;
+    private LocalDateTime redeemedAt;
     private boolean used;
-    private LocalDateTime usedAt;
 }

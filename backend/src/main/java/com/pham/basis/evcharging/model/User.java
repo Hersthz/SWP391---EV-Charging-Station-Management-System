@@ -48,6 +48,10 @@ public class User{
 
     private String url;
 
+    @Column(name = "total_points", nullable = false, columnDefinition = "int default 0")
+    private int totalPoints;
+
+
     //FK
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)

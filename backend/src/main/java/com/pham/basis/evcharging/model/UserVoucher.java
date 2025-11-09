@@ -23,8 +23,6 @@ public class UserVoucher {
 
     private boolean used = false;
     private LocalDateTime usedAt;
-    private Long voucherId;
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "voucherId", insertable = false, updatable = false)
