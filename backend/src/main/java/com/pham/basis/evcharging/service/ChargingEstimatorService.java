@@ -82,12 +82,12 @@ public class ChargingEstimatorService {
         if (pillarPowerObj == null || pillarPowerObj <= 0) throw new IllegalArgumentException("Pillar power invalid");
         double pillarPowerKw = pillarPowerObj;
 
-        // peak power công suất tối đa
+        // peak max
         double peakBeforeEff = Math.min(vehicleLimitKw, pillarPowerKw);
         double pPeak = peakBeforeEff * eff;
         if (!(pPeak > 0)) throw new IllegalArgumentException("Peak power is zero or unavailable");
 
-        //pPeak trực tiếp để tính thời gian (phút)
+        //peak thời gian
         int estimatedMinutes = (int) Math.ceil((energyToBatteryKwh / pPeak) * 60.0);
 
         // Buffer 10% và advice

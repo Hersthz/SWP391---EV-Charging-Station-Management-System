@@ -22,7 +22,10 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     Optional<PaymentTransaction> findByTxnRef(String txnRef);
 
     // Find pending transaction by reservation and amount
-    @Query("SELECT pt FROM PaymentTransaction pt WHERE pt.type = :type AND pt.referenceId = :referenceId AND pt.user.id = :userId AND pt.amount = :amount AND pt.status = 'PENDING'")
+    @Query("SELECT pt FROM PaymentTransaction pt " +
+            "WHERE pt.type = :type AND pt.referenceId = :referenceId " +
+            "AND pt.user.id = :userId AND pt.amount = :amount AND pt.status = 'PENDING'"
+    )
     Optional<PaymentTransaction> findPendingByTypeAndReference(
             @Param("type") String type,
             @Param("referenceId") Long referenceId,
@@ -31,7 +34,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     );
 
     Page<PaymentTransaction> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
-    Optional<PaymentTransaction> findByReferenceId(Long ReferenceId);
+
     // sum all
     @Query("""
     SELECT COALESCE(SUM(pt.amount), 0)
