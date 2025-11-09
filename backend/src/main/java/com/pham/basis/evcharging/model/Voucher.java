@@ -18,11 +18,9 @@ public class Voucher {
     @Column(unique = true, nullable = false)
     private String code;
 
-    private Integer discountPercent;
     private Double discountAmount;
-    private Integer maxUses;
-    private Integer usedCount = 0;
-
+    private int requiredPoints;
+    private String description;
     private LocalDate startDate;
     private LocalDate endDate;
 
@@ -30,12 +28,11 @@ public class Voucher {
     @Column(length = 20)
     private String status;
 
-    public Voucher(String code, Integer discountPercent, Double discountAmount, Integer maxUses, Integer usedCount, LocalDate startDate, LocalDate endDate, String status) {
+    public Voucher(String code, Double discountAmount, int requiredPoints, String description, LocalDate startDate, LocalDate endDate, String status) {
         this.code = code;
-        this.discountPercent = discountPercent;
         this.discountAmount = discountAmount;
-        this.maxUses = maxUses;
-        this.usedCount = usedCount;
+        this.requiredPoints = requiredPoints;
+        this.description = description;
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = status;

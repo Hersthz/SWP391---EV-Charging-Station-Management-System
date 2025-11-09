@@ -56,10 +56,11 @@ public class ChargingSessionController {
     @PostMapping("/{id}/pay")
     public PaymentResponse createPaymentForSession(
             @PathVariable Long id,
+            @RequestParam(required = false) String voucherCode,
             HttpServletRequest request
     ) {
         String clientIp = VNPayConfig.getClientIp(request);
-        return chargingSessionService.createPaymentForSession(id, clientIp);
+        return chargingSessionService.createPaymentForSession(id, clientIp, voucherCode);
     }
 
     @PostMapping("/{id}/adjust-soc-target")

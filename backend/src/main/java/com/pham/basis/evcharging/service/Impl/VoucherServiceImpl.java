@@ -9,11 +9,13 @@ import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.User;
 import com.pham.basis.evcharging.model.UserVoucher;
 import com.pham.basis.evcharging.model.Voucher;
+import com.pham.basis.evcharging.repository.UserRepository;
 import com.pham.basis.evcharging.repository.UserVoucherRepository;
 import com.pham.basis.evcharging.repository.VoucherRepository;
 import com.pham.basis.evcharging.service.VoucherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,22 +29,9 @@ public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepository voucherRepository;
     private final UserVoucherRepository userVoucherRepository;
-
+    private final UserRepository userRepository;
     // CRUD cho Voucher
 
-    private VoucherResponse mapToResponse(Voucher voucher) {
-        return VoucherResponse.builder()
-                .id(voucher.getId())
-                .code(voucher.getCode())
-                .discountPercent(voucher.getDiscountPercent())
-                .discountAmount(voucher.getDiscountAmount())
-                .maxUses(voucher.getMaxUses())
-                .usedCount(voucher.getUsedCount())
-                .startDate(voucher.getStartDate())
-                .endDate(voucher.getEndDate())
-                .status(voucher.getStatus())
-                .build();
-    }
 
     @Override
     public List<VoucherResponse> getAllVouchers() {
@@ -68,13 +57,11 @@ public class VoucherServiceImpl implements VoucherService {
         if (voucherRepository.findByCode(req.getCode()).isPresent()) {
             throw new AppException.BadRequestException("Voucher code already exists");
         }
-
         Voucher voucher = new Voucher(
                 req.getCode(),
-                req.getDiscountPercent(),
                 req.getDiscountAmount(),
-                req.getMaxUses(),
-                0,
+                req.getRequiredPoints(),
+                req.getDescription(),
                 req.getStartDate(),
                 req.getEndDate(),
                 req.getStatus()
@@ -88,9 +75,9 @@ public class VoucherServiceImpl implements VoucherService {
                 .orElseThrow(() -> new AppException.NotFoundException("Voucher not found"));
 
         voucher.setCode(req.getCode());
-        voucher.setDiscountPercent(req.getDiscountPercent());
         voucher.setDiscountAmount(req.getDiscountAmount());
-        voucher.setMaxUses(req.getMaxUses());
+        voucher.setRequiredPoints(req.getRequiredPoints());
+        voucher.setDescription(req.getDescription());
         voucher.setStartDate(req.getStartDate());
         voucher.setEndDate(req.getEndDate());
         voucher.setStatus(req.getStatus());
@@ -107,9 +94,9 @@ public class VoucherServiceImpl implements VoucherService {
     }
 
 
+
     // Apply voucher cho user
-
-
+    @Transactional
     @Override
     public VoucherApplyResponse applyVoucher(VoucherApplyRequest req) {
         Voucher voucher = voucherRepository.findByCode(req.getCode())
@@ -117,37 +104,38 @@ public class VoucherServiceImpl implements VoucherService {
 
         LocalDate today = LocalDate.now();
 
-        if (!"ACTIVE".equalsIgnoreCase(voucher.getStatus()))
+        // Check trạng thái
+        if (!"ACTIVE".equalsIgnoreCase(voucher.getStatus())) {
             return new VoucherApplyResponse("Voucher is not active", 0, req.getTotalAmount());
+        }
 
-        if (today.isBefore(voucher.getStartDate()) || today.isAfter(voucher.getEndDate()))
+        // Check hạn sử dụng
+        if (today.isBefore(voucher.getStartDate()) || today.isAfter(voucher.getEndDate())) {
             return new VoucherApplyResponse("Voucher expired", 0, req.getTotalAmount());
+        }
 
-        if (voucher.getUsedCount() >= voucher.getMaxUses())
-            return new VoucherApplyResponse("Voucher usage limit reached", 0, req.getTotalAmount());
+        // Check user đã dùng chưa
+        Optional<UserVoucher> userVoucherOpt =
+                userVoucherRepository.findByUserIdAndVoucherId(req.getUserId(), voucher.getId());
 
-        Optional<UserVoucher> userVoucherOpt = userVoucherRepository.findByUserIdAndVoucherId(req.getUserId(), voucher.getId());
-        if (userVoucherOpt.isPresent() && userVoucherOpt.get().isUsed())
+        if (userVoucherOpt.isPresent() && userVoucherOpt.get().isUsed()) {
             return new VoucherApplyResponse("User has already used this voucher", 0, req.getTotalAmount());
+        }
 
+        // Tính giảm giá
         double discount = 0;
-        if (voucher.getDiscountPercent() != null)
-            discount = req.getTotalAmount() * voucher.getDiscountPercent() / 100.0;
-        else if (voucher.getDiscountAmount() != null)
+        if (voucher.getDiscountAmount() != null) {
             discount = voucher.getDiscountAmount();
+        }
 
         double finalPrice = Math.max(req.getTotalAmount() - discount, 0);
 
-        voucher.setUsedCount(voucher.getUsedCount() + 1);
-        if (voucher.getUsedCount() >= voucher.getMaxUses())
-            voucher.setStatus("EXPIRED");
-        voucherRepository.save(voucher);
-
+        // Đánh dấu voucher là đã sử dụng
         UserVoucher userVoucher = userVoucherOpt.orElseGet(UserVoucher::new);
         User user = new User();
         user.setId(req.getUserId());
+        userVoucher.setVoucher(voucher);
         userVoucher.setUser(user);
-        userVoucher.setVoucherId(voucher.getId());
         userVoucher.setUsed(true);
         userVoucher.setUsedAt(LocalDateTime.now());
         userVoucherRepository.save(userVoucher);
@@ -155,20 +143,30 @@ public class VoucherServiceImpl implements VoucherService {
         return new VoucherApplyResponse("Voucher applied successfully", discount, finalPrice);
     }
 
-    //Danh sách voucher user đã dùng
 
+    //Danh sách voucher user đã dùng
     @Override
     public List<UserVoucherResponse> getUserVouchers(Long userId) {
         return userVoucherRepository.findAllByUserId(userId)
                 .stream()
                 .map(uv -> UserVoucherResponse.builder()
-                        .voucherCode(uv.getVoucher().getCode())
-                        .discountPercent(uv.getVoucher().getDiscountPercent())
+                        .code(uv.getVoucher().getCode())
                         .discountAmount(uv.getVoucher().getDiscountAmount())
-                        .status(uv.getVoucher().getStatus())
                         .used(uv.isUsed())
-                        .usedAt(uv.getUsedAt())
+                        .redeemedAt(uv.getUsedAt())
                         .build())
                 .collect(Collectors.toList());
     }
+
+
+    private VoucherResponse mapToResponse(Voucher voucher) {
+        return VoucherResponse.builder()
+                .voucherId(voucher.getId())
+                .code(voucher.getCode())
+                .discountAmount(voucher.getDiscountAmount())
+                .description(voucher.getDescription())
+                .requiredPoints(voucher.getRequiredPoints())
+                .build();
+    }
+
 }

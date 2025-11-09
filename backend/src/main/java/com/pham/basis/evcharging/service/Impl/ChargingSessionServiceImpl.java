@@ -2,16 +2,15 @@ package com.pham.basis.evcharging.service.Impl;
 
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
+import com.pham.basis.evcharging.dto.request.VoucherApplyRequest;
 import com.pham.basis.evcharging.dto.response.AdjustTargetSocResponse;
 import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
 import com.pham.basis.evcharging.dto.response.PaymentResponse;
+import com.pham.basis.evcharging.dto.response.VoucherApplyResponse;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
-import com.pham.basis.evcharging.service.ChargingSessionService;
-import com.pham.basis.evcharging.service.PaymentService;
-import com.pham.basis.evcharging.service.SubscriptionService;
-import com.pham.basis.evcharging.service.WalletService;
+import com.pham.basis.evcharging.service.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,9 +38,9 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
     private final VehicleRepository vehicleRepo;
     private final WalletService walletService;
     private final PaymentService paymentService;
-    private final SubscriptionService subscriptionService;
     private final SubscriptionRepository subscriptionRepo;
-
+    private final LoyaltyPointService loyaltyPointService;
+    private final VoucherService voucherService;
     private static final Logger log = LoggerFactory.getLogger(ChargingSessionServiceImpl.class);
 
     @Transactional
@@ -138,12 +138,29 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
     }
 
     @Transactional
-    public PaymentResponse createPaymentForSession(Long sessionId, String clientIp) {
+    public PaymentResponse createPaymentForSession(Long sessionId, String clientIp, String voucherCode) {
         ChargingSession session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new AppException.NotFoundException("Session not found"));
 
         if (!"COMPLETED".equals(session.getStatus()))
             throw new AppException.BadRequestException("Only completed sessions can be paid");
+
+        BigDecimal totalAmount = session.getChargedAmount();
+
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            VoucherApplyRequest req = VoucherApplyRequest.builder()
+                    .userId(session.getDriver().getId())
+                    .code(voucherCode)
+                    .totalAmount(totalAmount.doubleValue())
+                    .build();
+
+            VoucherApplyResponse res = voucherService.applyVoucher(req);
+            totalAmount = BigDecimal.valueOf(res.getFinalPrice());
+
+            session.setChargedAmount(totalAmount);
+            sessionRepo.save(session);
+        }
+
 
         PaymentCreateRequest paymentRequest = PaymentCreateRequest.builder()
                 .amount(session.getChargedAmount())
@@ -157,6 +174,14 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         PaymentResponse paymentResponse = paymentService.createPayment(
                 paymentRequest, session.getDriver().getId(), clientIp
         );
+
+
+        if ("SUCCESS".equals(paymentResponse.getStatus())) {
+            loyaltyPointService.addPointsAfterCharging(
+                    session.getDriver().getId(),
+                    session.getChargedAmount()
+            );
+        }
 
         log.info("Payment created for session {}: {}", session.getId(), paymentResponse.getStatus());
         return paymentResponse;
@@ -272,21 +297,23 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
         Double energyNeeded = (targetSoc - currentSoc) * vehicle.getBatteryCapacityKwh();
         BigDecimal baseAmount = BigDecimal.valueOf(energyNeeded * pillar.getPricePerKwh());
-        return applySubscriptionDiscount(vehicle.getUser().getId(), baseAmount);
+        return baseAmount;
     }
 
-    private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseAmount) {
-        Subscription subscription = subscriptionRepo.findByUserId(userId).orElse(null);
-        if (subscription == null || subscription.getPlan() == null) {
-            return baseAmount; // không có subscription => không giảm
-        }
+//    private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseAmount) {
+//        Subscription subscription = subscriptionRepo.findByUserId(userId).orElse(null);
+//        if (subscription == null || subscription.getPlan() == null) {
+//            return baseAmount; // không có subscription => không giảm
+//        }
+//
+//        String planName = subscription.getPlan().getName().toUpperCase();
+//
+//        return switch (planName) {
+//            case "PRO" -> baseAmount.multiply(BigDecimal.valueOf(0.9));      // Giảm 10%
+//            case "PREMIUM" -> baseAmount.multiply(BigDecimal.valueOf(0.8));  // Giảm 20%
+//            default -> baseAmount; // FREE hoặc gói khác => không giảm
+//        };
+//    }
 
-        String planName = subscription.getPlan().getName().toUpperCase();
 
-        return switch (planName) {
-            case "PRO" -> baseAmount.multiply(BigDecimal.valueOf(0.9));      // Giảm 10%
-            case "PREMIUM" -> baseAmount.multiply(BigDecimal.valueOf(0.8));  // Giảm 20%
-            default -> baseAmount; // FREE hoặc gói khác => không giảm
-        };
-    }
 }
