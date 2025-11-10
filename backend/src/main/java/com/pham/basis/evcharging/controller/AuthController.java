@@ -59,6 +59,9 @@ public class AuthController {
         if (!Boolean.TRUE.equals(user.getIsVerified())) {
             throw new AppException.ForbiddenException("Email not verified");
         }
+        if (user.getStatus() != null && !user.getStatus()) {
+            throw new AppException.ForbiddenException("Account has been deactivated");
+        }
 
         String roleName = user.getRole() != null ? user.getRole().getName() : "USER";
 

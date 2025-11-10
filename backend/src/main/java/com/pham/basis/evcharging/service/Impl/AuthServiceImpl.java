@@ -50,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getUsername())
                 .phone(user.getPhone())
                 .roleName(user.getRole() != null ? user.getRole().getName() : null)
+                .status(true)
                 .url(null)
                 .build();
     }
@@ -94,14 +95,17 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .dateOfBirth(user.getDateOfBirth())
                 .url(user.getUrl())
+                .status(true)
                 .build();
         return ResponseEntity.ok(resp);
     }
 
     @Override
     public void forgotPassword(String email) {
-        User user = userRepository.findByEmailOption(email)
-                .orElseThrow(() -> new AppException.NotFoundException("Email not found"));
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new AppException.NotFoundException("Email not found");
+        }
 
         String token = verificationTokenService.createVerificationToken(user, "RESET_PASSWORD");
 

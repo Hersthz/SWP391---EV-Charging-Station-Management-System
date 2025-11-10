@@ -26,12 +26,12 @@ public class VehicleRequest {
     @DecimalMax(value = "200.0", message = "Battery capacity must be <= 200 kWh")
     private Double batteryCapacityKwh;
 
-    @DecimalMin(value = "1.0", message = "AC power must be >= 1 kW")
-    @DecimalMax(value = "50.0", message = "AC power must be <= 50 kW")
+    @DecimalMin(value = "3.0", message = "AC power must be >= 3 kW")
+    @DecimalMax(value = "22.0", message = "AC power must be <= 22 kW")
     private Double acMaxKw;
 
-    @DecimalMin(value = "10.0", message = "DC power must be >= 10 kW")
-    @DecimalMax(value = "400.0", message = "DC power must be <= 400 kW")
+    @DecimalMin(value = "20.0", message = "DC power must be >= 20 kW")
+    @DecimalMax(value = "350.0", message = "DC power must be <= 350 kW")
     private Double dcMaxKw;
 }
 

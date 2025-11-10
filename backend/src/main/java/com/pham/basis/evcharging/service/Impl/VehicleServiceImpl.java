@@ -36,6 +36,7 @@ public class VehicleServiceImpl implements VehicleService {
                 .acMaxKw(req.getAcMaxKw() != null ? req.getAcMaxKw() : 7.4)
                 .dcMaxKw(req.getDcMaxKw() != null ? req.getDcMaxKw() : 50.0)
                 .efficiency(0.9)
+                .active(true)
                 .user(user)
                 .build();
         vehicleRepository.save(vehicle);
