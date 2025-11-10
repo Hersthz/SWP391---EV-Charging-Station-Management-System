@@ -93,7 +93,7 @@ public class ChargingEstimatorService {
         // Buffer 10% và advice
         int buffer = (int) Math.ceil(estimatedMinutes * 0.10);
         String advice = String.format(
-                "Ước tính %d phút. Gợi ý đặt %d phút (thêm %d phút dự phòng).",
+                "Estimated to take %d minutes to fully charge. Suggested booking: %d minutes (including %d minutes buffer).",
                 estimatedMinutes, estimatedMinutes + buffer, buffer
         );
 

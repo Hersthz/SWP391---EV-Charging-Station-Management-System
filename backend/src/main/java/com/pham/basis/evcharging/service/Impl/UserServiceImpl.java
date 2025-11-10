@@ -56,6 +56,7 @@ public class UserServiceImpl implements UserService {
         user.setIsVerified(false);
         user.setCreatedAt(LocalDateTime.now());
         Role defaultRole = roleRepository.getReferenceById(1);
+        user.setStatus(true);
         user.setRole(defaultRole);
         return userRepository.save(user);
     }
@@ -96,6 +97,7 @@ public class UserServiceImpl implements UserService {
             u.setPassword("null");
             Role defaultRole = roleRepository.getReferenceById(1);
             u.setRole(defaultRole);
+            u.setStatus(true);
             u.setCreatedAt(LocalDateTime.now());
             u.setUrl(url);
             userRepository.save(u);
