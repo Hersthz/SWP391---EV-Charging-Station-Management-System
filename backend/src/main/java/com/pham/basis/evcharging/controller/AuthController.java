@@ -1,6 +1,8 @@
 package com.pham.basis.evcharging.controller;
 
+import com.pham.basis.evcharging.dto.request.ForgotPasswordRequest;
 import com.pham.basis.evcharging.dto.request.LoginRequest;
+import com.pham.basis.evcharging.dto.request.ResetPasswordRequest;
 import com.pham.basis.evcharging.dto.request.UserCreationRequest;
 import com.pham.basis.evcharging.dto.response.LoginResponse;
 import com.pham.basis.evcharging.dto.response.UserResponse;
@@ -125,6 +127,18 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, newAccessCookie.toString());
         return ResponseEntity.ok(Map.of("message", "refreshed"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok("Password reset email sent.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok("Password updated.");
     }
 }
 

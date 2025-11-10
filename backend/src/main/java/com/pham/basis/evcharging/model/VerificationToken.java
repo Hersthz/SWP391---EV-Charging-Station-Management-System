@@ -27,4 +27,7 @@ public class VerificationToken {
     @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
 
+    @Column(nullable = false, length = 50)
+    private String type;
+
 }

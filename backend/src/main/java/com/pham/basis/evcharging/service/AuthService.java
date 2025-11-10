@@ -13,4 +13,7 @@ public interface AuthService {
     ResponseEntity<Map<String, String>> verify(String token);
 
     ResponseEntity<?> getCurrentUser(Authentication authentication);
+
+    void forgotPassword(String email);
+    void resetPassword(String token, String newPassword);
 }

@@ -18,13 +18,13 @@ public class EmailServiceImpl implements EmailService {
     private final TemplateEngine templateEngine;
 
     @Override
-    public void sendVerificationEmail(String to, String subject, String verifyLink) {
+    public void sendVerificationEmail(String to, String subject, String verifyLink,String template) {
         try {
             Context context = new Context();
             context.setVariable("name", to);
             context.setVariable("verifyLink", verifyLink);
 
-            String htmlContent = templateEngine.process("email-verification", context);
+            String htmlContent = templateEngine.process(template, context);
 
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
