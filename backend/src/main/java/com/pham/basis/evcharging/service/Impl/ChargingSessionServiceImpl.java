@@ -38,7 +38,6 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
     private final VehicleRepository vehicleRepo;
     private final WalletService walletService;
     private final PaymentService paymentService;
-    private final SubscriptionRepository subscriptionRepo;
     private final LoyaltyPointService loyaltyPointService;
     private final VoucherService voucherService;
     private static final Logger log = LoggerFactory.getLogger(ChargingSessionServiceImpl.class);
@@ -299,21 +298,5 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         BigDecimal baseAmount = BigDecimal.valueOf(energyNeeded * pillar.getPricePerKwh());
         return baseAmount;
     }
-
-//    private BigDecimal applySubscriptionDiscount(Long userId, BigDecimal baseAmount) {
-//        Subscription subscription = subscriptionRepo.findByUserId(userId).orElse(null);
-//        if (subscription == null || subscription.getPlan() == null) {
-//            return baseAmount; // không có subscription => không giảm
-//        }
-//
-//        String planName = subscription.getPlan().getName().toUpperCase();
-//
-//        return switch (planName) {
-//            case "PRO" -> baseAmount.multiply(BigDecimal.valueOf(0.9));      // Giảm 10%
-//            case "PREMIUM" -> baseAmount.multiply(BigDecimal.valueOf(0.8));  // Giảm 20%
-//            default -> baseAmount; // FREE hoặc gói khác => không giảm
-//        };
-//    }
-
 
 }
