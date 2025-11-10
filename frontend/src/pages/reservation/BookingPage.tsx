@@ -883,10 +883,6 @@ export default function BookingPage() {
                 </span>
                 <span>•</span>
                 <span>
-                  From station ~ <b className="text-zinc-800">{estimate.energyFromStationKwh.toFixed(1)} kWh</b>
-                </span>
-                <span>•</span>
-                <span>
                   Est. cost ~ <b className="text-emerald-700">{formatVND(estimate.estimatedCost)}</b>
                 </span>
               </div>
@@ -897,16 +893,6 @@ export default function BookingPage() {
                 {estimate.advice}
               </div>
             )}
-
-            {/* cảnh báo nếu slot < estimate */}
-            {estimate?.estimatedMinutes != null &&
-              durationMinutes > 0 &&
-              durationMinutes < estimate.estimatedMinutes && (
-                <div className="mt-2 text-sm text-amber-800 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2.5">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  Estimated charge (~{estimate.estimatedMinutes} min) exceeds your slot ({durationMinutes} min).
-                </div>
-              )}
 
             <div className="mt-3 bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
               <div className="text-sm text-zinc-700">

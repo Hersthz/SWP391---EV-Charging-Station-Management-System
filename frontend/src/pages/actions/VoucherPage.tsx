@@ -35,8 +35,8 @@ type Me = {
   id?: number;
   user_id?: number;
   full_name?: string;
-  total_points?: number;       // snake_case (có thể)
-  totalPoints?: number;        // camelCase (cũng có thể)
+  total_points?: number;
+  totalPoints?: number;
 } & Record<string, any>;
 
 type Voucher = {
@@ -57,7 +57,7 @@ type UserVoucher = {
 
 type PointRow = {
   pointsEarned: number;
-  amountPaid: string | number; // BigDecimal -> string/number
+  amountPaid: string | number;
   createdAt: string;
 };
 
@@ -82,6 +82,9 @@ const VoucherPage = () => {
   const [displayName, setDisplayName] = useState<string>("");
   const [points, setPoints] = useState<number>(0);
 
+  // ★ fallback points tính từ history (khi /auth/me không có total_points)
+  const [pointsFromHistory, setPointsFromHistory] = useState<number>(0);
+
   // loading states
   const [loadingMe, setLoadingMe] = useState(true);
   const [loadingAll, setLoadingAll] = useState(true);
@@ -104,6 +107,9 @@ const VoucherPage = () => {
       try {
         setLoadingMe(true);
         const me = await api.get<ApiResp<Me>>("/auth/me", { withCredentials: true }).catch(() => null);
+
+        // console.debug("ME payload:", me?.data); // hữu ích khi debug
+
         const id =
           Number(me?.data?.id ?? me?.data?.user_id ?? (me as any)?.data?.data?.id) || undefined;
 
@@ -113,7 +119,6 @@ const VoucherPage = () => {
           String(me?.data?.full_name ?? me?.data?.fullName ?? me?.data?.name ?? "User");
         setDisplayName(name);
 
-        // total points (try both styles)
         const p =
           Number(
             me?.data?.total_points ??
@@ -122,6 +127,7 @@ const VoucherPage = () => {
               (me as any)?.data?.data?.totalPoints ??
               0
           ) || 0;
+
         setPoints(p);
       } finally {
         setLoadingMe(false);
@@ -183,7 +189,12 @@ const VoucherPage = () => {
           `/loyalty-point/history/${uid}`,
           { withCredentials: true }
         );
-        setPointHistory(data?.data ?? (Array.isArray(data) ? (data as any) : []));
+        const rows = data?.data ?? (Array.isArray(data) ? (data as any) : []);
+        setPointHistory(rows);
+
+        // ★ tính tổng điểm từ history để fallback hiển thị
+        const sum = rows.reduce((s: number, r: any) => s + Number(r?.pointsEarned || 0), 0);
+        setPointsFromHistory(sum);
       } catch (e: any) {
         toast({
           title: "Không tải được lịch sử điểm",
@@ -191,6 +202,7 @@ const VoucherPage = () => {
           variant: "destructive",
         });
         setPointHistory([]);
+        setPointsFromHistory(0);
       } finally {
         setLoadingHistory(false);
       }
@@ -226,7 +238,7 @@ const VoucherPage = () => {
         setMyVouchers(data?.data ?? (Array.isArray(data) ? (data as any) : []));
       } catch { /* ignore */ }
 
-      // refresh points (re-fetch me)
+      // ★ refresh points: ưu tiên đọc lại /auth/me; nếu vẫn không có, sẽ fallback bằng history đã cập nhật
       try {
         const me = await api.get<ApiResp<Me>>("/auth/me", { withCredentials: true });
         const p =
@@ -257,7 +269,10 @@ const VoucherPage = () => {
   };
 
   // ====== Derived ======
-  const canRedeem = (v: Voucher) => points >= (v?.requiredPoints ?? Number.MAX_SAFE_INTEGER);
+  const canRedeem = (v: Voucher) => (points || pointsFromHistory) >= (v?.requiredPoints ?? Number.MAX_SAFE_INTEGER);
+
+  // ★ Điểm hiển thị ưu tiên từ /auth/me; nếu không có thì dùng tổng history
+  const displayPoints = (points || pointsFromHistory);
 
   /* ================= UI ================= */
   return (
@@ -304,7 +319,7 @@ const VoucherPage = () => {
               <div className="text-sm">
                 <div className="text-slate-500">Current Point</div>
                 <div className="text-2xl font-extrabold text-amber-700">
-                  {loadingMe ? "—" : points.toLocaleString("vi-VN")}
+                  {(loadingMe && loadingHistory) ? "—" : displayPoints.toLocaleString("vi-VN")}
                 </div>
               </div>
             </CardContent>
@@ -413,13 +428,13 @@ const VoucherPage = () => {
                         </div>
                         <div className="text-sm text-slate-600">{uv.description || "—"}</div>
                         <div className="text-sm">
-                          <span className="text-slate-500 mr-1">Giảm:</span>
+                          <span className="text-slate-500 mr-1">Discount:</span>
                           <span className="font-semibold">
                             {fmtMoneyVND(Math.max(0, uv.discountAmount || 0))}
                           </span>
                         </div>
                         <div className="text-xs text-slate-500">
-                          Đổi lúc: {fmtDateTime(uv.redeemedAt)}
+                          Redeem at: {fmtDateTime(uv.redeemedAt)}
                         </div>
                       </div>
                     ))}
@@ -447,16 +462,16 @@ const VoucherPage = () => {
                     <table className="min-w-full text-sm">
                       <thead className="bg-slate-50">
                         <tr className="text-left text-slate-600">
-                          <th className="px-4 py-3 font-medium">Thời gian</th>
-                          <th className="px-4 py-3 font-medium">Số điểm</th>
-                          <th className="px-4 py-3 font-medium">Số tiền thanh toán</th>
+                          <th className="px-4 py-3 font-medium">Time</th>
+                          <th className="px-4 py-3 font-medium">Point</th>
+                          <th className="px-4 py-3 font-medium">Cost</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pointHistory.map((row, i) => (
                           <tr key={i} className="border-t">
                             <td className="px-4 py-3">{fmtDateTime(row.createdAt)}</td>
-                            <td className="px-4 py-3 font-semibold">{row.pointsEarned.toLocaleString("vi-VN")}</td>
+                            <td className="px-4 py-3 font-semibold">{Number(row.pointsEarned || 0).toLocaleString("vi-VN")}</td>
                             <td className="px-4 py-3">
                               {fmtMoneyVND(Number(row.amountPaid || 0))}
                             </td>
@@ -467,7 +482,6 @@ const VoucherPage = () => {
                   </div>
                 )}
 
-                {/* Tổng kết nhanh */}
                 {!loadingHistory && pointHistory.length > 0 && (
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20">
@@ -495,7 +509,7 @@ const VoucherPage = () => {
             <DialogDescription>
               {targetVoucher ? (
                 <>
-                  You will use <b>{targetVoucher.requiredPoints.toLocaleString("vi-VN")}</b> point to redeem voucher {" "}
+                  You will use <b>{targetVoucher.requiredPoints.toLocaleString("vi-VN")}</b> point to redeem voucher{" "}
                   <b>{targetVoucher.code}</b> (giảm {fmtMoneyVND(Math.max(0, targetVoucher.discountAmount || 0))}).
                 </>
               ) : (

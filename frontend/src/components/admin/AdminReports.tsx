@@ -299,13 +299,6 @@ const AdminReports = () => {
               <span className="font-medium">Reports</span>
             </Link>
             
-            <Link 
-              to="/admin/insights" 
-              className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Brain className="w-4 h-4" />
-              <span>AI Insights</span>
-            </Link>
           </nav>
         </aside>
 

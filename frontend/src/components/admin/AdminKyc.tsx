@@ -246,61 +246,67 @@ export default function AdminKyc() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-semibold">{r.id}</TableCell>
-                        <TableCell>
-                          <div className="font-medium">{r.user?.fullName || "-"}</div>
-                          <div className="text-xs text-slate-500">{r.user?.email || "-"}</div>
-                          <div className="text-xs text-slate-500">UID: {r.user?.id ?? "-"}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            className="text-sky-600"
-                            onClick={() => setImgOpen({ url: r.frontImageUrl, label: "Front side" })}
-                          >
-                            <ImageIcon className="w-4 h-4 mr-1.5" /> View
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            className="text-sky-600"
-                            onClick={() => setImgOpen({ url: r.backImageUrl, label: "Back side" })}
-                          >
-                            <ImageIcon className="w-4 h-4 mr-1.5" /> View
-                          </Button>
-                        </TableCell>
-                        <TableCell><StatusBadge s={r.status} /></TableCell>
-                        <TableCell>
-                          <div className="text-sm">{fmt(r.createdAt)}</div>
-                          <div className="text-xs text-slate-500">Upd: {fmt(r.updatedAt)}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                    {filtered.map((r) => {
+                      const isPending = r.status === "PENDING";
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-semibold">{r.id}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">{r.user?.fullName || "-"}</div>
+                            <div className="text-xs text-slate-500">{r.user?.email || "-"}</div>
+                            <div className="text-xs text-slate-500">UID: {r.user?.id ?? "-"}</div>
+                          </TableCell>
+                          <TableCell>
                             <Button
-                              size="sm"
                               variant="ghost"
-                              className="text-emerald-600"
-                              disabled={r.status === "APPROVED"}
-                              onClick={() => setActionOpen({ row: r, mode: "approve" })}
+                              className="text-sky-600"
+                              onClick={() => setImgOpen({ url: r.frontImageUrl, label: "Front side" })}
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
+                              <ImageIcon className="w-4 h-4 mr-1.5" /> View
                             </Button>
+                          </TableCell>
+                          <TableCell>
                             <Button
-                              size="sm"
                               variant="ghost"
-                              className="text-rose-600"
-                              disabled={r.status === "REJECTED"}
-                              onClick={() => setActionOpen({ row: r, mode: "reject" })}
+                              className="text-sky-600"
+                              onClick={() => setImgOpen({ url: r.backImageUrl, label: "Back side" })}
                             >
-                              <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                              <ImageIcon className="w-4 h-4 mr-1.5" /> View
                             </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell><StatusBadge s={r.status} /></TableCell>
+                          <TableCell>
+                            <div className="text-sm">{fmt(r.createdAt)}</div>
+                            <div className="text-xs text-slate-500">Upd: {fmt(r.updatedAt)}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {/* Only show actions when status is PENDING */}
+                              {isPending && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-emerald-600"
+                                    onClick={() => setActionOpen({ row: r, mode: "approve" })}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-rose-600"
+                                    onClick={() => setActionOpen({ row: r, mode: "reject" })}
+                                  >
+                                    <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {filtered.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-sm text-slate-500 py-10">
@@ -406,4 +412,3 @@ export default function AdminKyc() {
     </AdminLayout>
   );
 }
-    

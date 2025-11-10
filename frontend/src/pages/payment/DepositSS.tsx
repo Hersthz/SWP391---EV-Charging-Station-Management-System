@@ -178,12 +178,6 @@ export default function DepositSS() {
                   Go to Dashboard
                 </Button>
               </Link>
-
-              <Link to="/booking">
-                <Button className="w-full h-11 rounded-xl" variant="outline">
-                  Book Another Slot
-                </Button>
-              </Link>
             </div>
           </CardContent>
         </Card>
