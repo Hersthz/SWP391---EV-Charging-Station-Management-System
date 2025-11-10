@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +35,8 @@ public class ReservationServiceImpl implements ReservationService {
     private final NotificationService notificationService;
 
     private static final long GRACE_MINUTES = 15;
+    private static final BigDecimal HOLD_FEE_PER_MINUTE = BigDecimal.valueOf(300);
+
     @Override
     public ReservationResponse createReservation(ReservationRequest request) {
 
@@ -205,11 +208,16 @@ public class ReservationServiceImpl implements ReservationService {
 
         if (!existingReservations.isEmpty()) {
             Reservation conflict = existingReservations.get(0);
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+            String start = conflict.getStartTime().format(timeFormatter);
+            String end = conflict.getEndTime().format(timeFormatter);
+
             throw new AppException.BadRequestException(String.format(
-                    "Pillar %d is already booked from %s to %s",
+                    "Pillar %d (Connector %s) is already booked from %s to %s",
                     req.getPillarId(),
-                    conflict.getStartTime(),
-                    conflict.getEndTime()
+                    connectorRepository.findById(req.getConnectorId()).get().getType(),
+                    start,
+                    end
             ));
         }
     }
