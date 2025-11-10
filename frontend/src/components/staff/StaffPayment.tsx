@@ -213,8 +213,6 @@ const StaffPayment = () => {
                     <TableHead className="w-[140px] text-slate-900 font-semibold">Reference</TableHead>
                     <TableHead className="w-[140px] text-slate-900 font-semibold">Amount</TableHead>
                     <TableHead className="w-[160px] text-slate-900 font-semibold">Status</TableHead>
-                    <TableHead className="text-slate-900 font-semibold">Order / Txn</TableHead>
-                    <TableHead className="w-[200px] text-slate-900 font-semibold">Time</TableHead>
                     <TableHead className="w-[160px]" />
                   </TableRow>
                 </TableHeader>
@@ -234,13 +232,6 @@ const StaffPayment = () => {
                           <Badge className={`${statusBadge(r.status)} rounded-full`}>
                             {r.status || "UNKNOWN"}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-800">
-                          <div className="text-[13px] leading-tight">
-                            {r.orderId ? <div>Order: <b>{r.orderId}</b></div> : null}
-                            {r.transactionNo ? <div>Txn: <b>{r.transactionNo}</b></div> : null}
-                            {!r.orderId && !r.transactionNo ? "—" : null}
-                          </div>
                         </TableCell>
                         <TableCell className="text-slate-800">
                           <div className="text-[13px] leading-tight">
