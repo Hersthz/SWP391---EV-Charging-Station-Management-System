@@ -14,17 +14,16 @@ import { toast } from "sonner";
 /* ===== Types (nới lỏng để chịu nhiều dạng BE mapping khác nhau) ===== */
 type PaymentTx = {
   id?: number;
-  transactionId?: number;         // fallback id
-  type?: string;                  // RESERVATION | CHARGING-SESSION | WALLET
-  method?: string;                // WALLET | VNPAY | ...
-  referenceId?: number;           // reservationId / sessionId / ...
-  amount?: number;                // VND
-  status?: string;                // PENDING | SUCCESS | FAILED | ...
+  transactionId?: number;
+  type?: string;
+  method?: string;
+  referenceId?: number;
+  amount?: number;
+  status?: string;
   orderId?: string;
   transactionNo?: string;
   createdAt?: string;
   updatedAt?: string;
-  // đôi khi BE gói trong field data:
   data?: any;
 };
 
@@ -59,7 +58,7 @@ const StaffPayment = () => {
   const [stationId, setStationId] = useState<number | null>(null);
   const [items, setItems] = useState<PaymentTx[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<number | null>(null); // id đang update
+  const [updating, setUpdating] = useState<number | null>(null);
 
   // ===== lấy stationId từ tài khoản staff giống StaffDashboard =====
   useEffect(() => {
@@ -69,14 +68,12 @@ const StaffPayment = () => {
         setLoading(true);
         setError(null);
 
-        // 1) current user
         const meRes = await api.get("/auth/me", { signal: controller.signal, withCredentials: true });
         const me = meRes.data;
         const userId =
           me?.user_id ?? me?.id ?? me?.userId ?? Number(localStorage.getItem("userId"));
         if (!userId) throw new Error("Không tìm thấy userId từ /auth/me");
 
-        // 2) station manager mapping
         const res = await api.get(`/station-managers/${userId}`, { signal: controller.signal, withCredentials: true });
         const raw = res.data?.data ?? res.data;
 
@@ -110,9 +107,7 @@ const StaffPayment = () => {
       setLoading(true);
       setError(null);
       const { data } = await api.get(`/api/payment/getPaymentS/${sid}`, { withCredentials: true });
-      // đáp án chuẩn: { code, message, data: PaymentTransactionResponse[] }
       const arr: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      // map nới lỏng phòng khi BE đổi key
       const mapped: PaymentTx[] = arr.map((r) => ({
         id: r?.id ?? r?.transactionId ?? r?.txId,
         transactionId: r?.transactionId,
@@ -137,8 +132,7 @@ const StaffPayment = () => {
 
   useEffect(() => {
     if (stationId) fetchPayments(stationId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stationId]);
+  }, [stationId]); // eslint-disable-line
 
   const successCount = useMemo(
     () => items.filter((x) => normUp(x.status) === "SUCCESS").length,
@@ -218,9 +212,8 @@ const StaffPayment = () => {
                 </TableHeader>
                 <TableBody>
                   {items.map((r) => {
-                    const isCash = normUp(r.method) === "CASH";
-                    const isDone = normUp(r.status) === "SUCCESS";
-                    const canMark = isCash && !isDone;
+                    // Chỉ hiển thị nút Accept khi trạng thái là PENDING
+                    const canMark = normUp(r.status) === "PENDING";
                     return (
                       <TableRow key={r.id} className="border-b-slate-200/80 hover:bg-slate-50/50">
                         <TableCell className="font-semibold text-slate-900">{r.id ?? r.transactionId}</TableCell>
@@ -248,7 +241,7 @@ const StaffPayment = () => {
                               className="rounded-full"
                             >
                               <ShieldCheck className="w-4 h-4 mr-2" />
-                              {updating === r.id ? "Updating…" : "Accept CASH"}
+                              {updating === r.id ? "Updating…" : "Accept"}
                             </Button>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>

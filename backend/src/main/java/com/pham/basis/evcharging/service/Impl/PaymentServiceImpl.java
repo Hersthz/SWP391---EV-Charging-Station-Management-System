@@ -611,15 +611,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentTransactionResponse> getAllPaymentTransactionByStation(Long stationId) {
-        ChargingStation station = chargingStationRepo.findById(stationId)
+        chargingStationRepo.findById(stationId)
                 .orElseThrow(() -> new AppException.NotFoundException("Charging station not found"));
 
-        List<Reservation> reservations = reservationRepo.findByStationId(station.getId());
-        List<Long> reservationIds = reservations.stream()
-                .map(Reservation::getId)
-                .toList();
+        List<PaymentTransaction> payments = new ArrayList<>();
+        payments.addAll(txRepo.findReservationPaymentsByStation(stationId));
+        payments.addAll(txRepo.findSessionPaymentsByStation(stationId));
 
-        List<PaymentTransaction> payments = txRepo.findByTypeAndReferenceIdIn("RESERVATION",reservationIds);
         return payments.stream()
                 .map(mapper::toResponse)
                 .toList();
