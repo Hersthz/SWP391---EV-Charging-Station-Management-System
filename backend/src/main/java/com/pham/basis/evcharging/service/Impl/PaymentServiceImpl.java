@@ -150,7 +150,8 @@ public class PaymentServiceImpl implements PaymentService {
         if ("SUCCESS".equals(tx.getStatus())) {
             loyaltyPointService.addPointsAfterCharging(
                     tx.getUser().getId(),
-                    tx.getAmount()
+                    tx.getAmount(),
+                    tx.getReferenceId()
             );
         }
         txRepo.save(tx);

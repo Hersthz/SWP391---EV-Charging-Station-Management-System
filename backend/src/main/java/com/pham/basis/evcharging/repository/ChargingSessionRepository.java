@@ -10,12 +10,14 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChargingSessionRepository extends JpaRepository<ChargingSession, Long> {
     Page<ChargingSession> findByDriver_Id(Long driverId, Pageable pageable);
     List<ChargingSession> findByDriver_Id(Long driverId);
     Long countByDriver_Id(Long driverId);
+    Optional<ChargingSession> findById(Long id);
 
     @Query("SELECT COALESCE(SUM(s.energyCount), 0) FROM ChargingSession s")
     Double sumTotalEnergy();

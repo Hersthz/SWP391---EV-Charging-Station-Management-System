@@ -178,7 +178,8 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         if ("SUCCESS".equals(paymentResponse.getStatus())) {
             loyaltyPointService.addPointsAfterCharging(
                     session.getDriver().getId(),
-                    session.getChargedAmount()
+                    session.getChargedAmount(),
+                    session.getId()
             );
         }
 

@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface LoyaltyPointService {
-    void addPointsAfterCharging(Long sessionId, BigDecimal chargedAmount);
+    void addPointsAfterCharging(Long userId, BigDecimal chargedAmount,Long sessionId);
     List<LoyaltyPointResponse> getPointHistory(Long userId);
     List<VoucherResponse> getAvailableVouchers();
     void redeemVoucher(RedeemVoucherRequest request);

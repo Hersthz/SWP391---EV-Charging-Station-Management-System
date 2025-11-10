@@ -5,6 +5,7 @@ import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
 import com.pham.basis.evcharging.service.LoyaltyPointService;
+import jakarta.mail.Session;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,18 +23,20 @@ public class LoyaltyPointServiceImpl implements LoyaltyPointService {
     private final LoyaltyPointRepository pointRepository;
     private final VoucherRepository voucherRepository;
     private final UserVoucherRepository userVoucherRepository;
-
+    private final ChargingSessionRepository chargingSessionRepository;
     @Override
-    public void addPointsAfterCharging(Long userId, BigDecimal chargedAmount) {
+    public void addPointsAfterCharging(Long userId, BigDecimal chargedAmount, Long sessionId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        ChargingSession session = chargingSessionRepository.findById(sessionId).orElseThrow(()->new RuntimeException("Session not found"));
         BigDecimal divisor = new BigDecimal("10000");
         int points = chargedAmount.divide(divisor, 0, RoundingMode.FLOOR).intValue();
 
         if (points > 0) {
             LoyaltyPoint lp = new LoyaltyPoint();
             lp.setUser(user);
+            lp.setSession(session);
             lp.setPointsEarned(points);
             pointRepository.save(lp);
 
