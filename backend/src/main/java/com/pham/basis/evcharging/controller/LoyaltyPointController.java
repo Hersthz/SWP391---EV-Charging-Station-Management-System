@@ -34,14 +34,4 @@ public class LoyaltyPointController {
                 .message("Voucher redeemed successfully")
                 .build();
     }
-
-    @GetMapping("/my-vouchers/{userId}")
-    public ApiResponse<List<UserVoucherResponse>> myVouchers(@PathVariable Long userId) {
-        List<UserVoucherResponse> userVouchers = loyaltyPointService.getUserVouchers(userId);
-        return ApiResponse.<List<UserVoucherResponse>>builder()
-                .code("200")
-                .message("Fetched user vouchers successfully")
-                .data(userVouchers)
-                .build();
-    }
 }

@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { toast } from "sonner";
-import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Zap, Mail, Lock, User, Eye, EyeOff, ArrowLeft, X } from "lucide-react";
 import api from "../api/axios";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -41,7 +41,6 @@ const GoogleButton = ({ onClick }: { onClick?: () => void }) => (
   </button>
 );
 
-
 interface LoginResponse {
   username: string;
   role: string;
@@ -64,6 +63,11 @@ const Login = () => {
 
   const [tab, setTab] = useState<"login" | "register">("login");
 
+  // Forgot Password: state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -74,7 +78,6 @@ const Login = () => {
     localStorage.removeItem("role");
     localStorage.removeItem("full_name");
   }, []);
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +172,37 @@ const Login = () => {
     }
   };
 
+  // Forgot Password: submit
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotLoading) return;
+    const email = forgotEmail.trim();
+    if (!email) {
+      toast.error("Please enter your email");
+      return;
+    }
+    if (!validateEmail(email)) {
+      toast.error("Invalid email address");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      await api.post(
+        "/auth/forgot-password",
+        { email },
+        { _skipAuthRefresh: true } as any
+      );
+      toast.success("We sent a reset link to your email.");
+      setForgotOpen(false);
+      setForgotEmail("");
+    } catch (err: any) {
+      const message = err?.response?.data?.message ?? "Failed to start password reset";
+      toast.error(message);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const formVariants: Variants = {
     hiddenLeft: {
       opacity: 0,
@@ -186,7 +220,6 @@ const Login = () => {
       transition: { duration: 0.5, ease: "easeInOut" }
     },
   };
-
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4 ">
@@ -305,6 +338,17 @@ const Login = () => {
                           >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </Button>
+                        </div>
+
+                        {/* Forgot Password: link */}
+                        <div className="text-right mt-1">
+                          <button
+                            type="button"
+                            onClick={() => setForgotOpen(true)}
+                            className="text-sm text-emerald-700 hover:underline"
+                          >
+                            Forgot password?
+                          </button>
                         </div>
                       </div>
 
@@ -457,10 +501,62 @@ const Login = () => {
           </CardContent>
         </motion.div>
       </div>
+
+      {/* Forgot Password Modal (simple, no external deps) */}
+      {forgotOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setForgotOpen(false)} />
+          <div className="relative z-10 w-full max-w-md mx-4 rounded-xl bg-white/90 backdrop-blur-xl border border-white/60 shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/70">
+              <h3 className="text-lg font-semibold text-slate-900">Reset password</h3>
+              <button
+                className="p-2 rounded-md hover:bg-slate-100 text-slate-600"
+                onClick={() => setForgotOpen(false)}
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleForgotSubmit} className="p-5 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email" className="text-slate-700">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="Enter your account email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="h-11 bg-white/70 border-slate-300"
+                  required
+                />
+                <p className="text-xs text-slate-500">
+                  We’ll send a password reset link to this email.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="flex-1 h-11 text-white bg-gradient-to-r from-emerald-500 to-cyan-600 hover:brightness-110"
+                >
+                  {forgotLoading ? "Sending..." : "Send reset link"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setForgotOpen(false)}
+                  className="h-11"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
 
 type Sparkle = {
   id: number;
@@ -469,8 +565,8 @@ type Sparkle = {
   baseOpacity: number;
   opacity: number;
   speedX: number; speedY: number;
-  phase: number;         
-  pulse: number;          
+  phase: number;
+  pulse: number;
   layer: "back" | "mid" | "front";
 };
 
@@ -496,7 +592,7 @@ const EnergyParticleBackground = () => {
       speedX: rand(cfg.vx[0], cfg.vx[1]),
       speedY: rand(cfg.vy[0], cfg.vy[1]),
       phase: Math.random()*Math.PI*2,
-      pulse: rand(0.008, 0.02), 
+      pulse: rand(0.008, 0.02),
       layer,
     };
   };
@@ -506,7 +602,7 @@ const EnergyParticleBackground = () => {
     let id = 0;
     for (let i=0;i<120;i++) arr.push(createSparkle(id++,"back"));
     for (let i=0;i<140;i++) arr.push(createSparkle(id++,"mid"));
-    for (let i=0;i<90;i++)  arr.push(createSparkle(id++,"front")); 
+    for (let i=0;i<90;i++)  arr.push(createSparkle(id++,"front"));
     setSparkles(arr);
   }, []);
 

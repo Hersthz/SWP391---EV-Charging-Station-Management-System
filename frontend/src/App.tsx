@@ -38,7 +38,7 @@ import StaffPayment from "./components/staff/StaffPayment";
 import AdminKyc from "./components/admin/AdminKyc";
 import CashPayment from "./pages/payment/CashPayment";
 import SessionVoucher from "./pages/charging/SessionVoucher";
-
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +85,7 @@ const App = () => (
           <Route path="/wallet/topup-result" element={<WalletTopupResult />} />
           <Route path="/voucher" element={<VoucherPage />} />
           <Route path="/stations/:stationId/review" element={<StationReviewPage />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
