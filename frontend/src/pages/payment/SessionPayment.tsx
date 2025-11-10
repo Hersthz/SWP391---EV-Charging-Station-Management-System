@@ -129,6 +129,76 @@ export default function SessionPayment() {
     }
   }, [init]);
 
+  // ===== Voucher state & helpers =====
+  // <<< voucher: types & readers
+  type AppliedVoucher = {
+    type: "USER_VOUCHER" | "CATALOG_VOUCHER";
+    userVoucherId?: number;
+    code: string;
+    name?: string;
+    discountType: "PERCENT" | "AMOUNT";
+    discountValue: number;
+    minAmount?: number;
+    maxDiscount?: number;
+  };
+  const readAppliedVoucher = (sid: number): AppliedVoucher | null => {
+    try {
+      return JSON.parse(localStorage.getItem(`apply_voucher_session_${sid}`) || "null");
+    } catch {
+      return null;
+    }
+  };
+
+  const [voucher, setVoucher] = useState<AppliedVoucher | null>(null);
+  useEffect(() => {
+    if (init?.sessionId) setVoucher(readAppliedVoucher(init.sessionId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [init?.sessionId, location.key]);
+
+  const removeVoucher = () => {
+    if (!init?.sessionId) return;
+    localStorage.removeItem(`apply_voucher_session_${init.sessionId}`);
+    setVoucher(null);
+  };
+
+  const goPickVoucher = () => {
+    if (!init?.sessionId) return;
+    nav("/session/voucher", {
+      state: {
+        tab: "mine",
+        returnTo: window.location.pathname + window.location.search,
+        sessionId: init.sessionId,
+        amount: init.amount ?? 0,
+      },
+    });
+  };
+  // >>> voucher
+
+  // === derived display ===
+  const amountText = fmtUSD(init.amount);
+  const energyText = fmtEnergy(init.energyKwh);
+  const startTxt = fmtDateTime(init.startTime);
+  const endTxt = fmtDateTime(init.endTime);
+
+  // <<< voucher: compute discount & final
+  const rawVnd = Math.max(0, Math.round(Number(init.amount) || 0));
+  const discountVnd = (() => {
+    if (!voucher) return 0;
+    if (voucher.minAmount && rawVnd < voucher.minAmount) return 0;
+    if (voucher.discountType === "PERCENT") {
+      const d = Math.floor((rawVnd * (voucher.discountValue || 0)) / 100);
+      return Math.max(0, Math.min(d, voucher.maxDiscount ?? d));
+    }
+    return Math.max(0, Math.min(Math.round(voucher.discountValue || 0), rawVnd));
+  })();
+  const finalVnd = Math.max(0, rawVnd - discountVnd);
+  const hasInvalidVoucher = !!voucher && voucher.minAmount && rawVnd < voucher.minAmount;
+  const amountTextAfter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(finalVnd);
+  // >>> voucher
+
   const onPay = async () => {
     if (submitting) return;
 
@@ -139,17 +209,21 @@ export default function SessionPayment() {
       const BACKEND_URL =
         (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8080";
       const returnUrl = `${BACKEND_URL}/api/payment/payment-return`;
-      const amountVnd = Math.round(Number(init.amount) || 0);
 
-      const body = {
+      // <<< voucher: pay final amount (VND)
+      const amountVnd = Math.max(0, Math.round(finalVnd));
+      const body: any = {
         amount: amountVnd,
         returnUrl,
         locale: "en",
-        description: init.description,
+        description: voucher ? `${init.description} [voucher:${voucher.code}]` : init.description,
         type: "CHARGING-SESSION",
         referenceId: init.sessionId,
         method: "VNPAY" as Method,
       };
+      if (voucher?.code) body.voucherCode = voucher.code;
+      if (voucher?.userVoucherId) body.userVoucherId = voucher.userVoucherId;
+      // >>> voucher
 
       const { data } = await api.post("/api/payment/create", body, { withCredentials: true });
       const res: { code?: string; message?: string; data?: PaymentResponse } = data;
@@ -174,12 +248,6 @@ export default function SessionPayment() {
       setSubmitting(false);
     }
   };
-
-  // === derived display ===
-  const amountText = fmtUSD(init.amount);
-  const energyText = fmtEnergy(init.energyKwh);
-  const startTxt = fmtDateTime(init.startTime);
-  const endTxt = fmtDateTime(init.endTime);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
@@ -220,9 +288,17 @@ export default function SessionPayment() {
 
               <div className="text-right">
                 <div className="text-sm text-slate-600">Payable amount</div>
+                {/* <<< voucher: show final amount + strike-through original if applied */}
                 <div className="text-3xl font-extrabold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
-                  {amountText}
+                  {amountTextAfter}
                 </div>
+                {voucher && (
+                  <div className="mt-1 text-xs text-slate-600">
+                    <span className="line-through opacity-70">{amountText}</span>{" "}
+                    − voucher <b>{voucher.code}</b>
+                  </div>
+                )}
+                {/* >>> voucher */}
               </div>
             </div>
           </CardHeader>
@@ -245,7 +321,7 @@ export default function SessionPayment() {
                 <Battery className="w-5 h-5 text-emerald-600 mr-3" />
                 <div>
                   <div className="text-sm text-muted-foreground">Energy</div>
-                  <div className="font-bold">{energyText}</div>
+                  <div className="font-bold">{fmtEnergy(init.energyKwh)}</div>
                 </div>
               </div>
             </div>
@@ -256,7 +332,7 @@ export default function SessionPayment() {
                 <Calendar className="w-5 h-5 text-primary mr-3" />
                 <div>
                   <div className="text-sm text-muted-foreground">Start time</div>
-                  <div className="font-bold">{startTxt}</div>
+                  <div className="font-bold">{fmtDateTime(init.startTime)}</div>
                 </div>
               </div>
 
@@ -264,7 +340,7 @@ export default function SessionPayment() {
                 <Clock className="w-5 h-5 text-primary mr-3" />
                 <div>
                   <div className="text-sm text-muted-foreground">End time</div>
-                  <div className="font-bold">{endTxt}</div>
+                  <div className="font-bold">{fmtDateTime(init.endTime)}</div>
                 </div>
               </div>
             </div>
@@ -282,6 +358,48 @@ export default function SessionPayment() {
             </div>
           </CardContent>
         </Card>
+
+        {/* <<< voucher: breakdown card */}
+        {voucher ? (
+          <Card className="border-emerald-100 bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Voucher applied</CardTitle>
+              <CardDescription className={hasInvalidVoucher ? "text-rose-600" : ""}>
+                {(voucher.name || voucher.code)} · {voucher.discountType === "PERCENT" ? `${voucher.discountValue}%` : `${(voucher.discountValue||0).toLocaleString("vi-VN")} đ`}
+                {voucher.maxDiscount ? ` · Max ${(voucher.maxDiscount).toLocaleString("vi-VN")} đ` : ""}
+                {voucher.minAmount ? ` · Min ${(voucher.minAmount).toLocaleString("vi-VN")} đ` : ""}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Subtotal</span>
+                <span>{rawVnd.toLocaleString("vi-VN")} đ</span>
+              </div>
+              <div className={`flex items-center justify-between text-sm ${hasInvalidVoucher ? "text-rose-600" : "text-emerald-700"}`}>
+                <span>Discount ({voucher.code})</span>
+                <span>− {discountVnd.toLocaleString("vi-VN")} đ</span>
+              </div>
+              <div className="flex items-center justify-between font-bold">
+                <span>Total</span>
+                <span>{finalVnd.toLocaleString("vi-VN")} đ</span>
+              </div>
+              <div className="pt-2 flex gap-2">
+                <Button variant="outline" onClick={removeVoucher}>Remove voucher</Button>
+                <Button variant="secondary" onClick={goPickVoucher}>Change…</Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-slate-600">No voucher applied</div>
+                <Button variant="outline" onClick={goPickVoucher}>Apply voucher</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {/* >>> voucher */}
 
         {/* Method: VNPay only */}
         <Card className="border-sky-100 shadow-card bg-white">
@@ -310,7 +428,7 @@ export default function SessionPayment() {
 
             <Button
               onClick={onPay}
-              disabled={submitting}
+              disabled={!!submitting || !!hasInvalidVoucher} // <<< voucher: chặn thanh toán khi voucher không hợp lệ
               className="w-full h-12 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
             >
               {submitting ? (

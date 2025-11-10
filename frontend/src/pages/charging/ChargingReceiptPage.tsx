@@ -13,6 +13,7 @@ import {
   MapPin,
   Printer,
   Share2,
+  TicketPercent,
   Zap,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -113,6 +114,7 @@ const ChargingReceiptPage = () => {
       const needPay =
         (typeof stop?.requiresPayment === "boolean" ? stop.requiresPayment : undefined) ??
         !(methodUpper === "WALLET" || methodUpper === "CASH");
+      setPayRequired(!!needPay);
 
       // 2) Reservation brief: ưu tiên cache, nếu thiếu thì lấy theo kiểu StatusCards
       let brief = reservationIdParam
@@ -323,6 +325,18 @@ const ChargingReceiptPage = () => {
 
   const mustPay = payRequired && (snap?.chargedAmount ?? 0) > 0;
 
+  const openVoucher = () => {
+    if (!snap) return;
+    navigate("/session/voucher", {
+      state: {
+        tab: "mine",                     // mở trực tiếp tab My Vouchers
+        returnTo: window.location.pathname + window.location.search, // quay về lại receipt
+        sessionId: snap.id,
+        amount: snap.chargedAmount ?? 0, // để voucher page có thể gợi ý lọc theo minAmount
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -473,9 +487,12 @@ const ChargingReceiptPage = () => {
             </Button>
           )}
           
-          <Button variant="outline" onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share</Button>
-          <Button variant="outline" onClick={onPrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
-          <Button onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download PDF</Button>
+          {mustPay && (
+            <Button variant="outline" onClick={openVoucher}>
+              <TicketPercent className="w-4 h-4 mr-2" />
+              Apply voucher
+            </Button>
+          )}
         </div>
 
         {/* Footer note for print */}

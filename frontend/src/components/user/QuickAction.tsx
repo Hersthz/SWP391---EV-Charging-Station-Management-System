@@ -51,9 +51,9 @@ const QuickActions = () => {
     },
     {
       icon: HeadphonesIcon,
-      title: "Your Plan",
-      desc: "Manage your subscription",
-      action: () => navigate("/subscription"),
+      title: "Your Voucher",
+      desc: "Manage your vouchers",
+      action: () => navigate("/voucher"),
       tone: {
         grad: "from-emerald-600 via-green-500 to-lime-500",
         ring: "ring-emerald-200/50",
@@ -61,7 +61,7 @@ const QuickActions = () => {
         btnText: "text-emerald-700",
         orb: "bg-lime-300/30",
       },
-      btnText: "View Subscription",
+      btnText: "View Vouchers",
     },
   ];
 

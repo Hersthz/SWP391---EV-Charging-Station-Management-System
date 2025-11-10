@@ -32,12 +32,13 @@ import ChargingReceiptPage from "./pages/charging/ChargingReceiptPage";
 import SessionPayment from "./pages/payment/SessionPayment";
 import SessionPaymentResult from "./pages/payment/SessionPaymentResult";
 import WalletTopupResult from "./pages/payment/WalletTopupResult";
-import SubscriptionPage from "./pages/actions/SubscriptionPage";
+import VoucherPage from "./pages/actions/VoucherPage";
 import StationReviewPage from "./pages/actions/StationReviewPage";
 import StaffReservations from "./components/staff/StaffReservations";
 import StaffPayment from "./components/staff/StaffPayment";
 import AdminKyc from "./components/admin/AdminKyc";
 import CashPayment from "./pages/payment/CashPayment";
+import SessionVoucher from "./pages/charging/SessionVoucher";
 
 
 const queryClient = new QueryClient();
@@ -80,10 +81,11 @@ const App = () => (
           <Route path="/charging" element={<ChargingSessionPage />} />
           <Route path="/charging/receipt" element={<ChargingReceiptPage />} />
           <Route path="/session/payment" element={<SessionPayment />} />
+          <Route path="/session/voucher" element={<SessionVoucher />} />
           <Route path="/session/payment/cash" element={<CashPayment />} />
           <Route path="/session-payment-result" element={<SessionPaymentResult />} />
           <Route path="/wallet/topup-result" element={<WalletTopupResult />} />
-          <Route path="/subscription" element={<SubscriptionPage />} />
+          <Route path="/voucher" element={<VoucherPage />} />
           <Route path="/stations/:stationId/review" element={<StationReviewPage />} />
         </Routes>
       </BrowserRouter>
