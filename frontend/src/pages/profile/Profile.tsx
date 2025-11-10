@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User, Mail, Phone, Shield, Key, Bell, Globe, Sun, Car, Plus, Edit, Trash2,
-  Battery, Zap, Save, ArrowLeft, Camera, CreditCard, PlugZap,IdCard
+  Battery, Zap, Save, ArrowLeft, Camera, CreditCard, PlugZap, IdCard
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
@@ -126,7 +126,7 @@ const Profile = () => {
 
   // view
   const [activeTab, setActiveTab] =
-    useState<"profile" | "vehicles" | "security" | "preferences">("profile");
+    useState<"profile" | "vehicles" | "security">("profile");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // user state
@@ -139,6 +139,9 @@ const Profile = () => {
   // avatar state
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  // password policy (LOCAL can change; GOOGLE cannot)
+  const [canChangePwd, setCanChangePwd] = useState(false);
 
   const initials = useMemo(
     () =>
@@ -190,6 +193,23 @@ const Profile = () => {
           localStorage.setItem("date", String(data.dateOfBirth));
         }
         if (data.url) setAvatarUrl(data.url as string);
+
+        // --- Detect provider / quyền đổi password ---
+        const providerFromApi = String(
+          data?.provider ?? data?.authProvider ?? data?.loginType ?? data?.oauthProvider ?? ""
+        ).toUpperCase();
+        const hasPasswordFlag = Boolean(data?.passwordSet ?? data?.hasPassword);
+        const providerFromLS = String(localStorage.getItem("authProvider") || "").toUpperCase();
+
+        const isLocal =
+          hasPasswordFlag ||
+          providerFromApi === "" ||
+          providerFromApi === "LOCAL" ||
+          providerFromApi === "PASSWORD" ||
+          providerFromLS === "LOCAL" ||
+          providerFromLS === "PASSWORD";
+
+        setCanChangePwd(!!isLocal);
 
         // vehicles
         setLoadingVehicles(true);
@@ -457,7 +477,7 @@ const Profile = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-[#F7FAFD] p-1.5 ring-1 ring-slate-200/70 h-auto gap-1">
+          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[#F7FAFD] p-1.5 ring-1 ring-slate-200/70 h-auto gap-1">
             <TabsTrigger value="profile" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
               <User className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
               <span className="text-sm font-medium">Profile</span>
@@ -469,10 +489,6 @@ const Profile = () => {
             <TabsTrigger value="security" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
               <Shield className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
               <span className="text-sm font-medium">Security</span>
-            </TabsTrigger>
-            <TabsTrigger value="preferences" className="group w-full rounded-xl px-6 py-3 text-slate-600 font-medium hover:text-slate-700 data-[state=active]:text-white data-[state=active]:shadow-[0_6px_20px_-6px_rgba(14,165,233,.45)] data-[state=active]:bg-[linear-gradient(90deg,#0EA5E9_0%,#10B981_100%)] transition-all flex items-center justify-center gap-2">
-              <Bell className="w-4 h-4 opacity-70 group-data-[state=active]:opacity-100" />
-              <span className="text-sm font-medium">Setting</span>
             </TabsTrigger>
           </TabsList>
 
@@ -811,12 +827,25 @@ const Profile = () => {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                {!canChangePwd && (
+                  <div className="p-3 rounded-lg border bg-sky-50/70 text-sky-800 text-sm">
+                    You signed in with Google. Password changes are managed by your Google account.
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword" className="flex items-center gap-2">
                       <Key className="w-4 h-4 text-primary" /> Current password
                     </Label>
-                    <Input id="currentPassword" type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} className="border-2 border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/40" />
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={passwords.current}
+                      onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                      className="border-2 border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/40"
+                      disabled={!canChangePwd}
+                    />
                   </div>
 
                   <Separator />
@@ -825,23 +854,41 @@ const Profile = () => {
                     <Label htmlFor="newPassword" className="flex items-center gap-2">
                       <Key className="w-4 h-4 text-primary" /> New password
                     </Label>
-                    <Input id="newPassword" type="password" value={passwords.new} onChange={(e) => setPasswords({ ...passwords, new: e.target.value })} className="border-2 border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/40" />
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={passwords.new}
+                      onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                      className="border-2 border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/40"
+                      disabled={!canChangePwd}
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="flex items-center gap-2">
                       <Key className="w-4 h-4 text-primary" /> Confirm new password
                     </Label>
-                    <Input id="confirmPassword" type="password" value={passwords.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} className="border-2 border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/40" />
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={passwords.confirm}
+                      onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                      className="border-2 border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/40"
+                      disabled={!canChangePwd}
+                    />
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={handleChangePassword} className="bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-2 focus-visible:ring-sky-400 shadow-md" disabled={isChangingPwd}>
+                    <Button
+                      onClick={handleChangePassword}
+                      className="bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-2 focus-visible:ring-sky-400 shadow-md"
+                      disabled={isChangingPwd || !canChangePwd}
+                    >
                       {isChangingPwd ? "Processing..." : "Change password"}
                     </Button>
                   </div>
                 </div>
-                
+
                 {/* KYC quick access */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-sky-50/60 border border-sky-200">
                   <div className="flex items-center gap-3">
@@ -858,101 +905,6 @@ const Profile = () => {
                     className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90"
                   >
                     Go to KYC
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* PREFERENCES */}
-          <TabsContent value="preferences" className="space-y-6 animate-fade-in">
-            <Card className="shadow-electric border-0 bg-gradient-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Bell className="w-6 h-6 text-primary" /> Notifications
-                </CardTitle>
-                <CardDescription>Choose how you prefer to be notified</CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Email notifications</p>
-                      <p className="text-sm text-muted-foreground">Receive alerts by email</p>
-                    </div>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-electric border-0 bg-gradient-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Globe className="w-6 h-6 text-primary" /> General
-                </CardTitle>
-                <CardDescription>Tweak global preferences</CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <Sun className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Dark mode</p>
-                      <p className="text-sm text-muted-foreground">Switch the theme between light/dark</p>
-                    </div>
-                  </div>
-                  <Switch />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="language" className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-primary" /> Language
-                  </Label>
-                  <Select defaultValue="vi">
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="vi">Tiếng Việt</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ja">日本語</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currency" className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-primary" /> Currency
-                  </Label>
-                  <Select defaultValue="VND">
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="VND">VND (₫)</SelectItem>
-                      <SelectItem value="USD">USD ($)</SelectItem>
-                      <SelectItem value="EUR">EUR (€)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="font-medium">Auto booking</p>
-                    <p className="text-sm text-muted-foreground">Automatically book when battery lower than 20%</p>
-                  </div>
-                  <Switch />
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button
-                    onClick={() => toast({ title: "Preferences saved", description: "Your preferences have been updated." })}
-                    className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:opacity-90 shadow-electric"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save preferences
                   </Button>
                 </div>
               </CardContent>

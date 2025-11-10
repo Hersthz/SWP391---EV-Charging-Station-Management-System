@@ -21,7 +21,7 @@ type VehicleBE = {
   maxPower?: number;
   range?: number;
   battery?: number;        // kWh
-  currentSoc?: number;         // 0..1 or 0..100
+  currentSoc?: number;     // 0..1 or 0..100
   batteryHealthPct?: number;
   connectorStandard?: string; // "Type 2"/"CCS"...
 };
@@ -60,25 +60,25 @@ const VehicleSection = () => {
         const arr: VehicleBE[] = (vRes?.data?.data ?? vRes?.data ?? []) as VehicleBE[];
 
         if (!ignore) {
-          setList(arr.length ? arr : [
-            // fallback 1 xe cho demo nếu BE trả rỗng
-            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, currentSoc: Number(localStorage.getItem("currentSoc") ?? 78) }
-          ]);
-          setIdx(0);
+          setList(arr);
+          if (arr.length > 0) setIdx(0);
         }
       } catch {
         if (!ignore) {
-          setList([
-            { id: 0, make: "Tesla", model: "Model 3", year: 2023, variant: "Long Range", chargerType: "Type 2 / CCS", connectorStandard: "CCS", maxPower: 250, range: 400, battery: 75, currentSoc: Number(localStorage.getItem("currentSoc") ?? 78) }
-          ]);
-          setIdx(0);
+          // Không dùng mock nữa: khi lỗi hoặc rỗng thì để list = [] và không hiển thị
+          setList([]);
         }
       } finally {
         if (!ignore) setLoading(false);
       }
     })();
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, []);
+
+  // Nếu chưa có xe thì ẩn luôn component
+  if (!loading && list.length === 0) return null;
 
   const veh = list[idx];
   const tags = useMemo(() => {
@@ -88,19 +88,31 @@ const VehicleSection = () => {
     return Array.from(new Set(arr));
   }, [veh]);
 
-  const socPct = typeof veh?.currentSoc === "number" ? Math.max(0, Math.min(100, pctFrom01or100(veh.currentSoc)!)) : undefined;
+  const socPct =
+    typeof veh?.currentSoc === "number"
+      ? Math.max(0, Math.min(100, pctFrom01or100(veh.currentSoc)!))
+      : undefined;
 
   /* =========================
      Selector handlers
   ========================= */
-  const select = useCallback((i: number) => {
-    if (!list.length) return;
-    const n = Math.max(0, Math.min(i, list.length - 1));
-    setIdx(n);
-  }, [list]);
+  const select = useCallback(
+    (i: number) => {
+      if (!list.length) return;
+      const n = Math.max(0, Math.min(i, list.length - 1));
+      setIdx(n);
+    },
+    [list]
+  );
 
-  const prev = useCallback(() => select((idx - 1 + list.length) % list.length), [idx, list.length, select]);
-  const next = useCallback(() => select((idx + 1) % list.length), [idx, list.length, select]);
+  const prev = useCallback(
+    () => select((idx - 1 + list.length) % list.length),
+    [idx, list.length, select]
+  );
+  const next = useCallback(
+    () => select((idx + 1) % list.length),
+    [idx, list.length, select]
+  );
 
   return (
     <div className="group [perspective:1200px]">
@@ -128,10 +140,22 @@ const VehicleSection = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="rounded-full" onClick={prev} disabled={!list.length || loading}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full"
+            onClick={prev}
+            disabled={!list.length || loading}
+          >
             ‹
           </Button>
-          <Button variant="outline" size="icon" className="rounded-full" onClick={next} disabled={!list.length || loading}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full"
+            onClick={next}
+            disabled={!list.length || loading}
+          >
             ›
           </Button>
         </div>
@@ -145,10 +169,12 @@ const VehicleSection = () => {
         "
       >
         {/* moving gradient ribbon */}
-        <div className="pointer-events-none absolute -inset-px rounded-3xl
+        <div
+          className="pointer-events-none absolute -inset-px rounded-3xl
                         after:absolute after:inset-[-2px] after:rounded-[inherit]
                         after:bg-[conic-gradient(from_var(--ang),theme(colors.sky.400),theme(colors.emerald.400),theme(colors.sky.400))]
-                        after:opacity-60 after:blur-[10px] motion-safe:animate-[spin-slow_10s_linear_infinite]" />
+                        after:opacity-60 after:blur-[10px] motion-safe:animate-[spin-slow_10s_linear_infinite]"
+        />
 
         <CardHeader className="relative z-[1] pb-2">
           <CardTitle className="flex items-center gap-2 text-base text-slate-800">
@@ -175,7 +201,10 @@ const VehicleSection = () => {
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {tags.map((t) => (
-                      <Badge key={t} className="bg-sky-50 text-sky-700 border-sky-200 flex items-center gap-1 rounded-full">
+                      <Badge
+                        key={t}
+                        className="bg-sky-50 text-sky-700 border-sky-200 flex items-center gap-1 rounded-full"
+                      >
                         <Plug className="w-3.5 h-3.5" /> {t}
                       </Badge>
                     ))}
@@ -187,7 +216,9 @@ const VehicleSection = () => {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Current Charge</span>
-                  <span className="font-semibold text-slate-900">{typeof socPct === "number" ? `${socPct}%` : "—"}</span>
+                  <span className="font-semibold text-slate-900">
+                    {typeof socPct === "number" ? `${socPct}%` : "—"}
+                  </span>
                 </div>
                 <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                   <motion.div

@@ -157,9 +157,6 @@ export default function ProfileSection() {
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-in fade-in" />
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge className="bg-gradient-to-r from-emerald-500/15 to-sky-500/15 text-emerald-700 border-emerald-500/20">
-                    Premium
-                  </Badge>
                   <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700 border-slate-200">
                     {(me?.role ?? "USER").toString().toUpperCase()}
                   </Badge>

@@ -107,6 +107,7 @@ const Login = () => {
       if (usernameResp) localStorage.setItem("currentUser", String(usernameResp));
       if (roleResp) localStorage.setItem("role", String(roleResp));
       if (fullNameResp) localStorage.setItem("full_name", String(fullNameResp));
+      localStorage.setItem("authProvider", "LOCAL");
 
       toast.success("Login successful!");
       if (roleResp === "ADMIN") navigate("/admin");
@@ -323,6 +324,7 @@ const Login = () => {
                     </div>
                     <GoogleButton
                       onClick={() => {
+                        try { localStorage.setItem("authProvider", "GOOGLE"); } catch {}
                         window.location.href = "http://localhost:8080/oauth2/authorization/google";
                       }}
                     />

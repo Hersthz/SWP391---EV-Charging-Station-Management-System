@@ -1,12 +1,8 @@
 // src/pages/admin/AdminDashboard.tsx
 import { useState, useEffect, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
-  AlertTriangle,
-  CheckCircle,
-  Clock,
   MapPin,
   Users,
   BarChart3,
@@ -48,31 +44,6 @@ const useCurrentDateTime = () => {
   };
 };
 
-// Dữ liệu mock cho Alerts
-const alerts = [
-  {
-    id: 1,
-    type: "error",
-    message: "Station DT-003 offline for 2 hours",
-    time: "15 min ago",
-    priority: "high",
-  },
-  {
-    id: 2,
-    type: "warning",
-    message: "Low utilization at Airport Station #1",
-    time: "1 hour ago",
-    priority: "medium",
-  },
-  {
-    id: 3,
-    type: "success",
-    message: "Scheduled maintenance completed at Mall Station #2",
-    time: "3 hours ago",
-    priority: "low",
-  },
-];
-
 // Variants cho animation
 const containerVariants: Variants = {
   hidden: {},
@@ -96,36 +67,9 @@ const itemVariants: Variants = {
 const AdminDashboard = () => {
   const { time, date } = useCurrentDateTime();
 
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case "error":
-        return <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />;
-      case "warning":
-        return <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />;
-      case "success":
-        return <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />;
-      default:
-        return <Clock className="w-5 h-5 text-slate-500 flex-shrink-0" />;
-    }
-  };
-
-  const getAlertBorder = (type: string) => {
-    switch (type) {
-      case "error":
-        return "border-l-red-500";
-      case "warning":
-        return "border-l-yellow-500";
-      case "success":
-        return "border-l-emerald-500";
-      default:
-        return "border-l-slate-400";
-    }
-  };
-
   return (
     <AdminLayout title="Dashboard Overview">
       <div className="w-full h-full bg-slate-100 text-slate-900">
-        
         {/* === Hero Welcome Card === */}
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
           <Card className="mb-8 bg-gradient-to-r from-emerald-900 via-cyan-900 to-sky-900 border-0 shadow-2xl shadow-cyan-900/20 rounded-3xl text-white overflow-hidden">
@@ -138,7 +82,10 @@ const AdminDashboard = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
                 >
-                  Welcome back, <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Admin!</span>
+                  Welcome back,{" "}
+                  <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                    Admin!
+                  </span>
                 </motion.h1>
                 <motion.p
                   className="text-2xl text-cyan-100/80 mb-4"
@@ -161,15 +108,14 @@ const AdminDashboard = () => {
           </Card>
         </motion.div>
 
-        {/* === Quick Actions & Live Feed === */}
-        <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        {/* === Quick Actions (full width) === */}
+        <motion.div
+          className="grid grid-cols-1 gap-8"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          {/* Quick Actions */}
-          <motion.div className="lg:col-span-2" variants={itemVariants}>
+          <motion.div variants={itemVariants}>
             <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl h-full">
               <CardHeader>
                 <CardTitle className="text-xl font-bold flex items-center text-slate-900">
@@ -177,7 +123,7 @@ const AdminDashboard = () => {
                   Quick Actions
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 <ActionCard
                   title="Manage Stations"
                   description="View live status, utilization, and errors."
@@ -204,61 +150,12 @@ const AdminDashboard = () => {
                   description="Add new staff or manage permissions."
                   icon={<Shield className="w-6 h-6 text-red-600" />}
                   color="red"
-                  href="/admin/staff" 
+                  href="/admin/staff"
                 />
               </CardContent>
             </Card>
           </motion.div>
-
-          {/* Live System Feed */}
-          <motion.div className="lg:col-span-1" variants={itemVariants}>
-            <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl h-full">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold flex items-center text-slate-900">
-                  <AlertTriangle className="w-5 h-5 mr-2 text-yellow-600" />
-                  Live System Feed
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {alerts.map((a) => (
-                  <motion.div
-                    key={a.id}
-                    whileHover={{ scale: 1.03 }}
-                    className={`
-                      relative overflow-hidden rounded-xl border-l-4
-                      ${getAlertBorder(a.type)}
-                      bg-slate-100/80 border border-slate-200/80
-                      p-4 transition-all duration-200 ease-out
-                    `}
-                  >
-                    <div className="flex items-start gap-3">
-                      {getAlertIcon(a.type)}
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800">{a.message}</p>
-                        <div className="mt-1.5 flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                            <Clock className="h-3 w-3" />
-                            {a.time}
-                          </span>
-                          <Badge
-                            variant={
-                              a.priority === "high" ? "destructive" :
-                              a.priority === "medium" ? "secondary" : "outline"
-                            }
-                            className="text-xs px-2 py-0.5 rounded-full capitalize"
-                          >
-                            {a.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </CardContent>
-            </Card>
-          </motion.div>
         </motion.div>
-
       </div>
     </AdminLayout>
   );

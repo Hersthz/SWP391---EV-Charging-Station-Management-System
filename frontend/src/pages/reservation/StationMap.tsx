@@ -465,13 +465,6 @@ const StationMap = () => {
               />
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <div className="w-8 h-8 rounded-full bg-primary/10 grid place-items-center">
-                <span className="text-xs font-semibold">ME</span>
-              </div>
-            </Button>
-          </div>
         </div>
       </header>
 

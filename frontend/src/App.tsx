@@ -12,7 +12,6 @@ import AdminUsers from "./components/admin/AdminUsers";
 import AdminStaff from "./components/admin/AdminStaff";
 import AdminSubscriptions from "./components/admin/AdminSubscriptions";
 import AdminReports from "./components/admin/AdminReports";
-import AdminInsights from "./components/admin/AdminInsights";
 import VerifyEmail from "./pages/actions/VerifyEmail";
 import StationMap from "./pages/reservation/StationMap";
 import Profile from "./pages/profile/Profile";
@@ -72,7 +71,6 @@ const App = () => (
           <Route path="/admin/kyc" element={<AdminKyc />} />
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/reports" element={<AdminReports />} />
-          <Route path="/admin/insights" element={<AdminInsights />} />
           <Route path="/admin/add-station" element={<AdminAddStation />} />
           <Route path="/reservation/deposit" element={<ReservationDeposit />} />
           <Route path="/depositss" element={<DepositSS />} />
