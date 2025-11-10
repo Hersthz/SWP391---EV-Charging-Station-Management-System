@@ -162,7 +162,7 @@ const VoucherPage = () => {
       try {
         setLoadingMine(true);
         const { data } = await api.get<ApiResp<UserVoucher[]>>(
-          `/loyalty-point/my-vouchers/${uid}`,
+          `/api/vouchers/user/${uid}`,
           { withCredentials: true }
         );
         setMyVouchers(data?.data ?? (Array.isArray(data) ? (data as any) : []));

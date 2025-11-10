@@ -10,7 +10,7 @@ import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AdminStations from "./components/admin/AdminStations";
 import AdminUsers from "./components/admin/AdminUsers";
 import AdminStaff from "./components/admin/AdminStaff";
-import AdminSubscriptions from "./components/admin/AdminSubscriptions";
+import AdminVoucher from "./components/admin/AdminVoucher";
 import AdminReports from "./components/admin/AdminReports";
 import VerifyEmail from "./pages/actions/VerifyEmail";
 import StationMap from "./pages/reservation/StationMap";
@@ -69,7 +69,7 @@ const App = () => (
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/staff" element={<AdminStaff />} />
           <Route path="/admin/kyc" element={<AdminKyc />} />
-          <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+          <Route path="/admin/voucher" element={<AdminVoucher />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/add-station" element={<AdminAddStation />} />
           <Route path="/reservation/deposit" element={<ReservationDeposit />} />

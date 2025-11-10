@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,10 +46,22 @@ public class LoyaltyPointServiceImpl implements LoyaltyPointService {
     public List<LoyaltyPointResponse> getPointHistory(Long userId) {
         return pointRepository.findByUserId(userId)
                 .stream()
-                .map(p -> new LoyaltyPointResponse(
-                        p.getPointsEarned(),
-                        p.getSession().getChargedAmount(),
-                        p.getCreatedAt()))
+                .map(p -> {
+                    BigDecimal chargedAmount = null;
+                    if (p.getSession() != null) {
+                        chargedAmount = p.getSession().getChargedAmount();
+                        // Log để debug
+                        System.out.println("Session ID: " + p.getSession().getId() +
+                                ", ChargedAmount: " + chargedAmount);
+                    } else {
+                        System.out.println("Session is NULL for point ID: " + p.getId());
+                    }
+
+                    return new LoyaltyPointResponse(
+                            p.getPointsEarned(),
+                            chargedAmount,
+                            p.getCreatedAt());
+                })
                 .collect(Collectors.toList());
     }
 

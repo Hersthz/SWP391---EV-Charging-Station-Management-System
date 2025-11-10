@@ -11,7 +11,7 @@ const Footer = () => {
               <div className="w-10 h-10 bg-gradient-hero rounded-lg flex items-center justify-center">
                 <Zap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold">ChargeStation</span>
+              <span className="text-xl font-bold">ChargeHub</span>
             </div>
             <p className="text-background/70 leading-relaxed">
               Power your electric journey with smart charging solutions nationwide.

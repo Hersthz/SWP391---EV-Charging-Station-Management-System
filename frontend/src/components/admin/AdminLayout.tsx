@@ -48,7 +48,7 @@ const AdminLayout = ({ children, title, actions }: AdminLayoutProps) => {
     { path: "/admin/users", icon: Users, label: "Users" },
     { path: "/admin/staff", icon: Users, label: "Staff" },
     { path: "/admin/kyc", icon: ShieldCheck, label: "KYC" },
-    { path: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
+    { path: "/admin/voucher", icon: CreditCard, label: "Voucher" },
     { path: "/admin/reports", icon: Database, label: "Reports" },
   ];
 

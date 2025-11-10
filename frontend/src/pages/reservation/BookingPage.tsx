@@ -565,9 +565,9 @@ export default function BookingPage() {
       setServerHoldFee(Number(data.holdFee ?? 0));
       setTransactionId(data.depositTransaction ?? data.depositTransactionId ?? null);
       setCurrentStep("confirmed");
-      toast({ title: "Đặt chỗ thành công", description: `Mã: ${data.reservationId}` });
+      toast({ title: "Booking successfully", description: `ID: ${data.reservationId}` });
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Đặt chỗ thất bại!";
+      const msg = err?.response?.data?.message || "Booking failed!";
       toast({ title: "Lỗi", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);

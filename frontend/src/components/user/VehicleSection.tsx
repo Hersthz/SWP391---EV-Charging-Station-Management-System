@@ -64,10 +64,7 @@ const VehicleSection = () => {
           if (arr.length > 0) setIdx(0);
         }
       } catch {
-        if (!ignore) {
-          // Không dùng mock nữa: khi lỗi hoặc rỗng thì để list = [] và không hiển thị
-          setList([]);
-        }
+        if (!ignore) setList([]);
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -77,10 +74,9 @@ const VehicleSection = () => {
     };
   }, []);
 
-  // Nếu chưa có xe thì ẩn luôn component
-  if (!loading && list.length === 0) return null;
-
+  // luôn xác định veh, tags, socPct bằng hook trước MỌI return sớm
   const veh = list[idx];
+
   const tags = useMemo(() => {
     const arr: string[] = [];
     if (veh?.chargerType) arr.push(veh.chargerType);
@@ -88,10 +84,10 @@ const VehicleSection = () => {
     return Array.from(new Set(arr));
   }, [veh]);
 
-  const socPct =
-    typeof veh?.currentSoc === "number"
-      ? Math.max(0, Math.min(100, pctFrom01or100(veh.currentSoc)!))
-      : undefined;
+  const socPct = useMemo(() => {
+    if (typeof veh?.currentSoc !== "number") return undefined;
+    return Math.max(0, Math.min(100, pctFrom01or100(veh.currentSoc)!));
+  }, [veh]);
 
   /* =========================
      Selector handlers
@@ -106,15 +102,19 @@ const VehicleSection = () => {
   );
 
   const prev = useCallback(
-    () => select((idx - 1 + list.length) % list.length),
-    [idx, list.length, select]
-  );
-  const next = useCallback(
-    () => select((idx + 1) % list.length),
+    () => select((idx - 1 + (list.length || 1)) % (list.length || 1)),
     [idx, list.length, select]
   );
 
-  return (
+  const next = useCallback(
+    () => select((idx + 1) % (list.length || 1)),
+    [idx, list.length, select]
+  );
+
+  // KHÔNG return sớm trước hook; điều kiện hóa ngay trong JSX
+  const shouldHide = !loading && list.length === 0;
+
+  return shouldHide ? null : (
     <div className="group [perspective:1200px]">
       {/* Selector row */}
       <div className="mb-3 flex items-center justify-between">
@@ -145,7 +145,7 @@ const VehicleSection = () => {
             size="icon"
             className="rounded-full"
             onClick={prev}
-            disabled={!list.length || loading}
+            disabled={list.length < 2 || loading}
           >
             ‹
           </Button>
@@ -154,7 +154,7 @@ const VehicleSection = () => {
             size="icon"
             className="rounded-full"
             onClick={next}
-            disabled={!list.length || loading}
+            disabled={list.length < 2 || loading}
           >
             ›
           </Button>
@@ -171,9 +171,9 @@ const VehicleSection = () => {
         {/* moving gradient ribbon */}
         <div
           className="pointer-events-none absolute -inset-px rounded-3xl
-                        after:absolute after:inset-[-2px] after:rounded-[inherit]
-                        after:bg-[conic-gradient(from_var(--ang),theme(colors.sky.400),theme(colors.emerald.400),theme(colors.sky.400))]
-                        after:opacity-60 after:blur-[10px] motion-safe:animate-[spin-slow_10s_linear_infinite]"
+                      after:absolute after:inset-[-2px] after:rounded-[inherit]
+                      after:bg-[conic-gradient(from_var(--ang),theme(colors.sky.400),theme(colors.emerald.400),theme(colors.sky.400))]
+                      after:opacity-60 after:blur-[10px] motion-safe:animate-[spin-slow_10s_linear_infinite]"
         />
 
         <CardHeader className="relative z-[1] pb-2">

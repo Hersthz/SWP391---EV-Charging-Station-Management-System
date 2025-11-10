@@ -284,11 +284,11 @@ const AdminReports = () => {
             </Link>
 
             <Link 
-              to="/admin/subscriptions" 
+              to="/admin/voucher" 
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <CreditCard className="w-4 h-4" />
-              <span>Subscriptions</span>
+              <span>Voucher</span>
             </Link>
             
             <Link 
