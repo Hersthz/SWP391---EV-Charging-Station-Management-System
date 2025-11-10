@@ -15,13 +15,10 @@ import java.util.Optional;
 @Repository
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction,Long> {
 
-    // Check if transaction reference already exists
     boolean existsByTxnRef(String txnRef);
 
-    // Find transaction by reference
     Optional<PaymentTransaction> findByTxnRef(String txnRef);
 
-    // Find pending transaction by reservation and amount
     @Query("SELECT pt FROM PaymentTransaction pt " +
             "WHERE pt.type = :type AND pt.referenceId = :referenceId " +
             "AND pt.user.id = :userId AND pt.amount = :amount AND pt.status = 'PENDING'"
@@ -58,7 +55,12 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                                          @Param("year") int year,
                                          @Param("month") int month);
 
-    @Query("SELECT COALESCE(SUM(p.amount),0) FROM PaymentTransaction p")
+    @Query("""
+SELECT COALESCE(SUM(pt.amount), 0)
+FROM PaymentTransaction pt
+WHERE pt.status = 'SUCCESS'
+  AND NOT (pt.method = 'VNPAY' AND pt.type = 'WALLET')
+""")
     BigDecimal sumAll();
 
     @Query("""
@@ -79,6 +81,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     WHERE cs.station.id = :stationId
       AND pt.type = 'CHARGING-SESSION'
       AND pt.status = 'SUCCESS'
+      AND NOT (pt.method = 'VNPAY' AND pt.type = 'WALLET')
     """)
     BigDecimal sumRevenueByStation(Long stationId);
 
