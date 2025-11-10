@@ -20,16 +20,7 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     @Query("SELECT COALESCE(SUM(s.energyCount), 0) FROM ChargingSession s")
     Double sumTotalEnergy();
 
-    @Query("""
-    SELECT COALESCE(SUM(cs.energyCount), 0)
-    FROM ChargingSession cs
-    WHERE cs.startTime IS NOT NULL
-      AND FUNCTION('YEAR', cs.startTime) = :year
-      AND FUNCTION('MONTH', cs.startTime) = :month
-""")
-    BigDecimal sumEnergyByMonth(@Param("year") int year,
-                                @Param("month") int month);
-
-    @Query("SELECT COALESCE(SUM(cs.energyCount),0) FROM ChargingSession cs WHERE cs.station.id = :stationId AND cs.status='COMPLETED'")
+    @Query("SELECT COALESCE(SUM(cs.energyCount),0) FROM ChargingSession cs " +
+            "WHERE cs.station.id = :stationId AND cs.status='COMPLETED'")
     BigDecimal sumEnergyByStation(Long stationId);
 }

@@ -5,39 +5,40 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/HomePage";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import AdminDashboard from "./pages/AdminDashboard";
+import UserDashboard from "./pages/dashboard/UserDashboard";
+import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AdminStations from "./components/admin/AdminStations";
 import AdminUsers from "./components/admin/AdminUsers";
 import AdminStaff from "./components/admin/AdminStaff";
 import AdminSubscriptions from "./components/admin/AdminSubscriptions";
 import AdminReports from "./components/admin/AdminReports";
 import AdminInsights from "./components/admin/AdminInsights";
-import VerifyEmail from "./pages/VerifyEmail";
-import StationMap from "./pages/StationMap";
-import Profile from "./pages/Profile";
-import StaffDashboard from "./pages/StaffDashboard";
+import VerifyEmail from "./pages/actions/VerifyEmail";
+import StationMap from "./pages/reservation/StationMap";
+import Profile from "./pages/profile/Profile";
+import StaffDashboard from "./pages/dashboard/StaffDashboard";
 import StaffIncidents from "./components/staff/StaffIncidents";
-import StaffStationMonitor from "./components/staff/StaffStationMonitor";
-import Booking from "./pages/BookingPage";
-import ReportsPage from "./pages/ReportsPage";
+import Booking from "./pages/reservation/BookingPage";
+import ReportsPage from "./pages/actions/ReportsPage";
 import AdminAddStation from "./components/admin/AdminAddStation";
-import WalletPaymentPage from "./pages/WalletPaymentPage";
-import ReservationDeposit from "./pages/ReservationDeposit"
-import DepositSS from "./pages/DepositSS";
-import KycPage from "./pages/KycPage";
-import Checkin from "./pages/Checkin";
-import ChargingSessionPage from "./pages/ChargingSessionPage";
+import WalletPaymentPage from "./pages/actions/WalletPaymentPage";
+import ReservationDeposit from "./pages/payment/ReservationDeposit"
+import DepositSS from "./pages/payment/DepositSS";
+import KycPage from "./pages/profile/KycPage";
+import Checkin from "./pages/reservation/Checkin";
+import ChargingSessionPage from "./pages/charging/ChargingSessionPage";
 import StaffReport from "./components/staff/StaffReport";
-import ChargingReceiptPage from "./pages/ChargingReceiptPage";
-import SessionPayment from "./pages/SessionPayment";
-import SessionPaymentResult from "./pages/SessionPaymentResult";
-import WalletTopupResult from "./pages/WalletTopupResult";
-import SubscriptionPage from "./pages/SubscriptionPage";
-import StationReviewPage from "./pages/StationReviewPage";
+import ChargingReceiptPage from "./pages/charging/ChargingReceiptPage";
+import SessionPayment from "./pages/payment/SessionPayment";
+import SessionPaymentResult from "./pages/payment/SessionPaymentResult";
+import WalletTopupResult from "./pages/payment/WalletTopupResult";
+import SubscriptionPage from "./pages/actions/SubscriptionPage";
+import StationReviewPage from "./pages/actions/StationReviewPage";
 import StaffReservations from "./components/staff/StaffReservations";
 import StaffPayment from "./components/staff/StaffPayment";
 import AdminKyc from "./components/admin/AdminKyc";
+import CashPayment from "./pages/payment/CashPayment";
+
 
 const queryClient = new QueryClient();
 
@@ -50,9 +51,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/staff" element={<StaffDashboard />} />
-          <Route path="/staff/monitor" element={<StaffStationMonitor />} />
           <Route path="/staff/reservations" element={<StaffReservations />} />
           <Route path="/staff/payments" element={<StaffPayment />} />
           <Route path="/staff/incidents" element={<StaffIncidents />} />
@@ -80,6 +80,7 @@ const App = () => (
           <Route path="/charging" element={<ChargingSessionPage />} />
           <Route path="/charging/receipt" element={<ChargingReceiptPage />} />
           <Route path="/session/payment" element={<SessionPayment />} />
+          <Route path="/session/payment/cash" element={<CashPayment />} />
           <Route path="/session-payment-result" element={<SessionPaymentResult />} />
           <Route path="/wallet/topup-result" element={<WalletTopupResult />} />
           <Route path="/subscription" element={<SubscriptionPage />} />

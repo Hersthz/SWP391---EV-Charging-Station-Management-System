@@ -57,6 +57,7 @@ public class PaymentServiceImpl implements PaymentService {
     // Payment methods
     public static final String METHOD_VNPAY = "VNPAY";
     public static final String METHOD_WALLET = "WALLET";
+    public static final String METHOD_CASH = "CASH";
 
     @Override
     @Transactional
@@ -88,6 +89,8 @@ public class PaymentServiceImpl implements PaymentService {
                 return processWalletPayment(req, userId, amountInVND, txnRef);
             } else if (METHOD_VNPAY.equals(req.getMethod())) {
                 return processVnpayPayment(req, userId, amountInVND, txnRef, clientIp);
+            } else if (METHOD_CASH.equals(req.getMethod())) {
+                return processCashPayment(req, userId, amountInVND, txnRef);
             } else {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Unsupported payment method: " + req.getMethod());
@@ -147,6 +150,23 @@ public class PaymentServiceImpl implements PaymentService {
         // Xử lý business logic ngay lập tức
         handlePaymentSuccess(tx);
         return buildPaymentResponse(tx, null); // Không có URL cho wallet
+    }
+
+    private PaymentResponse processCashPayment(PaymentCreateRequest req, Long userId,
+                                               BigDecimal amountInVND, String txnRef) {
+        PaymentTransaction tx = createPaymentTransaction(req, userId, amountInVND, txnRef);
+        tx.setStatus("PENDING");
+        txRepo.save(tx);
+
+        // Gửi thông báo cho nhân viên trạm sạc
+        notificationService.createNotification(
+                userId,
+                "CASH_PAYMENT",
+                "You selected to pay by CASH. Please hand the cash directly to the station staff."
+        );
+
+        log.info("Created CASH payment transaction: {}", txnRef);
+        return buildPaymentResponse(tx, null);
     }
 
     @Override
@@ -210,7 +230,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void validatePaymentMethod(String method) {
-        Set<String> validMethods = Set.of(METHOD_VNPAY, METHOD_WALLET);
+        Set<String> validMethods = Set.of(METHOD_VNPAY, METHOD_WALLET, METHOD_CASH);
         if (method == null || !validMethods.contains(method)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Invalid payment method. Valid methods: " + validMethods);
@@ -608,5 +628,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus("SUCCESS");
         payment.setUpdatedAt(LocalDateTime.now());
         txRepo.save(payment);
+
+        handlePaymentSuccess(payment);
     }
 }

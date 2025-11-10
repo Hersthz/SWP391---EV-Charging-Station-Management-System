@@ -220,7 +220,9 @@ const StaffPayment = () => {
                 </TableHeader>
                 <TableBody>
                   {items.map((r) => {
-                    const canMark = normUp(r.status) !== "SUCCESS";
+                    const isCash = normUp(r.method) === "CASH";
+                    const isDone = normUp(r.status) === "SUCCESS";
+                    const canMark = isCash && !isDone;
                     return (
                       <TableRow key={r.id} className="border-b-slate-200/80 hover:bg-slate-50/50">
                         <TableCell className="font-semibold text-slate-900">{r.id ?? r.transactionId}</TableCell>
@@ -255,7 +257,7 @@ const StaffPayment = () => {
                               className="rounded-full"
                             >
                               <ShieldCheck className="w-4 h-4 mr-2" />
-                              {updating === r.id ? "Updating…" : "Mark SUCCESS"}
+                              {updating === r.id ? "Updating…" : "Accept CASH"}
                             </Button>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>

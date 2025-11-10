@@ -93,7 +93,6 @@ const StaffLayout = ({ children, title, actions }: StaffLayoutProps) => {
   const navItems = useMemo(
     () => [
       { path: "/staff", icon: BarChart3, label: "Dashboard" },
-      { path: "/staff/monitor", icon: MapPin, label: "Monitor Station" },
       { path: "/staff/reservations", icon: CalendarClock, label: "Reservations" },
       { path: "/staff/payments", icon: DollarSign, label: "Payments" },
       { path: "/staff/incidents", icon: AlertTriangle, label: "Incidents" },
