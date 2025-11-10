@@ -9,6 +9,7 @@ import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.mapper.PaymentTransactionMapper;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
+import com.pham.basis.evcharging.service.LoyaltyPointService;
 import com.pham.basis.evcharging.service.NotificationService;
 import com.pham.basis.evcharging.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +45,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final ChargingSessionRepository  chargingSessionRepo;
     private final ChargingStationRepository  chargingStationRepo;
     private final NotificationService notificationService;
+    private final LoyaltyPointService loyaltyPointService;
     private final PaymentTransactionMapper mapper;
 
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
@@ -145,6 +147,12 @@ public class PaymentServiceImpl implements PaymentService {
         // Tạo transaction với status SUCCESS
         PaymentTransaction tx = createPaymentTransaction(req, userId, amountInVND, txnRef);
         tx.setStatus("SUCCESS");
+        if ("SUCCESS".equals(tx.getStatus())) {
+            loyaltyPointService.addPointsAfterCharging(
+                    tx.getUser().getId(),
+                    tx.getAmount()
+            );
+        }
         txRepo.save(tx);
 
         // Xử lý business logic ngay lập tức
