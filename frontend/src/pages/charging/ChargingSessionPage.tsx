@@ -66,17 +66,6 @@ const fmtTime = (sec: number) => {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
 };
 
-
-const fmtMoney = (n: number, currency?: string) =>
-  Number.isFinite(n)
-    ? (currency?.toUpperCase() === "VND"
-        ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n)
-        : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-    : "—";
-
-const toCurrency = (n: number) =>
-  n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 const normalizeSoc = (v: any): number | undefined => {
   const n = Number(v);
   if (!Number.isFinite(n)) return undefined;
@@ -131,6 +120,7 @@ const ChargingSessionPage = () => {
   );
 
   const autoStoppingRef = useRef(false);
+  const resvEndTimer = useRef<number | null>(null);
 
   // --- Station/Pillar label
   const stationName = resv?.stationName || "—";
@@ -165,16 +155,7 @@ const ChargingSessionPage = () => {
     [computedSocFrac]
   );
 
-  // --- ENERGY PROGRESS tới FULL
-  const energyProgress = useMemo(() => {
-    if (!batteryKwh || initialSocFrac == null || !snap) return undefined;
-    if (1 <= initialSocFrac) return undefined;
-    const targetEnergy = (1 - initialSocFrac) * batteryKwh; // tới 100%
-    const pct = Math.min(100, Math.max(0, (snap.energyCount / targetEnergy) * 100));
-    return pct;
-  }, [batteryKwh, initialSocFrac, snap]);
-
-  // ====== Fetch reservation (real) ======
+  // ====== Fetch reservation ======
   useEffect(() => {
     let cancelled = false;
     const loadReservation = async () => {
@@ -306,7 +287,7 @@ const ChargingSessionPage = () => {
         const sn = normalizeSoc(d?.socNow);
         if (typeof sn === "number") setSocNowFromBE(sn);
 
-        // === AUTO STOP: chỉ dừng khi FULL 100% ===
+        // === AUTO STOP: FULL 100% ===
         const nowFrac =
           typeof sn === "number"
             ? sn
@@ -342,7 +323,7 @@ const ChargingSessionPage = () => {
                   method,
                   referenceId: Number(sessionIdParam),
                   description: `Charging session #${sessionIdParam}`
-                }, { withCredentials: true });                            
+                }, { withCredentials: true });
               } catch (e: any) {
                 navigate("/session/payment", {
                   replace: true,
@@ -362,9 +343,36 @@ const ChargingSessionPage = () => {
               }
             }
 
-            localStorage.setItem(`session_stop_${sessionIdParam}`, JSON.stringify(stopPayload));
-
+            // === Normalize các giá trị cốt lõi trước khi lưu ===
             const meta = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
+            const energy = Number(
+              stopPayload?.totalEnergy ??
+              currentEnergyRef.current ??
+              prevLast?.energyCount ??
+              snap?.energyCount ??
+              0
+            );
+            const amount = Number(
+              stopPayload?.totalAmount ??
+              stopPayload?.totalCost ??
+              prevLast?.chargedAmount ??
+              snap?.chargedAmount ??
+              0
+            );
+            const rateCalc = Number(
+              stopPayload?.ratePerKwh ??
+              (energy > 0 && amount > 0 ? amount / energy : NaN)
+            );
+            const currency = String(stopPayload?.currency ?? prevLast?.currency ?? snap?.currency ?? "VND");
+
+            // Gắn ngược vào stopPayload (để Receipt đọc thẳng)
+            stopPayload.totalEnergy = energy;
+            stopPayload.totalAmount = amount;
+            stopPayload.ratePerKwh = Number.isFinite(rateCalc) ? rateCalc : undefined;
+            stopPayload.currency = currency;
+
+            // Lưu STOP chuẩn hoá
+            localStorage.setItem(`session_stop_${sessionIdParam}`, JSON.stringify(stopPayload));
 
             const finalSnap: SessionSnapshot = {
               id: Number(sessionIdParam),
@@ -373,12 +381,12 @@ const ChargingSessionPage = () => {
               driverUserId: snap?.driverUserId,
               vehicleId:   prevLast?.vehicleId ?? snap?.vehicleId ?? meta?.vehicleId ?? stopPayload?.vehicleId,
               status: "COMPLETED",
-              energyCount: Number(stopPayload?.totalEnergy ?? currentEnergyRef.current ?? prevLast?.energyCount ?? 0),
-              chargedAmount: Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? prevLast?.chargedAmount ?? 0),
-              ratePerKwh: Number(stopPayload?.ratePerKwh ?? prevLast?.ratePerKwh ?? 0),
+              energyCount: energy,
+              chargedAmount: amount,
+              ratePerKwh: Number.isFinite(rateCalc) ? rateCalc : undefined,
               startTime: prevLast?.startTime ?? snap?.startTime ?? stopPayload?.startTime ?? new Date().toISOString(),
               endTime:   stopPayload?.endTime ?? new Date().toISOString(),
-              currency:  stopPayload?.currency ?? prevLast?.currency ?? snap?.currency ?? "VND",
+              currency,
               paymentMethod: stopPayload?.paymentMethod ?? prevLast?.paymentMethod ?? (snap as any)?.paymentMethod,
             };
 
@@ -489,10 +497,35 @@ const ChargingSessionPage = () => {
 
       const { data } = await api.post(`/session/${sessionIdParam}/stop`, {}, { withCredentials: true });
       const stopPayload = data?.data ?? data;
+
+      const energy = Number(
+        stopPayload?.totalEnergy ??
+        currentEnergyRef.current ??           // <— ƯU TIÊN NHẤT
+        snap?.energyCount ??                 // <— sau đó mới đến snap (có thể chậm 1 tick)
+        0
+      );
+      const amount = Number(
+        stopPayload?.totalAmount ??
+        stopPayload?.totalCost ??
+        snap?.chargedAmount ??
+        0
+      );
+      const rateCalc = Number(
+        stopPayload?.ratePerKwh ??
+        (energy > 0 && amount > 0 ? amount / energy : NaN)
+      );
+      const currency = String(stopPayload?.currency ?? snap?.currency ?? "VND");
+
+      // Gắn ngược vào stopPayload để Receipt đọc được
+      stopPayload.totalEnergy = energy;
+      stopPayload.totalAmount = amount;
+      stopPayload.ratePerKwh = Number.isFinite(rateCalc) ? rateCalc : undefined;
+      stopPayload.currency = currency;
+
       localStorage.setItem(`session_stop_${sessionIdParam}`, JSON.stringify(stopPayload));
 
       // >>> AUTO-DEDUCT WALLET IF PREPAID <<<
-      const total = Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? 0);
+      const total = amount;
       const method = String(stopPayload?.paymentMethod ?? (snap as any)?.paymentMethod ?? "").toUpperCase();
 
       if ((method === "WALLET" || method === "CASH") && total > 0) {
@@ -514,7 +547,7 @@ const ChargingSessionPage = () => {
               portLabel: resv?.pillarCode || (snap?.pillarId ? `P${snap.pillarId}` : ""),
               startTime: snap?.startTime,
               endTime: stopPayload?.endTime || new Date().toISOString(),
-              energyKwh: stopPayload?.totalEnergy ?? snap?.energyCount ?? 0,
+              energyKwh: energy,
               description: `Charging session #${sessionIdParam}`,
               forceMethod: "VNPAY"
             }
@@ -531,12 +564,12 @@ const ChargingSessionPage = () => {
         driverUserId: snap?.driverUserId,
         vehicleId: snap?.vehicleId,
         status: "COMPLETED",
-        energyCount: Number(snap?.energyCount ?? 0),
-        chargedAmount: Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? snap?.chargedAmount ?? 0),
-        ratePerKwh: snap?.ratePerKwh,
+        energyCount: energy,
+        chargedAmount: amount,
+        ratePerKwh: Number.isFinite(rateCalc) ? rateCalc : undefined,
         startTime: snap?.startTime!,
         endTime: nowIso,
-        currency: snap?.currency ?? "VND",
+        currency,
         paymentMethod: stopPayload?.paymentMethod ?? (snap as any)?.paymentMethod,
       };
       localStorage.setItem(`session_last_${sessionIdParam}`, JSON.stringify(finalSnap));
@@ -553,6 +586,44 @@ const ChargingSessionPage = () => {
       setShowStopConfirm(false);
     }
   };
+
+  /** ===== Auto-stop by reservation endTime ===== */
+  useEffect(() => {
+    // clear any previous timer
+    if (resvEndTimer.current) {
+      clearTimeout(resvEndTimer.current);
+      resvEndTimer.current = null;
+    }
+    if (!sessionIdParam || !resv?.endTime || isCompleted) return;
+
+    const endMs = new Date(resv.endTime).getTime();
+    if (!Number.isFinite(endMs)) return;
+
+    const now = Date.now();
+    if (now >= endMs) {
+      if (!autoStoppingRef.current) {
+        autoStoppingRef.current = true;
+        doStopAndPay();
+      }
+      return;
+    }
+
+    const delay = Math.min(2147483647, endMs - now); // clamp để tránh overflow
+    resvEndTimer.current = window.setTimeout(() => {
+      if (!autoStoppingRef.current) {
+        autoStoppingRef.current = true;
+        doStopAndPay();
+      }
+    }, delay);
+
+    return () => {
+      if (resvEndTimer.current) {
+        clearTimeout(resvEndTimer.current);
+        resvEndTimer.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resv?.endTime, sessionIdParam, isCompleted]);
 
   /** ===== Render ===== */
   return (

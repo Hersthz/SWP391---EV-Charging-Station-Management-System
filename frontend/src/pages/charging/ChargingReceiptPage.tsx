@@ -1,3 +1,4 @@
+// src/pages/ChargingReceiptPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -8,11 +9,8 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
-  Download,
   Hash,
   MapPin,
-  Printer,
-  Share2,
   TicketPercent,
   Zap,
 } from "lucide-react";
@@ -32,12 +30,12 @@ type SessionSnapshot = {
   vehicleId?: number;
   status: string;          // COMPLETED | ...
   energyCount: number;     // kWh
-  chargedAmount: number;   // tiền (USD hoặc VND tùy BE)
+  chargedAmount: number;   // tiền
   ratePerKwh?: number;
   startTime: string;       // ISO
   endTime?: string | null;
-  paymentMethod?: string;  // optional: WALLET/VNPAY/POSTPAID...
-  currency?: string;       // optional: "VND" | "USD" ...
+  paymentMethod?: string;  // WALLET/VNPAY/CASH/...
+  currency?: string;       // "VND" | "USD" ...
 };
 
 type ReservationBrief = {
@@ -57,12 +55,21 @@ type VehicleBrief = {
 };
 
 /** ===== Helpers ===== */
-const POLL_MS = 4000;
-
-const fmtMoney = (n: number) =>
-  Number.isFinite(n)
-    ? `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : "—";
+const fmtMoneyCurrency = (n?: number, currency?: string) => {
+  if (!Number.isFinite(Number(n))) return "—";
+  const cur = (currency || "VND").toUpperCase();
+  try {
+    return new Intl.NumberFormat(cur === "VND" ? "vi-VN" : undefined, {
+      style: "currency",
+      currency: cur,
+      maximumFractionDigits: cur === "VND" ? 0 : 2,
+      minimumFractionDigits: cur === "VND" ? 0 : 2,
+    }).format(Number(n));
+  } catch {
+    // fallback $
+    return `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+};
 
 const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 
@@ -92,11 +99,6 @@ const ChargingReceiptPage = () => {
   const [snap, setSnap] = useState<SessionSnapshot | null>(null);
   const [resv, setResv] = useState<ReservationBrief | null>(null);
   const [veh, setVeh] = useState<VehicleBrief | null>(null);
-  const [payRequired, setPayRequired] = useState(false);
-
-  const [cashTxId, setCashTxId] = useState<number | null>(null);
-  const [cashStatus, setCashStatus] = useState<string | null>(null);
-  const [polling, setPolling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,13 +112,8 @@ const ChargingReceiptPage = () => {
       // 1) Đọc dữ liệu đã lưu
       const stop = JSON.parse(localStorage.getItem(`session_stop_${sessionIdParam}`) || "null");
       const last = JSON.parse(localStorage.getItem(`session_last_${sessionIdParam}`) || "null");
-      const methodUpper = (stop?.paymentMethod || last?.paymentMethod || "").toString().toUpperCase();
-      const needPay =
-        (typeof stop?.requiresPayment === "boolean" ? stop.requiresPayment : undefined) ??
-        !(methodUpper === "WALLET" || methodUpper === "CASH");
-      setPayRequired(!!needPay);
 
-      // 2) Reservation brief: ưu tiên cache, nếu thiếu thì lấy theo kiểu StatusCards
+      // 2) Reservation brief
       let brief = reservationIdParam
         ? JSON.parse(localStorage.getItem(`reservation_cache_${reservationIdParam}`) || "null")
         : null;
@@ -157,27 +154,44 @@ const ChargingReceiptPage = () => {
             });
           }
         }
-      } catch { /* optional */ }
+      } catch { /* ignore */ }
 
-      // 4) Ghép dữ liệu hiển thị (ưu tiên stop payload, fallback last snapshot)
-      const pick = (k: string, def?: any) =>
-        stop && stop[k] != null ? stop[k] : last && last[k] != null ? last[k] : def;
+      // 4) Ghép dữ liệu hiển thị – Chuẩn hoá các trường quan trọng
+      const currency = (stop?.currency ?? last?.currency ?? "VND") as string;
+      const amount = Number(
+        (stop?.totalAmount ?? stop?.totalCost ?? undefined) ??
+        (last?.chargedAmount ?? 0)
+      );
+      const energyRaw = Number(
+        (stop?.totalEnergy ?? undefined) ??
+        (last?.energyCount ?? stop?.energyCount ?? 0)
+      );
+      const ratePayload = Number(stop?.ratePerKwh ?? last?.ratePerKwh);
+      const rate = Number.isFinite(ratePayload)
+        ? ratePayload
+        : (energyRaw > 0 && amount > 0 ? amount / energyRaw : undefined);
+
+      // nếu energy chưa có mà đã có rate + amount → suy ngược
+      const energy = energyRaw > 0 ? energyRaw : (Number.isFinite(rate) && amount > 0 ? amount / Number(rate) : 0);
+
+      const startTime = (stop?.startTime ?? last?.startTime) as string | undefined;
+      const endTime = (stop?.endTime ?? last?.endTime) as string | undefined;
 
       if (!cancelled) {
         setSnap({
           id: Number(sessionIdParam),
-          stationId: pick("stationId"),
-          pillarId: pick("pillarId"),
-          driverUserId: pick("driverUserId"),
-          vehicleId: pick("vehicleId"),
+          stationId: stop?.stationId ?? last?.stationId,
+          pillarId: stop?.pillarId ?? last?.pillarId,
+          driverUserId: stop?.driverUserId ?? last?.driverUserId,
+          vehicleId: stop?.vehicleId ?? last?.vehicleId,
           status: (stop?.status || last?.status || "COMPLETED"),
-          energyCount: Number(pick("energyCount", stop?.totalEnergy ?? 0)),
-          chargedAmount: Number(pick("chargedAmount", stop?.totalCost ?? 0)),
-          ratePerKwh: pick("ratePerKwh", stop?.ratePerKwh),
-          startTime: pick("startTime", stop?.startTime),
-          endTime: pick("endTime", stop?.endTime),
-          paymentMethod: pick("paymentMethod", stop?.paymentMethod),
-          currency: pick("currency", stop?.currency ?? "VND"),
+          energyCount: Number.isFinite(energy) ? energy : 0,
+          chargedAmount: Number.isFinite(amount) ? amount : 0,
+          ratePerKwh: rate,
+          startTime: startTime || last?.startTime,
+          endTime: endTime || null,
+          paymentMethod: (stop?.paymentMethod ?? last?.paymentMethod) as string,
+          currency,
         });
         setLoading(false);
       }
@@ -185,86 +199,13 @@ const ChargingReceiptPage = () => {
     return () => { cancelled = true; };
   }, [sessionIdParam, reservationIdParam, toast]);
 
-  // Tìm payment transaction của session hiện tại nếu method = CASH
-  useEffect(() => {
-    const sessionId = Number(sessionIdParam);
-    const isCash = (snap?.paymentMethod || "").toString().toUpperCase() === "CASH";
-    if (!sessionId || !isCash) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        // lấy danh sách giao dịch của user rồi lọc theo type + referenceId + method
-        const { data } = await api.get("/api/payment/getPaymentU", {
-          params: { page: 0, pageSize: 50 },
-          withCredentials: true,
-        });
-        // trả về Page<PaymentTransactionResponse>; map nới lỏng
-        const content = data?.content ?? data?.data ?? [];
-        const found = Array.isArray(content)
-          ? content.find((r: any) =>
-              String(r?.type).toUpperCase() === "CHARGING-SESSION" &&
-              Number(r?.referenceId) === sessionId &&
-              String(r?.method).toUpperCase() === "CASH"
-            )
-          : null;
-
-        if (!cancelled && found) {
-          setCashTxId(Number(found.id ?? found.paymentId ?? found.transactionId ?? null));
-          setCashStatus(String(found.status || ""));
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snap?.paymentMethod, sessionIdParam]);
-
-  // Poll trạng thái CASH cho tới khi SUCCESS
-  useEffect(() => {
-    const isCash = (snap?.paymentMethod || "").toString().toUpperCase() === "CASH";
-    if (!isCash || !cashTxId) return;
-
-    setPolling(true);
-    const timer = setInterval(async () => {
-      try {
-        const { data } = await api.get("/api/payment/getPaymentU", {
-          params: { page: 0, pageSize: 20 },
-          withCredentials: true,
-        });
-        const content = data?.content ?? data?.data ?? [];
-        const row = Array.isArray(content)
-          ? content.find((r: any) => Number(r?.id ?? r?.paymentId ?? r?.transactionId) === Number(cashTxId))
-          : null;
-        const st = String(row?.status || "").toUpperCase();
-        setCashStatus(st);
-
-        if (st === "SUCCESS") {
-          clearInterval(timer);
-          setPolling(false);
-          toast({ title: "Cash confirmed", description: "Payment accepted by staff." });
-          // về dashboard
-          navigate("/dashboard", { replace: true });
-        }
-      } catch {
-        // ignore
-      }
-    }, POLL_MS);
-
-    return () => { clearInterval(timer); setPolling(false); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cashTxId]);
-
+  // Tính toán trình bày
   const durationTxt = useMemo(() => fmtDuration(snap?.startTime, snap?.endTime), [snap?.startTime, snap?.endTime]);
 
-  const avgPriceTxt = useMemo(() => {
-    const price = Number(snap?.ratePerKwh);
-    if (!Number.isFinite(price)) return "—";
-    return fmtMoney(price);
-  }, [snap?.ratePerKwh, snap?.currency]);
+  const pricePerKwhTxt = useMemo(
+    () => fmtMoneyCurrency(snap?.ratePerKwh, snap?.currency),
+    [snap?.ratePerKwh, snap?.currency]
+  );
 
   const avgPowerKwTxt = useMemo(() => {
     if (!snap?.startTime || !snap?.endTime) return "—";
@@ -286,27 +227,10 @@ const ChargingReceiptPage = () => {
   }, [snap?.paymentMethod]);
 
   const isSuccess = (snap?.status || "").toUpperCase() === "COMPLETED";
+  const mustPay = (snap?.chargedAmount ?? 0) > 0 &&
+                  !["WALLET", "CASH"].includes((snap?.paymentMethod || "").toUpperCase());
 
   /** Actions */
-  const onPrint = () => window.print();
-  const onDownload = () => window.print(); // tạm dùng print dialog để save PDF
-  const onShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: "Charging receipt",
-          text: `Receipt for session #${snap?.id || ""}`,
-          url: window.location.href,
-        });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast({ title: "Link copied" });
-      }
-    } catch {
-      /* noop */
-    }
-  };
-
   const goToPayment = () => {
     if (!snap) return;
     navigate("/session/payment", {
@@ -316,23 +240,21 @@ const ChargingReceiptPage = () => {
         stationName: resv?.stationName || "",
         portLabel: resv?.pillarCode || (snap.pillarId ? `P${snap.pillarId}` : ""),
         startTime: snap.startTime,
-        endTime: snap.endTime || "", 
+        endTime: snap.endTime || "",
         energyKwh: snap.energyCount ?? 0,
         description: `Charging session #${snap.id}`,
       },
     });
   };
 
-  const mustPay = payRequired && (snap?.chargedAmount ?? 0) > 0;
-
   const openVoucher = () => {
     if (!snap) return;
     navigate("/session/voucher", {
       state: {
-        tab: "mine",                     // mở trực tiếp tab My Vouchers
-        returnTo: window.location.pathname + window.location.search, // quay về lại receipt
+        tab: "mine",
+        returnTo: window.location.pathname + window.location.search,
         sessionId: snap.id,
-        amount: snap.chargedAmount ?? 0, // để voucher page có thể gợi ý lọc theo minAmount
+        amount: snap.chargedAmount ?? 0,
       },
     });
   };
@@ -404,7 +326,7 @@ const ChargingReceiptPage = () => {
           <Card className="rounded-2xl border-2 border-sky-100">
             <CardContent className="p-5 text-center">
               <Clock className="w-5 h-5 text-sky-600 mx-auto mb-2" />
-              <div className="text-3xl font-extrabold text-sky-700">{loading || !snap ? "—" : durationTxt}</div>
+              <div className="text-3xl font-extrabold text-sky-700">{loading || !snap ? "—" : fmtDuration(snap?.startTime, snap?.endTime)}</div>
               <div className="text-xs text-sky-700/80 mt-1">Session Duration</div>
             </CardContent>
           </Card>
@@ -412,7 +334,14 @@ const ChargingReceiptPage = () => {
           <Card className="rounded-2xl border-2 border-violet-100">
             <CardContent className="p-5 text-center">
               <BadgeCheck className="w-5 h-5 text-violet-600 mx-auto mb-2" />
-              <div className="text-3xl font-extrabold text-violet-700">{avgPowerKwTxt}</div>
+              <div className="text-3xl font-extrabold text-violet-700">{(() => {
+                if (!snap?.startTime || !snap?.endTime) return "—";
+                const t0 = new Date(snap.startTime).getTime();
+                const t1 = new Date(snap.endTime).getTime();
+                const hours = Math.max(0.001, (t1 - t0) / 3_600_000);
+                const kw = (Number(snap.energyCount || 0) / hours) || 0;
+                return `${kw.toFixed(1)} kW`;
+              })()}</div>
               <div className="text-xs text-violet-700/80 mt-1">Average Power</div>
             </CardContent>
           </Card>
@@ -434,59 +363,62 @@ const ChargingReceiptPage = () => {
 
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DetailRow icon={<MapPin className="w-4 h-4" />} label="Station" value={resv?.stationName || "—"} />
-            <DetailRow icon={<Hash className="w-4 h-4" />} label="Port" value={resv?.pillarCode || (snap?.pillarId ? `P${snap.pillarId}` : "—")} />
+            <DetailRow icon={<Hash className="w-4 h-4" />} label="Port" value={resv?.pillarCode || (snap?.pillarId ? `P${snap?.pillarId}` : "—")} />
             <DetailRow icon={<Calendar className="w-4 h-4" />} label="Start Time" value={fmtDateTime(snap?.startTime)} />
             <DetailRow icon={<Calendar className="w-4 h-4" />} label="End Time" value={fmtDateTime(snap?.endTime)} />
-            <DetailRow icon={<DollarSign className="w-4 h-4" />} label="Rate / kWh" value={avgPriceTxt} />
+            <DetailRow icon={<DollarSign className="w-4 h-4" />} label="Rate / kWh" value={pricePerKwhTxt} />
             <DetailRow icon={<Car className="w-4 h-4" />} label="Vehicle" value={veh ? `${veh.make ?? ""} ${veh.model ?? ""}`.trim() || `#${veh.id}` : (snap?.vehicleId ? `#${snap.vehicleId}` : "—")} />
             <DetailRow icon={<Battery className="w-4 h-4" />} label="Battery Capacity" value={veh?.batteryCapacityKwh ? `${veh.batteryCapacityKwh} kWh` : "—"} />
-            <DetailRow icon={<DollarSign className="w-4 h-4" />} label="Payment Method" value={paymentLabel} />
+            <DetailRow icon={<DollarSign className="w-4 h-4" />} label="Payment Method" value={(() => {
+              const s = (snap?.paymentMethod || "").toString().toUpperCase();
+              if (s === "WALLET") return "Wallet";
+              if (s === "VNPAY") return "VNPay";
+              if (s === "POSTPAID") return "Postpaid";
+              if (s === "PREPAID") return "Prepaid";
+              if (s === "CASH") return "Cash";
+              return s || "—";
+            })()} />
           </CardContent>
         </Card>
 
         {/* Actions */}
-        
         <div className="flex flex-wrap gap-3 justify-end mt-6 print:hidden">
-          {/* CASH only: đi tới trang CashPayment + hiện trạng thái chờ xác nhận */}
           {(snap?.paymentMethod || "").toString().toUpperCase() === "CASH" && (
-            <>
-              <Button
-                onClick={() =>
-                  navigate("/session/payment/cash", {
-                    state: {
-                      sessionId: snap?.id,
-                      reservationId: reservationIdParam,
-                      amount: snap?.chargedAmount ?? 0,
-                      stationName: resv?.stationName || "",
-                      portLabel: resv?.pillarCode || (snap?.pillarId ? `P${snap.pillarId}` : ""),
-                      startTime: snap?.startTime,
-                      endTime: snap?.endTime || "",
-                      energyKwh: snap?.energyCount ?? 0,
-                      description: `Charging session #${snap?.id}`,
-                    },
-                  })
-                }
-                className="bg-amber-600 hover:bg-amber-700 text-white"
-              >
-                Pay by Cash at Station
-              </Button>
-            </>
+            <Button
+              onClick={() =>
+                navigate("/session/payment/cash", {
+                  state: {
+                    sessionId: snap?.id,
+                    reservationId: reservationIdParam,
+                    amount: snap?.chargedAmount ?? 0,
+                    stationName: resv?.stationName || "",
+                    portLabel: resv?.pillarCode || (snap?.pillarId ? `P${snap?.pillarId}` : ""),
+                    startTime: snap?.startTime,
+                    endTime: snap?.endTime || "",
+                    energyKwh: snap?.energyCount ?? 0,
+                    description: `Charging session #${snap?.id}`,
+                  },
+                })
+              }
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Pay by Cash at Station
+            </Button>
           )}
-          
+
           {mustPay && (
             <Button onClick={goToPayment} className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white">
               Pay now
             </Button>
           )}
 
-          {/* Ẩn Back khi bắt buộc thanh toán */}
           {!mustPay && (
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Button>
           )}
-          
+
           {mustPay && (
             <Button variant="outline" onClick={openVoucher}>
               <TicketPercent className="w-4 h-4 mr-2" />
@@ -495,7 +427,6 @@ const ChargingReceiptPage = () => {
           )}
         </div>
 
-        {/* Footer note for print */}
         <div className="mt-8 text-xs text-muted-foreground text-center print:mt-16">
           Thank you for charging with us. For support, please contact our hotline.
         </div>

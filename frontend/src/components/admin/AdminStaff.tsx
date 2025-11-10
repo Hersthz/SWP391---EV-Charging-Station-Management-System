@@ -569,23 +569,6 @@ export default function AdminStaffPage() {
                                       </div>
                                     </div>
 
-                                    {/* Role */}
-                                    <div className="space-y-2">
-                                      <Label>Role</Label>
-                                      <Select
-                                        value={editRoleUi}
-                                        onValueChange={(ui: "Staff" | "Admin") => setEditRoleUi(ui)}
-                                      >
-                                        <SelectTrigger className="bg-white">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white">
-                                          <SelectItem value="Staff">Staff</SelectItem>
-                                          <SelectItem value="Admin">Admin</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-
                                     {/* Station reassignment */}
                                     <div className="space-y-2">
                                       <Label className="flex items-center gap-2">

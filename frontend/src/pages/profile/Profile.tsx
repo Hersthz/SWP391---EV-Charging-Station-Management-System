@@ -540,7 +540,6 @@ const Profile = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">{fullName}</h3>
                     <p className="text-sm text-muted-foreground">{email}</p>
-                    <Badge className="mt-2 bg-yellow-100 text-yellow-800 border-yellow-200">Premium Member</Badge>
                   </div>
                 </div>
 

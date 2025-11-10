@@ -25,20 +25,25 @@ public class StationAssignmentService {
 
     @Transactional
     public boolean assignManagerToStation(Long userId, Long stationId) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        Optional<ChargingStation> stationOpt = chargingStationRepository.findById(stationId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        ChargingStation station = chargingStationRepository.findById(stationId)
+                .orElseThrow(() -> new RuntimeException("Station not found"));
 
-        if (userOpt.isEmpty() || stationOpt.isEmpty()) {
-            return false;
+
+        if (user.getManagedStation() != null) {
+            ChargingStation oldStation = user.getManagedStation();
+            oldStation.setManager(null);
+            chargingStationRepository.save(oldStation);
         }
 
-        User user = userOpt.get();
-        ChargingStation station = stationOpt.get();
 
         station.setManager(user);
         user.setManagedStation(station);
 
         chargingStationRepository.save(station);
+        userRepository.save(user);
+
         return true;
     }
 

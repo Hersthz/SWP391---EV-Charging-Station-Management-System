@@ -82,5 +82,9 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     """)
     BigDecimal sumRevenueByStation(Long stationId);
 
-    List<PaymentTransaction> findByTypeAndReferenceIdIn(String type, Collection<Long> referenceIds);
+    @Query("SELECT p FROM PaymentTransaction p JOIN Reservation r ON p.referenceId = r.id WHERE r.station.id = :stationId AND p.type = 'RESERVATION'")
+    List<PaymentTransaction> findReservationPaymentsByStation(@Param("stationId") Long stationId);
+
+    @Query("SELECT p FROM PaymentTransaction p JOIN ChargingSession s ON p.referenceId = s.id WHERE s.station.id = :stationId AND p.type = 'CHARGING-SESSION'")
+    List<PaymentTransaction> findSessionPaymentsByStation(@Param("stationId") Long stationId);
 }
