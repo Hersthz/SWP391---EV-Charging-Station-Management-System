@@ -628,5 +628,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus("SUCCESS");
         payment.setUpdatedAt(LocalDateTime.now());
         txRepo.save(payment);
+
+        handlePaymentSuccess(payment);
     }
 }

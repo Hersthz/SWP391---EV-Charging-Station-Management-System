@@ -21,7 +21,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     @Query("SELECT r FROM Reservation r WHERE " +
-            "r.connector.id = :pillarId AND " +
+            "r.connector.id = :connectorId AND " +
             "r.status IN ('PENDING', 'SCHEDULED') AND " +
             "(:startTime < r.endTime AND :endTime > r.startTime)")
     List<Reservation> findOverlappingReservations(
