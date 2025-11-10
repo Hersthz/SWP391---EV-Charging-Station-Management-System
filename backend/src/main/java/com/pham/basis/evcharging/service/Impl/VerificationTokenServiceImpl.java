@@ -23,6 +23,7 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
     }
 
     @Override
+    @Transactional
     public String createVerificationToken(User user, String type) {
         tokenRepo.deleteByUser(user);
         String token = UUID.randomUUID().toString();
