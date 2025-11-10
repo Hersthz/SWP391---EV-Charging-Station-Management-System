@@ -89,11 +89,6 @@ export default function DepositSS() {
       {/* ===== Header ===== */}
       <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => nav(-1)} className="hover:bg-sky-50">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm bg-gradient-to-br from-sky-500 to-emerald-500">
               <Wallet className="w-5 h-5 text-white" />
