@@ -147,13 +147,7 @@ public class PaymentServiceImpl implements PaymentService {
         // Tạo transaction với status SUCCESS
         PaymentTransaction tx = createPaymentTransaction(req, userId, amountInVND, txnRef);
         tx.setStatus("SUCCESS");
-        if ("SUCCESS".equals(tx.getStatus())) {
-            loyaltyPointService.addPointsAfterCharging(
-                    tx.getUser().getId(),
-                    tx.getAmount(),
-                    tx.getReferenceId()
-            );
-        }
+
         txRepo.save(tx);
 
         // Xử lý business logic ngay lập tức
@@ -512,7 +506,13 @@ public class PaymentServiceImpl implements PaymentService {
             res.setStatus("COMPLETED");
             changed = true;
         }
-
+        if ("COMPLETED".equals(res.getStatus())) {
+            loyaltyPointService.addPointsAfterCharging(
+                    tx.getUser().getId(),
+                    tx.getAmount(),
+                    tx.getReferenceId()
+            );
+        }
         if (changed) {
             reservationRepo.save(res);
             //noti

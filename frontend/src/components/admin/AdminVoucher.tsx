@@ -29,7 +29,7 @@ import {
 type Voucher = {
   id: number;
   code: string;
-  discountAmount: number;   // % (0-100)
+  discountAmount: number;   
   requiredPoints: number;
   description?: string | null;
   startDate?: string | null; // "yyyy-MM-dd"
@@ -145,10 +145,7 @@ const AdminVoucher = () => {
       toast({ title: "Missing code", description: "Code is required.", variant: "destructive" });
       return;
     }
-    if (payload.discountAmount < 0 || payload.discountAmount > 100) {
-      toast({ title: "Invalid discount", description: "Discount must be between 0 and 100.", variant: "destructive" });
-      return;
-    }
+    
 
     setCreating(true);
     try {
@@ -333,7 +330,7 @@ const AdminVoucher = () => {
                   return (
                     <TableRow key={v.id} className="border-border/50 hover:bg-muted/30 transition-colors">
                       <TableCell className="font-semibold">{v.code}</TableCell>
-                      <TableCell>{v.discountAmount}%</TableCell>
+                      <TableCell>{v.discountAmount}đ</TableCell>
                       <TableCell>{v.requiredPoints}</TableCell>
                       <TableCell>
                         <Badge className={`${statusColor} border`}>{String(v.status).toUpperCase()}</Badge>
@@ -393,7 +390,7 @@ const AdminVoucher = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Discount %</Label>
+                <Label>Discount đ</Label>
                 <Input
                   type="number"
                   value={String(form.discountAmount ?? 0)}
@@ -488,7 +485,7 @@ const AdminVoucher = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Discount %</Label>
+                  <Label>Discount đ</Label>
                   <Input
                     type="number"
                     value={String(editing.discountAmount ?? 0)}

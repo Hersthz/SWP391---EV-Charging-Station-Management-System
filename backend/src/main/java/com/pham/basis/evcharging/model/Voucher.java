@@ -13,6 +13,7 @@ import java.time.LocalDate;
 public class Voucher {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "voucher_id")
     private Long id;
 
     @Column(unique = true, nullable = false)
