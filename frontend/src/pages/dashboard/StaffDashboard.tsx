@@ -1,11 +1,9 @@
-// src/pages/StaffDashboard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import StaffLayout from "../../components/staff/StaffLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
 import {
   Table,
   TableBody,
@@ -18,8 +16,6 @@ import {
   MapPin,
   Wifi,
   WifiOff,
-  Eye,
-  AlertTriangle,
   Zap,
   DollarSign,
   PieChart as PieChartIcon,

@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import DashboardHeader from "../../components/user/DashboardHeader";

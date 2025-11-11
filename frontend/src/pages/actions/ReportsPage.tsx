@@ -1,4 +1,3 @@
-// src/pages/ReportsPage.tsx
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
@@ -7,7 +6,6 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Separator } from "../../components/ui/separator";
 import {
   ArrowLeft,
@@ -23,7 +21,6 @@ import {
   Battery,
   Activity,
   Target,
-  Car,
   IdCard,
 } from "lucide-react";
 import { ChatBot } from "../ChatBot";
@@ -301,16 +298,6 @@ type SessionDetail = {
     plate?: string;
     capacityKwh?: number;
   };
-};
-
-type PaymentItem = {
-  id?: number | string;
-  sessionId?: number;
-  chargingSessionId?: number;
-  method?: string;
-  paymentMethod?: string;
-  provider?: string;
-  currency?: string;
 };
 
 const pickPaymentMethod = (x: any): string | undefined =>

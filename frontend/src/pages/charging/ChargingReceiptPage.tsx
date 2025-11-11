@@ -200,31 +200,10 @@ const ChargingReceiptPage = () => {
   }, [sessionIdParam, reservationIdParam, toast]);
 
   // Tính toán trình bày
-  const durationTxt = useMemo(() => fmtDuration(snap?.startTime, snap?.endTime), [snap?.startTime, snap?.endTime]);
-
   const pricePerKwhTxt = useMemo(
     () => fmtMoneyCurrency(snap?.ratePerKwh, snap?.currency),
     [snap?.ratePerKwh, snap?.currency]
   );
-
-  const avgPowerKwTxt = useMemo(() => {
-    if (!snap?.startTime || !snap?.endTime) return "—";
-    const t0 = new Date(snap.startTime).getTime();
-    const t1 = new Date(snap.endTime).getTime();
-    const hours = Math.max(0.001, (t1 - t0) / 3_600_000);
-    const kw = (Number(snap.energyCount || 0) / hours) || 0;
-    return `${kw.toFixed(1)} kW`;
-  }, [snap?.startTime, snap?.endTime, snap?.energyCount]);
-
-  const paymentLabel = useMemo(() => {
-    const s = (snap?.paymentMethod || "").toString().toUpperCase();
-    if (s === "WALLET") return "Wallet";
-    if (s === "VNPAY") return "VNPay";
-    if (s === "POSTPAID") return "Postpaid";
-    if (s === "PREPAID") return "Prepaid";
-    if (s === "CASH") return "Cash";
-    return s || "—";
-  }, [snap?.paymentMethod]);
 
   const isSuccess = (snap?.status || "").toUpperCase() === "COMPLETED";
   const mustPay = (snap?.chargedAmount ?? 0) > 0 &&

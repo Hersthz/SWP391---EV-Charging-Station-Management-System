@@ -23,7 +23,6 @@ import {
   History,
   Shield,
   Sparkles,
-  TrendingUp,
   Wallet,
   Zap,
   Plus,

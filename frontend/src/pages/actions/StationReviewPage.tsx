@@ -6,9 +6,9 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner"; 
 import api from "../../api/axios";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "../../lib/utils"; 
-
+ 
 
 type Me = { id?: number; user_id?: number; full_name?: string };
 

@@ -1,4 +1,3 @@
-// src/components/dashboard/StatusCards.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
@@ -476,7 +475,7 @@ const StatusCards = () => {
     [items]
   );
 
-  /* ===== Actions (kept logic, minor fixes) ===== */
+  /* ===== Actions ===== */
   const gotoReview = (r: ReservationItem) =>
     navigate(`/stations/${r.stationId}/review`, { state: { stationName: r.stationName, pillarCode: r.pillarCode } });
 
@@ -706,7 +705,6 @@ const StatusCards = () => {
     } catch {}
     return null;
   }
-
 
   async function fetchEstimateFor(r?: ReservationItem, vehId?: number, socNowOverride?: number) {
     if (!r || !vehId || !r.pillarId || !r.connectorId) {
@@ -1197,7 +1195,7 @@ const StatusCards = () => {
               </select>
             </div>
 
-            {/* SOC ro */}
+            {/* SOC */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Current SOC</div>
@@ -1226,7 +1224,6 @@ const StatusCards = () => {
                   <div>
                     Time ~ <b>{est.estimatedMinutes} minutes</b>
                   </div>
-                  {/* <<< ADDED: show estimated cost >>> */}
                   <div>
                     Cost ~ <b>{fmtVnd(est.estimatedCost)}</b>
                   </div>

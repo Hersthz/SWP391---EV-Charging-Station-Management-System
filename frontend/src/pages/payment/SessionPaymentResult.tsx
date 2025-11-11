@@ -21,15 +21,9 @@ type Result = {
   message?: string;
 };
 
-const SS_KEY = "sessionPaymentInit";
-
 export default function SessionPaymentResult() {
   const location = useLocation();
   const nav = useNavigate();
-
-  const savedInit = useMemo(() => {
-    try { return JSON.parse(sessionStorage.getItem(SS_KEY) || "{}"); } catch { return {}; }
-  }, []);
 
   const result: Result = useMemo(() => {
     const state = (location.state || {}) as Partial<Result>;

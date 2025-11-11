@@ -43,7 +43,7 @@ export default function WalletTopupResult() {
 
   const ok = result.status === "SUCCESS";
 
-  // Sau khi return, backend đã cập nhật & cộng ví (mục 1.2). Ta đọc số dư để hiển thị.
+  // Sau khi return, backend đã cập nhật & cộng ví. Ta đọc số dư để hiển thị.
   useEffect(() => {
     (async () => {
       try {

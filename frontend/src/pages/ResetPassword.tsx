@@ -8,7 +8,6 @@ import { Zap, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import api from "../api/axios";
 
-// Reuse visual style tương tự Login
 const EnergyParticleBackground = () => {
   const [dots, setDots] = useState(
     Array.from({ length: 160 }).map(() => ({

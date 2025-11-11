@@ -1,4 +1,3 @@
-// src/pages/_parts/VehicleSection.tsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Car, Plug } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -111,7 +110,6 @@ const VehicleSection = () => {
     [idx, list.length, select]
   );
 
-  // KHÔNG return sớm trước hook; điều kiện hóa ngay trong JSX
   const shouldHide = !loading && list.length === 0;
 
   return shouldHide ? null : (

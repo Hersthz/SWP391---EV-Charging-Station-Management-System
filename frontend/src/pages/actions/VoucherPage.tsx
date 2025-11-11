@@ -1,5 +1,4 @@
-// src/pages/SubscriptionPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import { motion, type Variants } from "framer-motion";

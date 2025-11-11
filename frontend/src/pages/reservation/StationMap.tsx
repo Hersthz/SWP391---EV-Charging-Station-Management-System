@@ -7,9 +7,8 @@ import { Badge } from "../../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose
+  Dialog, DialogContent, DialogClose
 } from "../../components/ui/dialog";
-import { Separator } from "../../components/ui/separator";
 import { useDebounce } from "use-debounce";
 
 // Leaflet
@@ -128,7 +127,6 @@ const defaultFilters: Filters = {
 };
 
 const MOCK_STATIONS: Station[] = [
-  // ... (keep your existing MOCK_STATIONS content here; omitted in snippet for brevity)
   {
     id: 1,
     name: "Station #1",
@@ -156,7 +154,6 @@ const MOCK_STATIONS: Station[] = [
     maxPower: 150,
     connectorTypes: ["CCS", "CHAdeMO"]
   },
-  // chet r khi lai ho t lo xoa roi 
 ];
 
 /* leaflet user icon */

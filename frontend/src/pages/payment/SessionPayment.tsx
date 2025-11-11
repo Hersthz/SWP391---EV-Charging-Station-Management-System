@@ -130,7 +130,7 @@ export default function SessionPayment() {
   }, [init]);
 
   // ===== Voucher state & helpers =====
-  // <<< voucher: types & readers
+  // voucher: types & readers
   type AppliedVoucher = {
     type: "USER_VOUCHER" | "CATALOG_VOUCHER";
     userVoucherId?: number;
@@ -172,13 +172,9 @@ export default function SessionPayment() {
       },
     });
   };
-  // >>> voucher
 
   // === derived display ===
   const amountText = fmtUSD(init.amount);
-  const energyText = fmtEnergy(init.energyKwh);
-  const startTxt = fmtDateTime(init.startTime);
-  const endTxt = fmtDateTime(init.endTime);
 
   // <<< voucher: compute discount & final
   const rawVnd = Math.max(0, Math.round(Number(init.amount) || 0));
@@ -197,7 +193,6 @@ export default function SessionPayment() {
     style: "currency",
     currency: "USD",
   }).format(finalVnd);
-  // >>> voucher
 
   const onPay = async () => {
     if (submitting) return;
@@ -223,7 +218,6 @@ export default function SessionPayment() {
       };
       if (voucher?.code) body.voucherCode = voucher.code;
       if (voucher?.userVoucherId) body.userVoucherId = voucher.userVoucherId;
-      // >>> voucher
 
       const { data } = await api.post("/api/payment/create", body, { withCredentials: true });
       const res: { code?: string; message?: string; data?: PaymentResponse } = data;

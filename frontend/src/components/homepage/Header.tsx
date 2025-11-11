@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Menu, X, Zap, LogIn, Map, Gauge, Sparkles, Info, Phone } from "lucide-react";
+import { Menu, X, Zap, LogIn, Map, Gauge, Sparkles, Info } from "lucide-react"; 
 import { Button } from "../ui/button";
 import { DynamicNavigation } from "../lightswind/dynamic-navigation";
 
-const SECTIONS = ["features", "map", "about", "contact"] as const;
+const SECTIONS = ["features", "map", "about"] as const; 
 type SectionId = typeof SECTIONS[number];
 
 export default function Header() {
@@ -16,7 +16,6 @@ export default function Header() {
       { id: "features", label: "Features", href: "#features", icon: <Gauge className="w-4 h-4" /> },
       { id: "map",      label: "Map",      href: "#map",      icon: <Map className="w-4 h-4" /> },
       { id: "about",    label: "About",    href: "#about",    icon: <Info className="w-4 h-4" /> },
-      { id: "contact",  label: "Contact",  href: "#contact",  icon: <Phone className="w-4 h-4" /> },
     ],
     []
   );
@@ -33,7 +32,7 @@ export default function Header() {
       },
       { rootMargin: "-35% 0px -55% 0px", threshold: 0.01 }
     );
-    nodes.forEach((n) => n && io.observe(n!));
+    nodes.forEach((n) => n && io.observe(n));
     return () => io.disconnect();
   }, []);
 
@@ -89,12 +88,14 @@ export default function Header() {
               <span className="absolute -left-1/3 top-0 h-full w-1/3 rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent)] animate-navShine" />
             </span>
 
+            {/* width nhẹ để 3 mục trông đều nhau */}
             <div
               className="
                 rounded-full
                 bg-white/25 backdrop-blur-xl
                 ring-1 ring-white/70
                 shadow-[inset_0_1px_0_rgba(255,255,255,.7),0_8px_28px_rgba(0,0,0,.25)]
+                w-[420px]  /* <-- đảm bảo bố cục cân đối cho 3 tab */
             "
             >
               <DynamicNavigation
