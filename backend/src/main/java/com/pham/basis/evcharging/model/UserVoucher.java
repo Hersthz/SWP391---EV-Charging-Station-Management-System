@@ -25,6 +25,6 @@ public class UserVoucher {
     private LocalDateTime usedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "voucherId", insertable = false, updatable = false)
+    @JoinColumn(name = "voucher_id")
     private Voucher voucher;
 }

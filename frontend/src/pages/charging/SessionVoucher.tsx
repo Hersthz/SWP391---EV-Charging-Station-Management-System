@@ -60,17 +60,25 @@ export default function SessionVoucher() {
           Array.isArray(data?.content) ? data.content :
           Array.isArray(data) ? data : [];
 
-        const mapped: UserVoucher[] = arr.map((x: any) => ({
-          userVoucherId: Number(x?.userVoucherId ?? x?.id),
-          code: String(x?.code ?? x?.voucherCode ?? "").toUpperCase(),
-          name: String(x?.name ?? "Voucher"),
-          discountType: String(x?.discountType ?? x?.type ?? "AMOUNT").toUpperCase() as any,
-          discountValue: Number(x?.discountValue ?? x?.value ?? x?.amount ?? 0),
-          minAmount: x?.minAmount ?? x?.minOrder ?? undefined,
-          maxDiscount: x?.maxDiscount ?? x?.cap ?? undefined,
-          status: String(x?.status ?? (x?.used ? "USED" : "NEW")).toUpperCase() as any,
-          expireAt: x?.expireAt ?? x?.expiredAt ?? x?.endDate ?? null,
-        }));
+        const mapped: UserVoucher[] = arr.map((x: any, idx: number) => {
+          // cố gắng tìm id từ các khả năng khác nhau
+          const rawId =
+            x?.userVoucherId ?? x?.id ?? x?.user_voucher_id ?? x?.userVoucherID ?? null;
+          const safeId = Number.isFinite(Number(rawId)) ? Number(rawId) : idx + 1;
+
+          return {
+            userVoucherId: safeId,
+            code: String(x?.code ?? x?.voucher?.code ?? x?.voucherCode ?? "").toUpperCase(),
+            name: String(x?.name ?? x?.voucher?.name ?? "Voucher"),
+            discountType: String(x?.discountType ?? x?.type ?? "AMOUNT").toUpperCase() as any,
+            // backend của bạn đang dùng discountAmount
+            discountValue: Number(x?.discountAmount ?? x?.voucher?.discountAmount ?? x?.value ?? x?.amount ?? 0),
+            minAmount: x?.minAmount ?? x?.minOrder ?? undefined,
+            maxDiscount: x?.maxDiscount ?? x?.cap ?? undefined,
+            status: String(x?.status ?? (x?.used ? "USED" : "NEW")).toUpperCase() as any,
+            expireAt: x?.expireAt ?? x?.expiredAt ?? x?.endDate ?? x?.voucher?.endDate ?? null,
+          };
+        });
         setList(mapped);
       } catch (e: any) {
         const msg = e?.response?.data?.message || e?.message || "Không tải được danh sách voucher.";
@@ -142,10 +150,10 @@ export default function SessionVoucher() {
               <div className="p-6 text-sm text-slate-500">No voucher available</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {list.map((v) => {
+                {list.map((v, idx) => {
                   const disabled = v.status !== "NEW";
                   return (
-                    <Card key={v.userVoucherId} className="border">
+                    <Card key={`${v.userVoucherId}-${v.code}-${idx}`} className="border">
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="truncate">{v.name}</CardTitle>
