@@ -37,7 +37,7 @@ type KycSubmission = {
 
 const SS_KEY = "kycSubmissionInit";
 
-/* ===== Helper: upload file -> URL (GỌI /api/upload) ===== */
+/* ===== Helper: upload file -> URL ===== */
 async function uploadToStorage(file: File): Promise<string> {
   const fd = new FormData();
   fd.append("file", file);
@@ -84,7 +84,6 @@ export default function KycPage() {
   // Result state
   const [status, setStatus] = useState<KycStatus | "UNKNOWN">("UNKNOWN");
   const [submittedAt, setSubmittedAt] = useState<string | undefined>();
-  const pollingRef = useRef<any>(null); // không dùng khi chưa có /kyc/me
 
   // Restore previews if user quay lại
   useEffect(() => {

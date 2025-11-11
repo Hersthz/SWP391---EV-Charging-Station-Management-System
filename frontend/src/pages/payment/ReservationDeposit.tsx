@@ -1,4 +1,3 @@
-// src/pages/ReservationDeposit.tsx
 import { useMemo, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -76,13 +75,13 @@ export default function ReservationDeposit() {
 
     return {
       reservationId: Number(fromQuery.reservationId ?? fromSS.reservationId ?? 0),
-      amount:        Number(fromQuery.amount ?? fromSS.amount ?? 0),
-      stationName:   fromQuery.stationName ?? fromSS.stationName ?? "",
-      portLabel:     fromQuery.portLabel ?? fromSS.portLabel ?? "",
-      connectorLabel:fromQuery.connectorLabel ?? fromSS.connectorLabel ?? "",
-      startTime:     fromQuery.startTime ?? fromSS.startTime ?? "",
-      endTime:       fromQuery.endTime ?? fromSS.endTime ?? "",
-      description:   fromQuery.description ?? fromSS.description ?? "Reservation deposit",
+      amount: Number(fromQuery.amount ?? fromSS.amount ?? 0),
+      stationName: fromQuery.stationName ?? fromSS.stationName ?? "",
+      portLabel: fromQuery.portLabel ?? fromSS.portLabel ?? "",
+      connectorLabel: fromQuery.connectorLabel ?? fromSS.connectorLabel ?? "",
+      startTime: fromQuery.startTime ?? fromSS.startTime ?? "",
+      endTime: fromQuery.endTime ?? fromSS.endTime ?? "",
+      description: fromQuery.description ?? fromSS.description ?? "Reservation deposit",
     } as InitParams;
   }, [location.search, location.state]);
 

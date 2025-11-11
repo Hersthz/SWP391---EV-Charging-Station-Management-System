@@ -1,7 +1,5 @@
-// src/components/dashboard/WelcomeSection.tsx
 import { Card, CardContent } from "../ui/card";
-import { Battery, CalendarDays, Clock, MapPin, Zap, ShieldCheck } from "lucide-react";
-import { Badge } from "../ui/badge";
+import { CalendarDays, Clock } from "lucide-react";
 import { motion, useReducedMotion, cubicBezier, type Variants } from "framer-motion";
 import { useMemo } from "react";
 
@@ -69,13 +67,10 @@ const WelcomeSection = () => {
 
   return (
     <section className="space-y-6">
-      {/* === HERO (Dark premium + full-field round bubbles) === */}
+      {/* === HERO === */}
       <div className="relative overflow-hidden rounded-xl md:rounded-2xl border border-slate-200/70 shadow-[0_12px_40px_-12px_rgba(2,6,23,0.12)]">
-        {/* Dark multi-layer gradient — gần bản cũ nhưng sâu & đều hơn */}
         <div className="absolute inset-0 bg-[linear-gradient(140deg,#075985_0%,#0e7490_38%,#0f766e_72%,#075985_100%)]" />
-        {/* Vignette để đảm bảo contrast chữ */}
         <div className="absolute inset-0 bg-[radial-gradient(140%_120%_at_50%_0%,transparent_25%,rgba(0,0,0,0.22)_85%)]" />
-        {/* Dot-grid nhẹ cho texture enterprise */}
         <div className="pointer-events-none absolute inset-0 opacity-[0.10] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
         {/* Bubbles: dùng span tuyệt đối => luôn tròn (không méo vì tỷ lệ container) */}
@@ -90,14 +85,13 @@ const WelcomeSection = () => {
                   bottom: -b.size,              // phát sinh từ mép dưới
                   width: b.size,
                   height: b.size,
-                  // mềm viền bằng radial-gradient (giống kính nổi)
                   background:
                     "radial-gradient( circle at 50% 40%, rgba(255,255,255,0.9), rgba(255,255,255,0.55) 35%, rgba(255,255,255,0.0) 60% )",
                   filter: "blur(0.2px)",
                   opacity: 0
                 }}
                 animate={{
-                  // đi lên ~ 120% chiều cao hero (dùng px lớn cho chắc trên các viewport)
+                  // đi lên ~ 120% chiều cao hero 
                   y: [0, -480],
                   x: [0, b.driftX, 0],
                   opacity: [0, 0.55, 0]
@@ -114,7 +108,7 @@ const WelcomeSection = () => {
           </div>
         )}
 
-        {/* Sweep glow rất mờ để tạo chiều sâu, không tạo hotspot */}
+        {/* Sweep glow rất mờ để tạo chiều sâu */}
         {!prefersReduce && (
           <motion.div
             aria-hidden

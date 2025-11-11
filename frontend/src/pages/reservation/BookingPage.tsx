@@ -9,13 +9,11 @@ import {
   QrCode,
   Receipt,
   CheckCircle,
-  Wallet,
-  CreditCard,
   AlertTriangle,
   Calendar as CalendarIcon,
   Car,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Transition } from "framer-motion";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -47,14 +45,6 @@ type Station = {
   price?: string;
 };
 
-type MeResponse = {
-  id?: number;
-  user_id?: number;
-  username?: string;
-  full_name?: string;
-  email?: string;
-};
-
 type ConnectorDto = {
   id: number | string;
   type?: string;
@@ -76,19 +66,6 @@ type StationDetail = {
   chargerPillars?: PillarDto[];
 };
 
-type BookingResponse = {
-  reservationId: number | string;
-  stationId: number;
-  stationName?: string;
-  pillarId: number;
-  connectorId: number;
-  status: "HELD" | "PAID" | "PENDING" | "EXPIRED" | "CANCELLED";
-  holdFee: number;
-  depositTransactionId?: string;
-  createdAt: string;
-  expiresAt?: string;
-};
-
 type Insufficient = {
   error: "insufficient_balance";
   message?: string;
@@ -107,22 +84,8 @@ type Vehicle = {
   currentSoc?: number; // % (0..100)
 };
 
-const CONNECTOR_ID_MAP: Record<string, string> = {
-  CCS: "ccs",
-  CCS2: "ccs2",
-  Type2: "type2",
-  CHAdeMO: "chademo",
-  AC: "ac",
-};
-
 const formatVND = (v: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
-
-function toNum(x: number | string | undefined): number | undefined {
-  if (x === undefined || x === null) return undefined;
-  const n = Number(x);
-  return Number.isFinite(n) ? n : undefined;
-}
 
 const HOLD_RATE_PER_MIN = 300;
 
@@ -167,9 +130,7 @@ function combineLocalDateTimeToDate(dateStr?: string, timeStr?: string): Date | 
   const d = new Date(`${dateStr}T${timeStr}`);
   return isNaN(d.getTime()) ? null : d;
 }
-function toUtcISOString(d: Date | null): string | null {
-  return d ? d.toISOString() : null;
-}
+
 function toLocalDateTimeString(dateStr?: string, timeStr?: string): string | null {
   if (!dateStr || !timeStr) return null;
   const hhmmss = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
@@ -196,11 +157,8 @@ export default function BookingPage() {
   const [startTime, setStartTime] = useState<string>(""); // HH:mm
   const [endTime, setEndTime] = useState<string>(""); // HH:mm
 
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
-
   // booking state
   const [submitting, setSubmitting] = useState(false);
-  const [isPaying, setIsPaying] = useState(false);
   const [reservationId, setReservationId] = useState<string | number | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [insufficient, setInsufficient] = useState<Insufficient | null>(null);
@@ -639,36 +597,6 @@ export default function BookingPage() {
     };
   }, [station?.id, selectedPillarId, selectedConnectorIdNum, selectedVehicleId]);
 
-  // === UI helpers ===
-  const renderPaymentSwitch = () => (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant={paymentMethod === "wallet" ? "default" : "outline"}
-        onClick={() => setPaymentMethod("wallet")}
-        className={`h-9 px-3 rounded-full text-sm font-medium transition-all
-          ${paymentMethod === "wallet"
-            ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-md shadow-cyan-500/30"
-            : "bg-white border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
-          }`}
-      >
-        <Wallet className="w-4 h-4 mr-2" /> Ví
-      </Button>
-      <Button
-        type="button"
-        variant={paymentMethod === "card" ? "default" : "outline"}
-        onClick={() => setPaymentMethod("card")}
-        className={`h-9 px-3 rounded-full text-sm font-medium transition-all
-        ${paymentMethod === "card"
-            ? "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-md shadow-cyan-500/30"
-            : "bg-white border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
-          }`}
-      >
-        <CreditCard className="w-4 h-4 mr-2" /> Thẻ
-      </Button>
-    </div>
-  );
-
   /* =========================
      Steps
   ========================= */
@@ -680,6 +608,11 @@ export default function BookingPage() {
     transition: { duration: 0.3, ease: "easeInOut" },
   };
 
+  const stepTransition: Transition = {
+    duration: 0.3,
+    ease: [0.42, 0, 0.58, 1],
+  };
+
   const renderSelectionStep = () => (
     <motion.div
       key="selection"
@@ -687,7 +620,7 @@ export default function BookingPage() {
       initial="initial"
       animate="animate"
       exit="exit"
-      transition={stepVariants.transition}
+      transition={stepTransition}
       className="space-y-10"
     >
       <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
@@ -794,7 +727,7 @@ export default function BookingPage() {
                 <input
                   type="date"
                   value={bookingDate}
-                  min={new Date().toISOString().slice(0, 10)} // ⬅️ KHÓA QUÁ KHỨ
+                  min={new Date().toISOString().slice(0, 10)} // KHÓA QUÁ KHỨ
                   onChange={(e) => {
                     const val = e.target.value;
                     setBookingDate(val);
@@ -1005,7 +938,7 @@ export default function BookingPage() {
             {normalizedConnectors.map((c) => {
               const active = selectedConnectorId === String(c.id);
               const st = (c.status || "").toLowerCase();
-              const disabled = st && st !== "available";
+              const disabled = !!st && st !== "available";
 
               const activeCls =
                 "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 scale-105";
@@ -1086,7 +1019,7 @@ export default function BookingPage() {
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={stepVariants.transition}
+        transition={stepTransition}
         className="space-y-8"
       >
         <div className="text-center">
@@ -1179,7 +1112,7 @@ export default function BookingPage() {
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={stepVariants.transition}
+        transition={stepTransition}
         className="space-y-8 text-center"
       >
         <div className="relative">

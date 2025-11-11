@@ -103,15 +103,14 @@ const ChargingSessionPage = () => {
   const currentEnergyRef = useRef<number>(0);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Reservation info (real)
+  // Reservation info 
   const [resv, setResv] = useState<ReservationBrief | null>(null);
 
-  // Vehicle info (real) => để tính SOC & thanh năng lượng
+  // Vehicle info => để tính SOC & thanh năng lượng
   const [vehicle, setVehicle] = useState<VehicleBrief | null>(null);
 
   // Target SOC (0..1) – LUÔN FULL
   const [targetSoc, setTargetSoc] = useState<number | null>(1);
-  const [maxSoc, setMaxSoc] = useState<number | null>(null);
   const [socNowFromBE, setSocNowFromBE] = useState<number | null>(null);
 
   // initial SOC

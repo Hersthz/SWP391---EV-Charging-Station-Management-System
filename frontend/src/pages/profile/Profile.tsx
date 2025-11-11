@@ -1,21 +1,17 @@
-// src/pages/Profile.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  User, Mail, Phone, Shield, Key, Bell, Globe, Sun, Car, Plus, Edit, Trash2,
-  Battery, Zap, Save, ArrowLeft, Camera, CreditCard, PlugZap, IdCard
+  User,  Shield, Key, Car, Plus, Edit, Trash2,
+  Battery, Zap, Save, ArrowLeft, Camera, PlugZap, IdCard
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Switch } from "../../components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
-import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { useToast } from "../../hooks/use-toast";
 import api from "../../api/axios";
 import { ChatBot } from "./../ChatBot";

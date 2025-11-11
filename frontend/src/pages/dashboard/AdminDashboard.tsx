@@ -1,7 +1,5 @@
-// src/pages/admin/AdminDashboard.tsx
 import { useState, useEffect, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
 import {
   MapPin,
   Users,
@@ -108,7 +106,7 @@ const AdminDashboard = () => {
           </Card>
         </motion.div>
 
-        {/* === Quick Actions (full width) === */}
+        {/* === Quick Actions === */}
         <motion.div
           className="grid grid-cols-1 gap-8"
           variants={containerVariants}

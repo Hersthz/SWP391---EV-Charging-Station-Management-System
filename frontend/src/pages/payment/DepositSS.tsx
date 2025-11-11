@@ -1,11 +1,9 @@
-// src/pages/DepositSS.tsx
 import { useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  ArrowLeft,
   Wallet,
   Shield,
   CalendarClock,
@@ -26,10 +24,6 @@ const SS_KEY = "reservationDepositInit";
 export default function DepositSS() {
   const location = useLocation();
   const nav = useNavigate();
-
-  const savedInit = useMemo(() => {
-    try { return JSON.parse(sessionStorage.getItem(SS_KEY) || "{}"); } catch { return {}; }
-  }, []);
 
   const result: Result = useMemo(() => {
     const state = (location.state || {}) as Partial<Result>;
