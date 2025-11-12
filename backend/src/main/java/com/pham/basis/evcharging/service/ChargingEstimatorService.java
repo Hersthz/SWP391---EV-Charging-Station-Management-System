@@ -1,19 +1,24 @@
 package com.pham.basis.evcharging.service;
 
 import com.pham.basis.evcharging.dto.request.EstimateRequest;
+import com.pham.basis.evcharging.dto.request.EstimateTrueSpeedRequest;
 import com.pham.basis.evcharging.dto.response.EstimateResponse;
+import com.pham.basis.evcharging.dto.response.EstimateTrueResponse;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.ChargerPillar;
 import com.pham.basis.evcharging.model.Connector;
 import com.pham.basis.evcharging.model.Vehicle;
 import com.pham.basis.evcharging.repository.ChargerPillarRepository;
 import com.pham.basis.evcharging.repository.ConnectorRepository;
+import com.pham.basis.evcharging.repository.ReservationRepository;
 import com.pham.basis.evcharging.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +27,7 @@ public class ChargingEstimatorService {
     private final VehicleRepository vehicleRepo;
     private final ConnectorRepository connectorRepo;
     private final ChargerPillarRepository pillarRepo;
+    private final ReservationRepository  reservationRepo;
 
     private static final double DEFAULT_EFFICIENCY = 0.90;
 
@@ -110,6 +116,58 @@ public class ChargingEstimatorService {
                 .energyKwh(energyToBatteryRounded)
                 .build();
     }
+
+        public EstimateTrueResponse estimateSimpleUntilReservation(EstimateTrueSpeedRequest req) {
+            Vehicle v = vehicleRepo.findById(req.getVehicleId())
+                    .orElseThrow(() -> new AppException.NotFoundException("Vehicle not found"));
+            ChargerPillar pillar = pillarRepo.findById(req.getPillarId())
+                    .orElseThrow(() -> new AppException.NotFoundException("Pillar not found"));
+
+            var reservation = reservationRepo.findById(req.getReservationId())
+                    .orElseThrow(() -> new AppException.NotFoundException("Reservation not found"));
+            LocalDateTime endTime = reservation.getEndTime();
+            long remainingSeconds = Math.max(0L, Duration.between(LocalDateTime.now(), endTime).getSeconds());
+
+            double socNow = Math.max(0.0, Math.min(1.0, req.getSocNow()));
+
+            // Nếu hết thời gian reservation
+            if (remainingSeconds <= 0) {
+                return EstimateTrueResponse.builder()
+                        .energyKwh(0.0)
+                        .estimatedCost(0.0)
+                        .estimatedMinutes(0)
+                        .socTarget(socNow)
+                        .minuteUntilEnd(0.0)
+                        .build();
+            }
+
+            double batteryKwh = v.getBatteryCapacityKwh() == null ? 0.0 : v.getBatteryCapacityKwh();
+            if (batteryKwh <= 0)
+                throw new AppException.BadRequestException("Invalid battery capacity");
+
+            // DELTA SOC
+            double kW = (req.getKW() != null && req.getKW() > 0) ? req.getKW() : 0.0;
+            double energyKwhPossible = kW * remainingSeconds;
+            double deltaSoc = energyKwhPossible / batteryKwh;
+
+            double projectedSoc = socNow + deltaSoc;
+            if (projectedSoc > 1.0) projectedSoc = 1.0;
+
+            //
+            double energyKwh = batteryKwh * Math.max(0.0, projectedSoc - socNow);
+            double price = pillar.getPricePerKwh() == null ? 0.0 : pillar.getPricePerKwh();
+            double cost = energyKwh * price;
+
+            return EstimateTrueResponse.builder()
+                    .energyKwh(round(energyKwh, 3))
+                    .estimatedCost(round(cost, 2))
+                    .estimatedMinutes((int) Math.ceil(remainingSeconds / 60.0))
+                    .socTarget(round(projectedSoc, 4))
+                    .minuteUntilEnd(round(remainingSeconds / 60.0, 2))
+                    .build();
+        }
+
+
 
     // helper round
     private static double round(double v, int places) {
