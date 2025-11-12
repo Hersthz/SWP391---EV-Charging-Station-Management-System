@@ -643,7 +643,7 @@ const Profile = () => {
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Make *</Label>
+                          <Label>Made *</Label>
                           <Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Tesla, Nissan, VinFast..." />
                         </div>
                         <div className="space-y-2">
@@ -670,7 +670,7 @@ const Profile = () => {
 
                       <div className="p-4 rounded-lg border-2 border-dashed border-sky-200 bg-sky-50/40">
                         <p className="text-sm text-slate-500 mb-1">Preview</p>
-                        <p className="font-semibold text-slate-800">{(form.make || "Make")} {(form.model || "Model")}</p>
+                        <p className="font-semibold text-slate-800">{(form.model || "Model")} {(form.make || "Made")}</p>
                       </div>
 
                       <div className="flex justify-end gap-3 pt-4">
@@ -692,7 +692,7 @@ const Profile = () => {
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Make *</Label>
+                          <Label>Made *</Label>
                           <Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} />
                         </div>
                         <div className="space-y-2">
@@ -745,7 +745,7 @@ const Profile = () => {
 
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-xl font-bold text-slate-900">{v.make} {v.model}</h3>
+                              <h3 className="text-xl font-bold text-slate-900">{v.model} {v.make}</h3>
                             </div>
                             <p className="text-sm text-slate-500 mb-4">{v.year} {v.variant ? `• ${v.variant}` : ""}</p>
 

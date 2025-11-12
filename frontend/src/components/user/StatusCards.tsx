@@ -1039,16 +1039,23 @@ const StatusCards = () => {
 
           <div className="flex flex-col items-center gap-3">
             {qrUrl ? (
-              <a href={qrUrl} target="_blank" rel="noreferrer">
+              <button
+                type="button"
+                onClick={() => {
+                  if (qrToken) navigate(`/checkin?token=${encodeURIComponent(qrToken)}`);
+                }}
+                title="Open check-in in this tab"
+                className="focus:outline-none"
+              >
                 <img
                   alt="Check-in QR"
                   className="rounded-lg border p-2 cursor-pointer"
                   width={240}
                   height={240}
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}`}
-                  title="Open check-in page"
                 />
-              </a>
+                <div className="mt-1 text-xs text-slate-500 text-center">Tap to open Check-in here</div>
+              </button>
             ) : null}
 
             <div className="text-sm text-center text-muted-foreground">{qrStation}</div>
@@ -1058,16 +1065,20 @@ const StatusCards = () => {
               <div className="font-mono">{qrToken}</div>
             </div>
 
-            <div className="flex w-full justify-between gap-2">
-              <Button variant="outline" className="flex-1" onClick={copyToken}>
-                <Copy className="w-4 h-4 mr-1" /> Copy
-              </Button>
-              <Button className="flex-1" onClick={regenerate}>
-                <RefreshCw className="w-4 h-4 mr-1" /> Regenerate
-              </Button>
+            <div className="flex w-full flex-col gap-2">
+              <div className="flex w-full justify-between gap-2">
+                <Button variant="outline" className="flex-1" onClick={copyToken}>
+                  <Copy className="w-4 h-4 mr-1" /> Copy
+                </Button>
+                <Button className="flex-1" onClick={regenerate}>
+                  <RefreshCw className="w-4 h-4 mr-1" /> Regenerate
+                </Button>
+              </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}</div>
+            <div className="text-xs text-muted-foreground">
+              Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

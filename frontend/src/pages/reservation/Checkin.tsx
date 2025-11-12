@@ -1,13 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Loader2, QrCode, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, QrCode, CheckCircle2, XCircle, MapPin, PlugZap, Calendar, Car } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 
 type ViewState = "idle" | "loading" | "ok" | "fail";
+
+type UserLite = { id?: number; name?: string; email?: string; phone?: string };
+type VehicleLite = { id: number; name?: string; brand?: string; model?: string; currentSoc?: number };
+type ResLite = {
+  reservationId?: number;
+  stationId?: number;
+  stationName?: string;
+  pillarId?: number;
+  pillarCode?: string;
+  connectorId?: number;
+  connectorType?: string;
+  startTime?: string;
+  newStatus?: string;
+};
 
 export default function Checkin() {
   const [sp] = useSearchParams();
@@ -18,6 +32,10 @@ export default function Checkin() {
   const [state, setState] = useState<ViewState>("idle");
   const [message, setMessage] = useState("Verifying…");
 
+  const [user, setUser] = useState<UserLite | null>(null);
+  const [vehicle, setVehicle] = useState<VehicleLite | null>(null);
+  const [resv, setResv] = useState<ResLite | null>(null);
+
   useEffect(() => {
     const run = async () => {
       setState("loading");
@@ -25,7 +43,8 @@ export default function Checkin() {
 
       try {
         if (!token) throw new Error("Missing token");
-        // lấy userId 
+
+        // 1) Lấy user (nếu có)
         let userId: number | undefined;
         try {
           const me = await api.get("/auth/me", { withCredentials: true });
@@ -35,26 +54,95 @@ export default function Checkin() {
               : typeof me.data?.id === "number"
               ? me.data.id
               : undefined;
+
+          const u: UserLite = {
+            id: userId,
+            name: me.data?.name ?? me.data?.fullName ?? me.data?.username,
+            email: me.data?.email,
+            phone: me.data?.phone,
+          };
+          setUser(u);
         } catch {
-  
+          // Anonymous check-in vẫn cho verify
         }
 
-        // verify token 
+        // 2) Verify token
         const body = userId ? { token, userId } : { token };
-        const { data } = await api.post("/api/token/verify", body, {
-          withCredentials: true,
-        });
+        const verify = await api.post("/api/token/verify", body, { withCredentials: true });
+        const payload = verify?.data?.data ?? verify?.data ?? {};
+        const reservationId = Number(payload?.reservationId ?? payload?.reservation_id);
+        const stationId = Number(payload?.stationId ?? payload?.station_id);
+        const pillarId = Number(payload?.pillarId ?? payload?.pillar_id);
+        const connectorId = Number(payload?.connectorId ?? payload?.connector_id);
+        const newStatus = String(payload?.newStatus ?? payload?.status ?? "CHARGING");
+        const startTime = payload?.startTime;
 
-        const payload = data?.data ?? data;
+        // 3) Lấy chi tiết reservation/station/pillar/connector từ /book/{id}
+        let enriched: ResLite = {
+          reservationId,
+          stationId,
+          pillarId,
+          connectorId,
+          newStatus,
+          startTime,
+        };
+        if (reservationId) {
+          try {
+            const detail = await api.post(`/book/${reservationId}`, {}, { withCredentials: true });
+            const d = detail?.data?.data ?? detail?.data ?? {};
+            enriched = {
+              ...enriched,
+              stationId: d.stationId ?? enriched.stationId,
+              stationName: d.stationName ?? d.name ?? enriched.stationName,
+              pillarId: d.pillarId ?? enriched.pillarId,
+              pillarCode: d.pillarCode ?? (d.pillarId ? `P${d.pillarId}` : enriched.pillarCode),
+              connectorId: d.connectorId ?? enriched.connectorId,
+              connectorType: d.connectorType ?? (d.connectorId ? `Connector ${d.connectorId}` : enriched.connectorType),
+              startTime: d.startTime ?? enriched.startTime,
+            };
+          } catch {
+            // best-effort
+          }
+        }
+        setResv(enriched);
+
+        // 4) Lấy vehicle: chọn theo localStorage.vehicle_id nếu có, fallback [0]
+        if (userId) {
+          try {
+            const vehRes = await api.get(`/vehicle/${userId}`, { withCredentials: true });
+            const raw = vehRes?.data?.data ?? vehRes?.data ?? [];
+            const list: VehicleLite[] = Array.isArray(raw)
+              ? raw.map((v: any) => ({
+                  id: Number(v.id ?? v.vehicleId),
+                  name: v.name,
+                  brand: v.brand,
+                  model: v.model,
+                  currentSoc:
+                    typeof v.currentSoc === "number"
+                      ? v.currentSoc
+                      : typeof v.socNow === "number"
+                      ? Math.round(v.socNow <= 1 ? v.socNow * 100 : v.socNow)
+                      : undefined,
+                }))
+              : [];
+            const preferredId = Number(localStorage.getItem("vehicle_id")) || undefined;
+            const picked = list.find((x) => x.id === preferredId) ?? list[0] ?? null;
+            setVehicle(picked ?? null);
+          } catch {
+            setVehicle(null);
+          }
+        }
+
         setState("ok");
-        setMessage(data?.message || "Check-in successful");
+        setMessage(verify?.data?.message || "Check-in successful");
         toast({
           title: "Check-in",
           description:
-            data?.message ||
-            `Reservation #${payload?.reservationId ?? ""} is now ${payload?.newStatus ?? "CHARGING"}.`,
+            verify?.data?.message ||
+            (reservationId ? `Reservation #${reservationId} → ${newStatus}` : "Verified"),
         });
 
+        // về dashboard sau 30s
         setTimeout(() => navigate("/dashboard"), 30000);
       } catch (e: any) {
         setState("fail");
@@ -77,9 +165,14 @@ export default function Checkin() {
   const badgeVariant =
     state === "ok" ? "default" : state === "fail" ? "destructive" : "secondary";
 
+  const prettyStart = useMemo(
+    () => (resv?.startTime ? new Date(resv.startTime).toLocaleString() : "—"),
+    [resv?.startTime]
+  );
+
   return (
     <div className="min-h-screen grid place-items-center p-6 bg-gradient-to-b from-background to-muted/30">
-      <Card className="w-full max-w-md shadow-card border-2 border-transparent hover:border-primary/20 transition">
+      <Card className="w-full max-w-2xl shadow-card border-2 border-transparent hover:border-primary/20 transition">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <span className="p-2 rounded-lg bg-primary/10">
@@ -89,7 +182,8 @@ export default function Checkin() {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
+          {/* Status row */}
           <div className="flex items-center justify-center">
             <Badge variant={badgeVariant as any} className="gap-2">
               {icon}
@@ -97,10 +191,12 @@ export default function Checkin() {
             </Badge>
           </div>
 
+          {/* Token */}
           <div className="text-center text-sm text-muted-foreground break-all">
             Token: <span className="font-mono">{token || "—"}</span>
           </div>
 
+          {/* Message */}
           <div
             className={[
               "text-center text-sm",
@@ -114,7 +210,73 @@ export default function Checkin() {
             {message}
           </div>
 
-          <div className="pt-2 flex justify-center">
+          {/* Info cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Reservation */}
+            <Card className="border rounded-xl">
+              <CardContent className="p-4 space-y-2">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <PlugZap className="w-4 h-4 text-emerald-600" />
+                  Reservation
+                </div>
+                <div className="text-sm">
+                  <div>ID: <b>{resv?.reservationId ?? "—"}</b></div>
+                  <div>Status: <Badge variant="outline" className="rounded-full">{resv?.newStatus ?? "—"}</Badge></div>
+                  <div className="mt-1 text-xs text-slate-600">Start: {prettyStart}</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Station/Pillar */}
+            <Card className="border rounded-xl">
+              <CardContent className="p-4 space-y-2">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-sky-600" />
+                  Station
+                </div>
+                <div className="text-sm">
+                  <div>Name: <b>{resv?.stationName ?? "—"}</b></div>
+                  <div>Pillar: <b>{resv?.pillarCode ?? (resv?.pillarId ? `P${resv.pillarId}` : "—")}</b></div>
+                  <div>Connector: <b>{resv?.connectorType ?? (resv?.connectorId ? `Connector ${resv.connectorId}` : "—")}</b></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* User */}
+            <Card className="border rounded-xl">
+              <CardContent className="p-4 space-y-2">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-zinc-600" />
+                  User
+                </div>
+                <div className="text-sm">
+                  <div>ID: <b>{user?.id ?? "—"}</b></div>
+                  <div>Name: <b>{user?.name ?? "—"}</b></div>
+                  <div className="text-xs text-slate-600">{user?.email || user?.phone || "—"}</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Vehicle */}
+            <Card className="border rounded-xl">
+              <CardContent className="p-4 space-y-2">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <Car className="w-4 h-4 text-emerald-600" />
+                  Vehicle
+                </div>
+                <div className="text-sm">
+                  <div>ID: <b>{vehicle?.id ?? "—"}</b></div>
+                  <div>Model: <b>{vehicle?.name || [vehicle?.brand, vehicle?.model].filter(Boolean).join(" ") || "—"}</b></div>
+                  {typeof vehicle?.currentSoc === "number" && (
+                    <div>SoC: <b>{vehicle.currentSoc}%</b></div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Actions */}
+          <div className="pt-2 flex justify-center gap-2">
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Back to Dashboard
             </Button>

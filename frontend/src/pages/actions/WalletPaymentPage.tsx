@@ -504,8 +504,6 @@ export default function WalletPaymentPage() {
                             <SelectItem value="all">All types</SelectItem>
                             <SelectItem value="CREDIT">Top-up</SelectItem>
                             <SelectItem value="DEBIT">Payment</SelectItem>
-                            <SelectItem value="HOLD">Deposit hold</SelectItem>
-                            <SelectItem value="RELEASE">Released</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -551,10 +549,8 @@ export default function WalletPaymentPage() {
                                 </div>
                               </div>
                               <div className="text-right space-y-1">
-                                <p className={`font-bold ${t.amount > 0 ? "text-emerald-600" : "text-slate-900"
-                                  }`}
-                                >
-                                  {t.amount > 0 ? "+" : ""}
+                                <p className={`font-bold ${t.type === "CREDIT" ? "text-emerald-600" : "text-rose-600"}`}>
+                                  {t.type === "CREDIT" ? "+" : "-"}
                                   {fmtMoney(t.amount)}
                                 </p>
                                 {statusBadge(t.status)}

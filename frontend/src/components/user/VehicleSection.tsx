@@ -131,7 +131,7 @@ const VehicleSection = () => {
                     : "rounded-full border-slate-200 text-slate-700 hover:bg-slate-50"
                 }
               >
-                {(v.make || "EV")} {(v.model || "")}
+                {(v.model || "")} {(v.make || "EV")}
               </Button>
             );
           })}
@@ -195,7 +195,7 @@ const VehicleSection = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="font-semibold text-slate-900">
-                    {loading ? "…" : `${veh?.make ?? "—"} ${veh?.model ?? ""}`.trim()}
+                    {loading ? "…" : `${veh?.model ?? ""} ${veh?.make ?? "—"}`.trim()}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {tags.map((t) => (

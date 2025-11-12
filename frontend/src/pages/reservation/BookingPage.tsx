@@ -22,6 +22,13 @@ import { useToast } from "../../hooks/use-toast";
 import mockStations from "../../../stations.json";
 import api from "../../api/axios";
 import { ChatBot } from "./../ChatBot";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
 /* =========================
    Types
@@ -50,7 +57,7 @@ type ConnectorDto = {
   type?: string;
   connectorType?: string;
   name?: string;
-  status?: string; // ⬅️ thêm để nắm trạng thái connector
+  status?: string;
 };
 type PillarDto = {
   id: number | string;
@@ -121,6 +128,33 @@ const hmToMinutes = (hm: string) => {
   const [H, M] = hm.split(":").map(Number);
   return H * 60 + M;
 };
+
+/* === Time guard helpers (no-past) + option generator === */
+const clampHM = (hm: string, min: string) => {
+  if (!hm) return min;
+  return hmToMinutes(hm) < hmToMinutes(min) ? min : hm;
+};
+
+const minStartForDate = (yyyyMmDd?: string) =>
+  isToday(yyyyMmDd) ? nowHM(1) : "00:00";
+
+const minEndForDate = (yyyyMmDd?: string, start?: string) => {
+  if (start) return start;                       // End >= Start
+  return isToday(yyyyMmDd) ? nowHM(1) : "00:00"; // Nếu chưa có start
+};
+
+// tạo list mốc giờ trong ngày theo bước )
+const STEP_MIN = 5; 
+const genTimes = (step: number = STEP_MIN) => {
+  const out: string[] = [];
+  for (let m = 0; m < 24 * 60; m += step) {
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    out.push(`${pad(h)}:${pad(mm)}`);
+  }
+  return out;
+};
+const DAY_TIMES = genTimes();
 
 /* =========================
    Core date functions
@@ -244,7 +278,7 @@ export default function BookingPage() {
               id: c.id ?? c.connectorId ?? c.type ?? c.connectorType ?? c.name,
               type: c.type ?? c.connectorType ?? c.name,
               name: c.name ?? c.type ?? c.connectorType ?? `C-${idx + 1}`,
-              status: c.status ?? c.connectorStatus ?? c.state ?? "Available", // ⬅️ thêm status
+              status: c.status ?? c.connectorStatus ?? c.state ?? "Available",
             })),
           })),
         };
@@ -287,7 +321,7 @@ export default function BookingPage() {
     const n = Number(v);
     if (!Number.isFinite(n)) return undefined;
     if (n <= 0) return 0;
-    return n <= 1 ? Math.round(n * 100) : Math.round(n); // 0..1 -> %; nếu đã %, giữ %
+    return n <= 1 ? Math.round(n * 100) : Math.round(n);
   };
 
   useEffect(() => {
@@ -317,12 +351,12 @@ export default function BookingPage() {
             setSelectedVehicleId(mapped[0].id);
             localStorage.setItem("vehicle_id", String(mapped[0].id));
             if (typeof mapped[0].currentSoc === "number") {
-              localStorage.setItem("soc_now", String(mapped[0].currentSoc)); // lưu % thống nhất
+              localStorage.setItem("soc_now", String(mapped[0].currentSoc));
             }
           }
         }
       } catch {
-        // bỏ qua lỗi
+        // ignore
       } finally {
         if (!cancelled) setLoadingVehicles(false);
       }
@@ -358,7 +392,6 @@ export default function BookingPage() {
       const availableCount = chips.filter((c) => c.status.toLowerCase() === "available").length;
       const totalCount = chips.length;
 
-      // default: connector available đầu tiên (nếu có) hoặc connector đầu tiên
       const firstAvail = chips.find((c) => c.status.toLowerCase() === "available") || chips[0];
 
       return {
@@ -538,7 +571,6 @@ export default function BookingPage() {
       const vehicleId =
         selectedVehicleId ?? Number(localStorage.getItem("vehicle_id"));
 
-      // FE lưu %; khi gửi estimate sẽ chia 100
       const socNow = Number(localStorage.getItem("soc_now") ?? "50");
       const socTarget = Number(localStorage.getItem("soc_target") ?? "80");
 
@@ -570,7 +602,7 @@ export default function BookingPage() {
           connectorId: Number(selectedConnectorIdNum),
         };
         if (vctx && Number.isFinite(vctx.socNow) && Number.isFinite(vctx.socTarget)) {
-          payload.socNow = vctx.socNow / 100;     // chuyển % -> 0..1
+          payload.socNow = vctx.socNow / 100;
           payload.socTarget = vctx.socTarget / 100;
         }
 
@@ -613,369 +645,404 @@ export default function BookingPage() {
     ease: [0.42, 0, 0.58, 1],
   };
 
-  const renderSelectionStep = () => (
-    <motion.div
-      key="selection"
-      variants={stepVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={stepTransition}
-      className="space-y-10"
-    >
-      <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <MapPin className="w-5 h-5 mr-2 text-emerald-600" />
-              <span className="font-semibold text-zinc-900"> {station!.name} </span>
+  const renderSelectionStep = () => {
+    // min cho time (dùng cho disable trong Select)
+    const _minStart = minStartForDate(bookingDate);
+    const _minEnd = minEndForDate(bookingDate, startTime);
+
+    return (
+      <motion.div
+        key="selection"
+        variants={stepVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={stepTransition}
+        className="space-y-10"
+      >
+        <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <MapPin className="w-5 h-5 mr-2 text-emerald-600" />
+                <span className="font-semibold text-zinc-900"> {station!.name} </span>
+              </div>
+              <Badge
+                variant="outline"
+                className="rounded-full border-emerald-500/30 text-emerald-700 bg-emerald-500/10 font-medium"
+              >
+                {station!.available ?? "Available"}
+              </Badge>
             </div>
-            <Badge
-              variant="outline"
-              className="rounded-full border-emerald-500/30 text-emerald-700 bg-emerald-500/10 font-medium"
-            >
-              {station!.available ?? "Available"}
-            </Badge>
+
+            <div className="grid grid-cols-3 gap-4 text-center mt-4">
+              <div>
+                <div className="text-sm text-zinc-500">Distance</div>
+                <div className="font-semibold text-zinc-800">{station!.distance ?? "—"}</div>
+              </div>
+              <div className="flex items-center justify-center">
+                {station!.live && (
+                  <>
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full mr-1.5" />
+                    <span className="text-sm font-medium text-emerald-700">Live</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* === Vehicle selection === */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 tracking-tight">
+              <Car className="w-5 h-5 text-emerald-600" /> Select Vehicle
+            </h3>
+            {loadingVehicles && <span className="text-xs text-zinc-500">Loading vehicles…</span>}
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-center mt-4">
-            <div>
-              <div className="text-sm text-zinc-500">Distance</div>
-              <div className="font-semibold text-zinc-800">{station!.distance ?? "—"}</div>
+          {!vehicles.length && !loadingVehicles ? (
+            <div className="text-sm text-zinc-500">
+              No vehicle yet. You can add one in Profile/Vehicle, or continue with the reservation (estimated to use default SoC).
             </div>
-            <div className="flex items-center justify-center">
-              {station!.live && (
-                <>
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full mr-1.5" />
-                  <span className="text-sm font-medium text-emerald-700">Live</span>
-                </>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {vehicles.map((v) => {
+                const active = selectedVehicleId === v.id;
+                return (
+                  <motion.div key={v.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.99 }}>
+                    <Card
+                      onClick={() => {
+                        setSelectedVehicleId(v.id);
+                        localStorage.setItem("vehicle_id", String(v.id));
+                        if (typeof v.currentSoc === "number") {
+                          localStorage.setItem("soc_now", String(v.currentSoc));
+                        }
+                      }}
+                      className={[
+                        "cursor-pointer transition-all duration-200 rounded-xl overflow-hidden",
+                        active
+                          ? "border-2 border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-500/10"
+                          : "border border-zinc-200/70 bg-white hover:border-emerald-500 hover:shadow-lg hover:shadow-zinc-900/10",
+                      ].join(" ")}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-zinc-900">
+                            {v.name || [v.brand, v.model].filter(Boolean).join(" ") || `Vehicle #${v.id}`}
+                          </div>
+                        </div>
+                        {typeof v.currentSoc === "number" && (
+                          <div className="mt-2 text-sm text-zinc-500 flex items-center gap-1.5">
+                            <Battery className="w-4 h-4 text-emerald-600" /> SoC ~{" "}
+                            <b className="text-zinc-700">{`${v.currentSoc}%`}</b>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {/* === END Vehicle selection === */}
+
+        {/* Reservation Time */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 tracking-tight">
+              <CalendarIcon className="w-5 h-5 text-sky-600" /> Reservation Time
+            </h3>
+          </div>
+
+          <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* DATE (giữ nguyên – tự mờ quá khứ) */}
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-zinc-700">Date</div>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setBookingDate(val);
+
+                      const minStart = minStartForDate(val);
+                      if (startTime) setStartTime((prev) => clampHM(prev, minStart));
+
+                      const minEnd = minEndForDate(val, startTime ? clampHM(startTime, minStart) : undefined);
+                      if (endTime) setEndTime((prev) => clampHM(prev, minEnd));
+
+                      if (!startTime) {
+                        const s = minStart;
+                        setStartTime(s);
+                        setEndTime(addMinutes(s, 30));
+                      } else if (!endTime || hmToMinutes(endTime) <= hmToMinutes(startTime)) {
+                        setEndTime(addMinutes(startTime, 15));
+                      }
+                    }}
+                    className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus-visible:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+
+                {/* START TIME (Select có disable -> mờ) */}
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-zinc-700">Start time</div>
+                  <Select
+                    value={startTime || undefined}
+                    onValueChange={(raw) => {
+                      const v = clampHM(raw, _minStart);
+                      setStartTime(v);
+                      if (!endTime || hmToMinutes(endTime) <= hmToMinutes(v)) {
+                        setEndTime(addMinutes(v, 15));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11 px-3">
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_TIMES.map((t) => {
+                        const disabled = hmToMinutes(t) < hmToMinutes(_minStart);
+                        return (
+                          <SelectItem key={`s-${t}`} value={t} disabled={disabled}>
+                            {t}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* END TIME (Select có disable -> mờ) */}
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-zinc-700">End time</div>
+                  <Select
+                    value={endTime || undefined}
+                    onValueChange={(raw) => {
+                      const v = clampHM(raw, _minEnd);
+                      if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
+                        setEndTime(addMinutes(startTime, 15));
+                      } else {
+                        setEndTime(v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11 px-3">
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_TIMES.map((t) => {
+                        const minForEnd = startTime ? startTime : _minEnd;
+                        const disabled = hmToMinutes(t) <= hmToMinutes(minForEnd);
+                        return (
+                          <SelectItem key={`e-${t}`} value={t} disabled={disabled}>
+                            {t}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <Clock className="w-4 h-4 text-sky-600" />
+                  <span>Duration</span>
+                </div>
+                <Badge variant="secondary" className="rounded-full bg-sky-500/10 text-sky-700 text-base font-semibold px-4 py-1">
+                  {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
+                </Badge>
+              </div>
+
+              {/* Estimated charge */}
+              <div className="mt-2 flex items-center justify-between">
+                <div className="text-sm text-zinc-600">Estimated charge</div>
+                <div className="text-sm">
+                  {!selectedPillarId || !selectedConnectorIdNum ? (
+                    <span className="text-zinc-400">Select pillar & connector to estimate</span>
+                  ) : estimating ? (
+                    <span className="text-emerald-700">Estimating…</span>
+                  ) : estimate?.estimatedMinutes != null ? (
+                    <span className="font-medium text-zinc-900">{`~ ${estimate.estimatedMinutes} min`}</span>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </div>
+              </div>
+
+              {/* info: kWh + cost + advice */}
+              {estimate && !estimating && (
+                <div className="mt-1 text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
+                  <span>
+                    Energy ~ <b className="text-zinc-800">{estimate.energyKwh.toFixed(1)} kWh</b>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Est. cost ~ <b className="text-emerald-700">{formatVND(estimate.estimatedCost)}</b>
+                  </span>
+                </div>
               )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              {estimate?.advice && (
+                <div className="mt-2 text-sm text-amber-800 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  {estimate.advice}
+                </div>
+              )}
 
-      {/* === Vehicle selection === */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 tracking-tight">
-            <Car className="w-5 h-5 text-emerald-600" /> Select Vehicle
-          </h3>
-          {loadingVehicles && <span className="text-xs text-zinc-500">Loading vehicles…</span>}
+              <div className="mt-3 bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
+                <div className="text-sm text-zinc-700">
+                  <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
+                  <span className="font-semibold">{durationMinutes || 0} minutes</span>
+                </div>
+                <div className="text-xl font-extrabold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                  {formatVND(estimatedHold || 0)}
+                </div>
+              </div>
+
+              {durationMinutes <= 0 && bookingDate && startTime && endTime && (
+                <div className="text-xs text-red-600 mt-1 font-medium">* The end time must be after the start time.</div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {!vehicles.length && !loadingVehicles ? (
-          <div className="text-sm text-zinc-500">
-            No vehicle yet. You can add one in Profile/Vehicle, or continue with the reservation (estimated to use default SoC).
+        {/* PILLARS */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Select Charging Pillar</h3>
+            {loadingDetail && <span className="text-xs text-zinc-500">Loading pillars…</span>}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {vehicles.map((v) => {
-              const active = selectedVehicleId === v.id;
+
+          {!pillarsUI.length && !loadingDetail && (
+            <div className="text-sm text-red-600">There are no pillars available at this station.</div>
+          )}
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {pillarsUI.map((p) => {
+              const active = selectedPillarCode === p.code;
               return (
-                <motion.div key={v.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.99 }}>
+                <motion.div
+                  key={String(p.pillarId)}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   <Card
                     onClick={() => {
-                      setSelectedVehicleId(v.id);
-                      localStorage.setItem("vehicle_id", String(v.id));
-                      if (typeof v.currentSoc === "number") {
-                        localStorage.setItem("soc_now", String(v.currentSoc)); // lưu %
+                      setSelectedPillarCode(p.code);
+                      setSelectedPillarId(
+                        typeof p.pillarId === "string" && /^\d+$/.test(p.pillarId)
+                          ? Number(p.pillarId)
+                          : p.pillarId
+                      );
+                      setSelectedConnectorId("");
+                      setSelectedConnectorIdNum(null);
+                      setSelectedConnectorLabel("");
+                      if (p.defaultConnector) {
+                        setSelectedConnectorId(String(p.defaultConnector.id));
+                        setSelectedConnectorIdNum(p.defaultConnector.id);
+                        setSelectedConnectorLabel(p.defaultConnector.name);
                       }
                     }}
                     className={[
-                      "cursor-pointer transition-all duration-200 rounded-xl overflow-hidden",
+                      "transition-all duration-200 rounded-xl overflow-hidden text-center cursor-pointer",
                       active
                         ? "border-2 border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-500/10"
                         : "border border-zinc-200/70 bg-white hover:border-emerald-500 hover:shadow-lg hover:shadow-zinc-900/10",
                     ].join(" ")}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="font-semibold text-zinc-900">
-                          {v.name || [v.brand, v.model].filter(Boolean).join(" ") || `Vehicle #${v.id}`}
-                        </div>
+                    <CardContent className="p-5">
+                      <div className="font-semibold text-lg text-zinc-800">{p.name}</div>
+
+                      <div className="flex flex-wrap gap-1.5 justify-center mt-2 min-h-[22px]">
+                        {p.connectorChips.length ? (
+                          p.connectorChips.map((c) => {
+                            const st = (c.status || "").toLowerCase();
+                            const cls =
+                              st === "available"
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                : st === "occupied"
+                                ? "border-amber-300 bg-amber-50 text-amber-700"
+                                : "border-slate-300 bg-slate-50 text-slate-600";
+                            return (
+                              <span key={String(c.id)} className={`px-2 py-0.5 rounded-full border text-xs leading-5 ${cls}`}>
+                                {c.name}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="text-xs text-zinc-400">—</span>
+                        )}
                       </div>
-                      {typeof v.currentSoc === "number" && (
-                        <div className="mt-2 text-sm text-zinc-500 flex items-center gap-1.5">
-                          <Battery className="w-4 h-4 text-emerald-600" /> SoC ~{" "}
-                          <b className="text-zinc-700">{`${v.currentSoc}%`}</b>
-                        </div>
-                      )}
+
+                      <Badge
+                        variant="default"
+                        className="mt-3 text-xs rounded-full font-medium px-3 py-1 border bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                      >
+                        {p.availableCount}/{p.totalCount} available
+                      </Badge>
                     </CardContent>
                   </Card>
                 </motion.div>
               );
             })}
           </div>
-        )}
-      </div>
-      {/* === END Vehicle selection === */}
-
-      {/* Reservation Time */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 tracking-tight">
-            <CalendarIcon className="w-5 h-5 text-sky-600" /> Reservation Time
-          </h3>
         </div>
 
-        <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-zinc-700">Date</div>
-                <input
-                  type="date"
-                  value={bookingDate}
-                  min={new Date().toISOString().slice(0, 10)} // KHÓA QUÁ KHỨ
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setBookingDate(val);
-                    if (isToday(val) && startTime && hmToMinutes(startTime) < hmToMinutes(nowHM(1))) {
-                      const nw = nowHM(1);
-                      setStartTime(nw);
-                      if (!endTime || hmToMinutes(endTime) <= hmToMinutes(nw)) {
-                        setEndTime(addMinutes(nw, 30));
-                      }
-                    }
-                  }}
-                  className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus-visible:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                />
-              </div>
+        {/* CONNECTOR TYPE */}
+        <div>
+          <h3 className="text-xl font-bold mb-3 text-zinc-900 tracking-tight">Select Connector</h3>
+          {!selectedPillarCode ? (
+            <div className="text-sm text-zinc-500">Select the charging station first.</div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {normalizedConnectors.map((c) => {
+                const active = selectedConnectorId === String(c.id);
+                const st = (c.status || "").toLowerCase();
+                const disabled = !!st && st !== "available";
 
-              {/* START TIME: input time chuẩn */}
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-zinc-700">Start time</div>
-                <input
-                  type="time"
-                  value={startTime}
-                  step={60} // 1 phút
-                  min={isToday(bookingDate) ? nowHM(1) : undefined}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setStartTime(v);
-                    if (!endTime || hmToMinutes(endTime) <= hmToMinutes(v)) {
-                      setEndTime(addMinutes(v, 15));
-                    }
-                  }}
-                  className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
-              </div>
+                const activeCls =
+                  "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 scale-105";
+                const normalCls =
+                  "bg-white border border-zinc-300 text-zinc-700 hover:border-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-700";
+                const disabledCls = "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed";
 
-              {/* END TIME: min = startTime */}
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-zinc-700">End time</div>
-                <input
-                  type="time"
-                  value={endTime}
-                  step={60}
-                  min={startTime || undefined}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
-                      setEndTime(addMinutes(startTime, 15));
-                    } else setEndTime(v);
-                  }}
-                  className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
-              </div>
+                return (
+                  <motion.button
+                    key={String(c.id)}
+                    onClick={() => {
+                      if (disabled) return;
+                      setSelectedConnectorId(String(c.id));
+                      setSelectedConnectorIdNum(c.id);
+                      setSelectedConnectorLabel(c.name);
+                    }}
+                    whileHover={disabled ? {} : { scale: 1.05 }}
+                    whileTap={disabled ? {} : { scale: 0.95 }}
+                    disabled={disabled}
+                    className={[
+                      "px-6 h-10 rounded-full text-sm font-medium transition-all duration-300 transform",
+                      disabled ? disabledCls : active ? activeCls : normalCls,
+                    ].join(" ")}
+                    title={c.status ? `Status: ${c.status}` : undefined}
+                  >
+                    {c.name}{c.status ? ` · ${c.status}` : ""}
+                  </motion.button>
+                );
+              })}
+              {selectedPillarCode && normalizedConnectors.length === 0 && (
+                <div className="text-sm text-zinc-500">This pillar does not have a connector.</div>
+              )}
             </div>
-
-            {/* Duration */}
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2 text-sm text-zinc-600">
-                <Clock className="w-4 h-4 text-sky-600" />
-                <span>Duration</span>
-              </div>
-              <Badge variant="secondary" className="rounded-full bg-sky-500/10 text-sky-700 text-base font-semibold px-4 py-1">
-                {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
-              </Badge>
-            </div>
-
-            {/* Estimated charge */}
-            <div className="mt-2 flex items-center justify-between">
-              <div className="text-sm text-zinc-600">Estimated charge</div>
-              <div className="text-sm">
-                {!selectedPillarId || !selectedConnectorIdNum ? (
-                  <span className="text-zinc-400">Select pillar & connector to estimate</span>
-                ) : estimating ? (
-                  <span className="text-emerald-700">Estimating…</span>
-                ) : estimate?.estimatedMinutes != null ? (
-                  <span className="font-medium text-zinc-900">{`~ ${estimate.estimatedMinutes} min`}</span>
-                ) : (
-                  <span className="text-zinc-400">—</span>
-                )}
-              </div>
-            </div>
-
-            {/* info: kWh + cost + advice */}
-            {estimate && !estimating && (
-              <div className="mt-1 text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
-                <span>
-                  Energy ~ <b className="text-zinc-800">{estimate.energyKwh.toFixed(1)} kWh</b>
-                </span>
-                <span>•</span>
-                <span>
-                  Est. cost ~ <b className="text-emerald-700">{formatVND(estimate.estimatedCost)}</b>
-                </span>
-              </div>
-            )}
-            {estimate?.advice && (
-              <div className="mt-2 text-sm text-amber-800 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                {estimate.advice}
-              </div>
-            )}
-
-            <div className="mt-3 bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
-              <div className="text-sm text-zinc-700">
-                <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
-                <span className="font-semibold">{durationMinutes || 0} minutes</span>
-              </div>
-              <div className="text-xl font-extrabold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-                {formatVND(estimatedHold || 0)}
-              </div>
-            </div>
-
-            {durationMinutes <= 0 && bookingDate && startTime && endTime && (
-              <div className="text-xs text-red-600 mt-1 font-medium">* The end time must be after the start time.</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* PILLARS */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Select Charging Pillar</h3>
-          {loadingDetail && <span className="text-xs text-zinc-500">Loading pillars…</span>}
+          )}
         </div>
-
-        {!pillarsUI.length && !loadingDetail && (
-          <div className="text-sm text-red-600">There are no pillars available at this station.</div>
-        )}
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {pillarsUI.map((p) => {
-            const active = selectedPillarCode === p.code;
-            return (
-              <motion.div
-                key={String(p.pillarId)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Card
-                  onClick={() => {
-                    setSelectedPillarCode(p.code);
-                    setSelectedPillarId(
-                      typeof p.pillarId === "string" && /^\d+$/.test(p.pillarId)
-                        ? Number(p.pillarId)
-                        : p.pillarId
-                    );
-                    setSelectedConnectorId("");
-                    setSelectedConnectorIdNum(null);
-                    setSelectedConnectorLabel("");
-                    if (p.defaultConnector) {
-                      setSelectedConnectorId(String(p.defaultConnector.id));
-                      setSelectedConnectorIdNum(p.defaultConnector.id);
-                      setSelectedConnectorLabel(p.defaultConnector.name);
-                    }
-                  }}
-                  className={[
-                    "transition-all duration-200 rounded-xl overflow-hidden text-center cursor-pointer",
-                    active
-                      ? "border-2 border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-500/10"
-                      : "border border-zinc-200/70 bg-white hover:border-emerald-500 hover:shadow-lg hover:shadow-zinc-900/10",
-                  ].join(" ")}
-                >
-                  <CardContent className="p-5">
-                    <div className="font-semibold text-lg text-zinc-800">{p.name}</div>
-
-                    {/* chips connector theo status */}
-                    <div className="flex flex-wrap gap-1.5 justify-center mt-2 min-h-[22px]">
-                      {p.connectorChips.length ? (
-                        p.connectorChips.map((c) => {
-                          const st = (c.status || "").toLowerCase();
-                          const cls =
-                            st === "available"
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                              : st === "occupied"
-                              ? "border-amber-300 bg-amber-50 text-amber-700"
-                              : "border-slate-300 bg-slate-50 text-slate-600";
-                          return (
-                            <span key={String(c.id)} className={`px-2 py-0.5 rounded-full border text-xs leading-5 ${cls}`}>
-                              {c.name}
-                            </span>
-                          );
-                        })
-                      ) : (
-                        <span className="text-xs text-zinc-400">—</span>
-                      )}
-                    </div>
-
-                    {/* tóm tắt available theo connector */}
-                    <Badge
-                      variant="default"
-                      className="mt-3 text-xs rounded-full font-medium px-3 py-1 border bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-                    >
-                      {p.availableCount}/{p.totalCount} available
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* CONNECTOR TYPE */}
-      <div>
-        <h3 className="text-xl font-bold mb-3 text-zinc-900 tracking-tight">Select Connector</h3>
-        {!selectedPillarCode ? (
-          <div className="text-sm text-zinc-500">Select the charging station first.</div>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            {normalizedConnectors.map((c) => {
-              const active = selectedConnectorId === String(c.id);
-              const st = (c.status || "").toLowerCase();
-              const disabled = !!st && st !== "available";
-
-              const activeCls =
-                "bg-gradient-to-r from-emerald-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 scale-105";
-              const normalCls =
-                "bg-white border border-zinc-300 text-zinc-700 hover:border-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-700";
-              const disabledCls = "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed";
-
-              return (
-                <motion.button
-                  key={String(c.id)}
-                  onClick={() => {
-                    if (disabled) return;
-                    setSelectedConnectorId(String(c.id));
-                    setSelectedConnectorIdNum(c.id);
-                    setSelectedConnectorLabel(c.name);
-                  }}
-                  whileHover={disabled ? {} : { scale: 1.05 }}
-                  whileTap={disabled ? {} : { scale: 0.95 }}
-                  disabled={disabled}
-                  className={[
-                    "px-6 h-10 rounded-full text-sm font-medium transition-all duration-300 transform",
-                    disabled ? disabledCls : active ? activeCls : normalCls,
-                  ].join(" ")}
-                  title={c.status ? `Status: ${c.status}` : undefined}
-                >
-                  {c.name}{c.status ? ` · ${c.status}` : ""}
-                </motion.button>
-              );
-            })}
-            {selectedPillarCode && normalizedConnectors.length === 0 && (
-              <div className="text-sm text-zinc-500">This pillar does not have a connector.</div>
-            )}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   const renderInsufficientBanner = () =>
     insufficient && (
