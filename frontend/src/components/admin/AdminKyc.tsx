@@ -14,7 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../../components/ui/table";
 import {
-  CheckCircle2, XCircle, ShieldCheck, Eye, Loader2, Image as ImageIcon, ChevronLeft, ChevronRight,
+  CheckCircle2, XCircle, ShieldCheck, Image as ImageIcon, ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 
@@ -70,27 +70,71 @@ export default function AdminKyc() {
   const [actionOpen, setActionOpen] = useState<null | { row: KycSubmission; mode: "approve" | "reject" }>(null);
   const [reason, setReason] = useState("");
 
+  // ==== gọi /user/getAll rồi map userId -> tên/email ====
   const fetchPage = async () => {
     setLoading(true);
     try {
-      const res = await api.get<PageResp<KycSubmission>>("/kyc/get-all", {
+      // 1) Lấy trang KYC
+      const res = await api.get<PageResp<any>>("/kyc/get-all", {
         params: { page, size },
         withCredentials: true,
       });
       const data = res.data?.data;
-      setRows(data?.content ?? []);
+      const content: any[] = data?.content ?? [];
       setTotal(data?.totalElements ?? 0);
       setTotalPages(data?.totalPages ?? 0);
+
+      // 2) Lấy toàn bộ user 
+      const ures = await api.get<any>("/user/getAll", { withCredentials: true });
+      const ulist: any[] = Array.isArray(ures.data?.data) ? ures.data.data : (Array.isArray(ures.data) ? ures.data : []);
+      const userMap = new Map<number, UserLite>();
+      for (const u of ulist) {
+        const id = Number(u?.id ?? u?.userId);
+        if (!Number.isFinite(id)) continue;
+        const fullName =
+          (u?.fullName ??
+          [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim()) ||
+          u?.username ||
+          undefined;
+        userMap.set(id, {
+          id,
+          fullName,
+          email: u?.email ?? u?.mail ?? u?.username,
+          phone: u?.phone ?? u?.phoneNumber,
+        });
+      }
+
+      // 3) Map về shape dùng cho UI
+      const mapped: KycSubmission[] = content.map((r: any) => {
+        const uid = Number(r?.userId);
+        const u = userMap.get(uid);
+        return {
+          id: Number(r?.id),
+          user: u ?? { id: uid },
+          frontImageUrl: String(r?.frontImageUrl ?? r?.front),
+          backImageUrl: String(r?.backImageUrl ?? r?.back),
+          status: (r?.status ?? "PENDING") as KycSubmission["status"],
+          rejectionReason: r?.rejectionReason ?? null,
+          createdAt: r?.createdAt,
+          updatedAt: r?.updatedAt,
+        };
+      });
+
+      setRows(mapped);
     } catch (e: any) {
       toast({
         title: "Load KYC failed",
         description: e?.response?.data?.message || e?.message || "Không tải được danh sách.",
         variant: "destructive",
       });
+      setRows([]);
+      setTotal(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
   };
+  // ==== HẾT PHẦN SỬA ====
 
   useEffect(() => { fetchPage(); /* eslint-disable-next-line */ }, [page, size]);
 
@@ -127,7 +171,6 @@ export default function AdminKyc() {
       toast({ title: mode === "approve" ? "Approved" : "Rejected" });
       setActionOpen(null);
       setReason("");
-      // refresh current page
       fetchPage();
     } catch (e: any) {
       toast({
@@ -138,7 +181,6 @@ export default function AdminKyc() {
     }
   };
 
-  /* ===== Header actions ===== */
   const header = (
     <div className="flex items-center gap-3">
       <div className="relative">
@@ -160,22 +202,10 @@ export default function AdminKyc() {
           <SelectItem value="rejected">Rejected</SelectItem>
         </SelectContent>
       </Select>
-      <Select value={String(size)} onValueChange={(v) => { setPage(0); setSize(Number(v)); }}>
-        <SelectTrigger className="w-28 rounded-full bg-slate-100 border-0">
-          <SelectValue placeholder="Page size" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="5">5 / page</SelectItem>
-          <SelectItem value="10">10 / page</SelectItem>
-          <SelectItem value="20">20 / page</SelectItem>
-          <SelectItem value="50">50 / page</SelectItem>
-        </SelectContent>
-      </Select>
       <Button variant="outline" onClick={() => fetchPage()}>Refresh</Button>
     </div>
   );
 
-  /* ===== KPIs ===== */
   const kpi = (() => {
     const p = rows.filter(r => r.status === "PENDING").length;
     const a = rows.filter(r => r.status === "APPROVED").length;
@@ -281,7 +311,6 @@ export default function AdminKyc() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              {/* Only show actions when status is PENDING */}
                               {isPending && (
                                 <>
                                   <Button
@@ -318,7 +347,6 @@ export default function AdminKyc() {
                 </Table>
               </div>
 
-              {/* Pagination */}
               <div className="flex items-center justify-between px-6 py-4 border-t bg-white rounded-b-2xl">
                 <div className="text-sm text-slate-600">
                   Total: <span className="font-semibold">{total}</span>
@@ -358,7 +386,6 @@ export default function AdminKyc() {
           </DialogHeader>
           {imgOpen && (
             <div className="w-full">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imgOpen.url} alt={imgOpen.label} className="w-full rounded-lg border" />
             </div>
           )}
