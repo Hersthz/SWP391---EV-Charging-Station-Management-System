@@ -8,6 +8,7 @@ import {
   MapPin,
   Crosshair,
   Building2,
+  Copy,               
 } from "lucide-react";
 import api from "../../api/axios";
 import { Button } from "../../components/ui/button";
@@ -43,6 +44,7 @@ interface PillarInput {
   power: number;
   pricePerKwh: number;
   connectors: ConnectorInput[];
+  powerType: "AC" | "DC"; 
 }
 interface StationInput {
   stationName: string;
@@ -50,14 +52,36 @@ interface StationInput {
   latitude: number;
   longitude: number;
   pillars: PillarInput[];
-  imageUrl?: string;     // public image URL
-  imageBase64?: string;  // base64 when a local file is uploaded
+  imageUrl?: string; // public image URL
+  imageBase64?: string; // base64 when a local file is uploaded
 }
 
-const connectorOptions = ["CCS", "CHAdeMO", "Type2", "AC"] as const;
+// Connector options theo AC / DC
+const AC_CONNECTOR_OPTIONS = ["AC", "Type2"] as const;
+const DC_CONNECTOR_OPTIONS = ["CCS", "CHAdeMO"] as const;
 
 function isValidNumber(n: unknown) {
   return typeof n === "number" && !Number.isNaN(n);
+}
+
+// Recalc code cho toàn bộ pillars theo nhóm AC / DC
+function recalcPillarCodes(pillars: PillarInput[]): PillarInput[] {
+  let acCount = 0;
+  let dcCount = 0;
+
+  return pillars.map((p) => {
+    let code = p.code;
+
+    if (p.powerType === "AC") {
+      acCount += 1;
+      code = `AC-${String(acCount).padStart(2, "0")}`;
+    } else if (p.powerType === "DC") {
+      dcCount += 1;
+      code = `DC-${String(dcCount).padStart(2, "0")}`;
+    }
+
+    return { ...p, code };
+  });
 }
 
 function LocationPicker({
@@ -92,32 +116,80 @@ const AdminAddStation = () => {
     pillars: [],
   });
 
-  // image preview source 
+  // image preview source
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   // ===== Pillars =====
   const addPillar = () => {
-    setStationData((prev) => ({
-      ...prev,
-      pillars: [
+    setStationData((prev) => {
+      const newPillars = [
         ...prev.pillars,
-        { code: "", power: 0, pricePerKwh: 0, connectors: [] },
-      ],
-    }));
+        {
+          code: "",
+          power: 0,
+          pricePerKwh: 0,
+          connectors: [],
+          powerType: "AC" as const, // default AC
+        },
+      ];
+      return {
+        ...prev,
+        pillars: recalcPillarCodes(newPillars),
+      };
+    });
   };
 
   const removePillar = (index: number) => {
-    setStationData((prev) => ({
-      ...prev,
-      pillars: prev.pillars.filter((_, i) => i !== index),
-    }));
+    setStationData((prev) => {
+      const newPillars = prev.pillars.filter((_, i) => i !== index);
+      return { ...prev, pillars: recalcPillarCodes(newPillars) };
+    });
   };
 
-  const updatePillar = (index: number, field: keyof PillarInput, value: any) => {
-    setStationData((prev) => ({
-      ...prev,
-      pillars: prev.pillars.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
-    }));
+  // Duplicate pillar
+  const duplicatePillar = (index: number) => {
+    setStationData((prev) => {
+      const target = prev.pillars[index];
+      if (!target) return prev;
+
+      const cloned: PillarInput = {
+        ...target,
+        connectors: target.connectors.map((c) => ({ ...c })), // deep-ish clone
+      };
+
+      const newPillars = [...prev.pillars];
+      newPillars.splice(index + 1, 0, cloned);
+
+      return {
+        ...prev,
+        pillars: recalcPillarCodes(newPillars),
+      };
+    });
+  };
+
+  const updatePillar = (
+    index: number,
+    field: keyof PillarInput,
+    value: any
+  ) => {
+    setStationData((prev) => {
+      let newPillars = prev.pillars.map((p, i) =>
+        i === index ? { ...p, [field]: value } : p
+      );
+
+      // Nếu đổi loại AC/DC thì clear connectors và recalc code
+      if (field === "powerType") {
+        newPillars = newPillars.map((p, i) =>
+          i === index ? { ...p, connectors: [] } : p
+        );
+        newPillars = recalcPillarCodes(newPillars);
+      }
+
+      return {
+        ...prev,
+        pillars: newPillars,
+      };
+    });
   };
 
   // ===== Connectors =====
@@ -125,7 +197,9 @@ const AdminAddStation = () => {
     setStationData((prev) => ({
       ...prev,
       pillars: prev.pillars.map((p, i) =>
-        i === pillarIndex ? { ...p, connectors: [...p.connectors, { connectorType: "" }] } : p
+        i === pillarIndex
+          ? { ...p, connectors: [...p.connectors, { connectorType: "" }] }
+          : p
       ),
     }));
   };
@@ -135,20 +209,29 @@ const AdminAddStation = () => {
       ...prev,
       pillars: prev.pillars.map((p, i) =>
         i === pillarIndex
-          ? { ...p, connectors: p.connectors.filter((_, ci) => ci !== connectorIndex) }
+          ? {
+              ...p,
+              connectors: p.connectors.filter((_, ci) => ci !== connectorIndex),
+            }
           : p
       ),
     }));
   };
 
-  const updateConnector = (pillarIndex: number, connectorIndex: number, type: string) => {
+  const updateConnector = (
+    pillarIndex: number,
+    connectorIndex: number,
+    type: string
+  ) => {
     setStationData((prev) => ({
       ...prev,
       pillars: prev.pillars.map((p, i) =>
         i === pillarIndex
           ? {
               ...p,
-              connectors: p.connectors.map((c, ci) => (ci === connectorIndex ? { connectorType: type } : c)),
+              connectors: p.connectors.map((c, ci) =>
+                ci === connectorIndex ? { connectorType: type } : c
+              ),
             }
           : p
       ),
@@ -169,7 +252,11 @@ const AdminAddStation = () => {
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = String(reader.result);
-      setStationData((prev) => ({ ...prev, imageBase64: base64, imageUrl: undefined }));
+      setStationData((prev) => ({
+        ...prev,
+        imageBase64: base64,
+        imageUrl: undefined,
+      }));
       setPreviewSrc(base64);
     };
     reader.readAsDataURL(file);
@@ -208,11 +295,15 @@ const AdminAddStation = () => {
         ...stationData,
         latitude: Number(stationData.latitude),
         longitude: Number(stationData.longitude),
-        pillars: stationData.pillars.map((p) => ({
-          ...p,
-          power: Number(p.power),
-          pricePerKwh: Number(p.pricePerKwh),
-        })),
+        // Không gửi powerType lên BE
+        pillars: stationData.pillars.map(
+          ({ code, power, pricePerKwh, connectors }) => ({
+            code,
+            power: Number(power),
+            pricePerKwh: Number(pricePerKwh),
+            connectors,
+          })
+        ) as any,
         imageUrl: stationData.imageUrl?.trim() || undefined,
         imageBase64: stationData.imageBase64 || undefined,
       };
@@ -313,14 +404,18 @@ const AdminAddStation = () => {
                 </div>
                 <div>
                   <CardTitle>Station Information</CardTitle>
-                  <CardDescription>Create a new station with pillars and connectors</CardDescription>
+                  <CardDescription>
+                    Create a new station with pillars and connectors
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Station Name *</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Station Name *
+                  </label>
                   <input
                     required
                     type="text"
@@ -334,7 +429,9 @@ const AdminAddStation = () => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Address *</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Address *
+                  </label>
                   <input
                     required
                     type="text"
@@ -351,7 +448,8 @@ const AdminAddStation = () => {
                 <div className="md:col-span-2 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-slate-600">
-                      Pick location on the map (click or drag marker). You can still edit coordinates manually.
+                      Pick location on the map (click or drag marker). You can
+                      still edit coordinates manually.
                     </div>
                     <Button
                       type="button"
@@ -380,7 +478,11 @@ const AdminAddStation = () => {
                         lat={stationData.latitude}
                         lng={stationData.longitude}
                         onChange={(lat, lng) =>
-                          setStationData({ ...stationData, latitude: lat, longitude: lng })
+                          setStationData({
+                            ...stationData,
+                            latitude: lat,
+                            longitude: lng,
+                          })
                         }
                       />
                       <Marker
@@ -404,7 +506,9 @@ const AdminAddStation = () => {
                   {/* Manual inputs */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Latitude *</label>
+                      <label className="block text-sm font-medium mb-2">
+                        Latitude *
+                      </label>
                       <input
                         required
                         type="number"
@@ -421,7 +525,9 @@ const AdminAddStation = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">Longitude *</label>
+                      <label className="block text-sm font-medium mb-2">
+                        Longitude *
+                      </label>
                       <input
                         required
                         type="number"
@@ -456,14 +562,18 @@ const AdminAddStation = () => {
                 </div>
                 <div>
                   <CardTitle>Station Image (optional)</CardTitle>
-                  <CardDescription>Paste an image URL or upload a local file</CardDescription>
+                  <CardDescription>
+                    Paste an image URL or upload a local file
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Image URL</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Image URL
+                  </label>
                   <input
                     type="url"
                     value={stationData.imageUrl ?? ""}
@@ -477,7 +587,9 @@ const AdminAddStation = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Upload file</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Upload file
+                  </label>
                   <input
                     type="file"
                     accept="image/*"
@@ -485,20 +597,29 @@ const AdminAddStation = () => {
                     className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    When a file is chosen, a <code>imageBase64</code> will be sent.
+                    When a file is chosen, a <code>imageBase64</code> will be
+                    sent.
                   </p>
                 </div>
               </div>
 
               {/* Preview */}
               <div className="mt-2">
-                <label className="block text-sm font-medium mb-2">Preview</label>
+                <label className="block text-sm font-medium mb-2">
+                  Preview
+                </label>
                 <div className="rounded-xl border overflow-hidden bg-slate-50 grid place-items-center min-h-[180px]">
                   {previewSrc ? (
                     // eslint-disable-next-line jsx-a11y/alt-text
-                    <img src={previewSrc} className="max-h-[280px] w-full object-contain" loading="lazy" />
+                    <img
+                      src={previewSrc}
+                      className="max-h-[280px] w-full object-contain"
+                      loading="lazy"
+                    />
                   ) : (
-                    <span className="text-sm text-slate-500 py-8">No image selected</span>
+                    <span className="text-sm text-slate-500 py-8">
+                      No image selected
+                    </span>
                   )}
                 </div>
               </div>
@@ -510,7 +631,9 @@ const AdminAddStation = () => {
             <CardHeader className="flex-row items-center justify-between">
               <div>
                 <CardTitle>Charging Pillars</CardTitle>
-                <CardDescription>Configure power, price and connectors</CardDescription>
+                <CardDescription>
+                  Configure power, price and connectors
+                </CardDescription>
               </div>
               <Button
                 type="button"
@@ -524,112 +647,186 @@ const AdminAddStation = () => {
             <CardContent className="space-y-4">
               {stationData.pillars.length === 0 ? (
                 <div className="text-center text-slate-500 py-6">
-                  No pillars added yet. Click <span className="font-medium">Add Pillar</span> to get started.
+                  No pillars added yet. Click{" "}
+                  <span className="font-medium">Add Pillar</span> to get started.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {stationData.pillars.map((pillar, pIndex) => (
-                    <div key={pIndex} className="border rounded-xl p-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-sm font-medium">
-                          Pillar {pIndex + 1}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => removePillar(pIndex)}
-                          className="hover:bg-rose-50"
-                        >
-                          <Trash2 className="w-4 h-4 text-rose-600" />
-                        </Button>
-                      </div>
+                  {stationData.pillars.map((pillar, pIndex) => {
+                    const allowedOptions =
+                      pillar.powerType === "DC"
+                        ? DC_CONNECTOR_OPTIONS
+                        : AC_CONNECTOR_OPTIONS;
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Code *</label>
-                          <input
-                            required
-                            type="text"
-                            value={pillar.code}
-                            onChange={(e) => updatePillar(pIndex, "code", e.target.value)}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-                            placeholder="AC-01"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Power (kW) *</label>
-                          <input
-                            required
-                            type="number"
-                            min={0}
-                            value={pillar.power}
-                            onChange={(e) =>
-                              updatePillar(pIndex, "power", parseFloat(e.target.value))
-                            }
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-                            placeholder="250"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Price (₫/kWh) *</label>
-                          <input
-                            required
-                            type="number"
-                            min={0}
-                            step={100}
-                            value={pillar.pricePerKwh}
-                            onChange={(e) =>
-                              updatePillar(pIndex, "pricePerKwh", parseFloat(e.target.value))
-                            }
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-                            placeholder="6500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Connectors */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-sm font-medium">Connectors</label>
-                          <Button type="button" variant="outline" size="sm" onClick={() => addConnector(pIndex)}>
-                            + Add Connector
-                          </Button>
-                        </div>
-
-                        {pillar.connectors.length === 0 ? (
-                          <p className="text-sm text-slate-500">No connectors added</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {pillar.connectors.map((connector, cIndex) => (
-                              <div key={cIndex} className="flex items-center gap-2">
-                                <select
-                                  required
-                                  value={connector.connectorType}
-                                  onChange={(e) => updateConnector(pIndex, cIndex, e.target.value)}
-                                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-                                >
-                                  <option value="">Select type</option>
-                                  {connectorOptions.map((opt) => (
-                                    <option key={opt} value={opt}>
-                                      {opt}
-                                    </option>
-                                  ))}
-                                </select>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  onClick={() => removeConnector(pIndex, cIndex)}
-                                  className="hover:bg-rose-50"
-                                >
-                                  <Trash2 className="w-4 h-4 text-rose-600" />
-                                </Button>
-                              </div>
-                            ))}
+                    return (
+                      <div
+                        key={pIndex}
+                        className="border rounded-xl p-4 space-y-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-sm font-medium">
+                            Pillar {pIndex + 1}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => duplicatePillar(pIndex)}
+                              className="hover:bg-sky-50"
+                            >
+                              <Copy className="w-4 h-4 text-sky-700" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => removePillar(pIndex)}
+                              className="hover:bg-rose-50"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-600" />
+                            </Button>
                           </div>
-                        )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Pillar type *
+                            </label>
+                            <select
+                              required
+                              value={pillar.powerType}
+                              onChange={(e) =>
+                                updatePillar(
+                                  pIndex,
+                                  "powerType",
+                                  e.target.value as "AC" | "DC"
+                                )
+                              }
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                            >
+                              <option value="AC">AC</option>
+                              <option value="DC">DC</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Code
+                            </label>
+                            <input
+                              readOnly
+                              type="text"
+                              value={pillar.code}
+                              className="w-full px-4 py-2 border rounded-lg bg-slate-50 text-slate-700"
+                              placeholder="AC-01"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Power (kW) *
+                            </label>
+                            <input
+                              required
+                              type="number"
+                              min={0}
+                              value={pillar.power}
+                              onChange={(e) =>
+                                updatePillar(
+                                  pIndex,
+                                  "power",
+                                  parseFloat(e.target.value)
+                                )
+                              }
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                              placeholder="250"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Price (₫/kWh) *
+                            </label>
+                            <input
+                              required
+                              type="number"
+                              min={0}
+                              step={100}
+                              value={pillar.pricePerKwh}
+                              onChange={(e) =>
+                                updatePillar(
+                                  pIndex,
+                                  "pricePerKwh",
+                                  parseFloat(e.target.value)
+                                )
+                              }
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                              placeholder="6500"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Connectors */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium">
+                              Connectors
+                            </label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addConnector(pIndex)}
+                            >
+                              + Add Connector
+                            </Button>
+                          </div>
+
+                          {pillar.connectors.length === 0 ? (
+                            <p className="text-sm text-slate-500">
+                              No connectors added
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {pillar.connectors.map((connector, cIndex) => (
+                                <div
+                                  key={cIndex}
+                                  className="flex items-center gap-2"
+                                >
+                                  <select
+                                    required
+                                    value={connector.connectorType}
+                                    onChange={(e) =>
+                                      updateConnector(
+                                        pIndex,
+                                        cIndex,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                  >
+                                    <option value="">Select type</option>
+                                    {allowedOptions.map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      removeConnector(pIndex, cIndex)
+                                    }
+                                    className="hover:bg-rose-50"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-rose-600" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

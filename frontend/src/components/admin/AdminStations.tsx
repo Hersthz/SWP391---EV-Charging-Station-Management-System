@@ -382,11 +382,6 @@ const AdminStations = () => {
         <Plus className="w-4 h-4 mr-2" />
         Add Station
       </Button>
-
-      <Button className="bg-gradient-to-r from-sky-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 hover:brightness-110">
-        <Power className="w-4 h-4 mr-2" />
-        Remote Control
-      </Button>
     </>
   );
 

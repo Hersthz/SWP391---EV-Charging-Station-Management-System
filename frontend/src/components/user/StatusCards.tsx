@@ -17,17 +17,27 @@ import {
   PlugZap,
   XCircle,
   DollarSign,
+  Info,
 } from "lucide-react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 
 /** Toggle mock for quick preview */
 const USE_MOCK = false;
+const DEMO_DEFAULT_TICK_SEC = 1; // 1s/patch
+const DEMO_DEFAULT_KW = 0.45;
 
 /* ===== Types ===== */
 type Vehicle = {
@@ -45,10 +55,10 @@ type Vehicle = {
 
 type EstimateResp = {
   energyKwh: number;
-  energyFromStationKwh: number;
   estimatedCost: number;
   estimatedMinutes: number;
-  advice?: string;
+  socTarget?: number;
+  minuteUntilEnd?: number;
 };
 
 export type ReservationStatus =
@@ -122,7 +132,14 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       pillarId: 2,
       pillarCode: "P2",
       connectorType: "AC Fast 22kW",
-      startTime: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 1, 14, 0, 0).toISOString(),
+      startTime: new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        new Date().getDate() + 1,
+        14,
+        0,
+        0
+      ).toISOString(),
       status: "SCHEDULED",
       holdFee: 50000,
       payment: { paid: true },
@@ -134,7 +151,14 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
       pillarId: 1,
       pillarCode: "P1",
       connectorType: "DC Fast 150kW",
-      startTime: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 18, 0, 0).toISOString(),
+      startTime: new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        new Date().getDate(),
+        18,
+        0,
+        0
+      ).toISOString(),
       status: "PENDING_PAYMENT",
       holdFee: 0,
       payment: { paid: false },
@@ -144,18 +168,36 @@ const MOCK_RESERVATIONS: MyReservationsResponse = {
     stationName: "Downtown Station #3",
     pillarCode: "P4",
     connectorType: "DC Ultra 350kW",
-    startTime: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 1, 14, 0, 0).toISOString(),
+    startTime: new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      new Date().getDate() + 1,
+      14,
+      0,
+      0
+    ).toISOString(),
   },
 };
 
 /* ===== Helpers ===== */
-const fmtDateTime = (iso?: string) => (iso ? new Date(iso).toLocaleString() : "");
-const fmtVnd = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
-const isArrivableNow = (startIso: string) => Date.now() >= new Date(startIso).getTime();
+const fmtDateTime = (iso?: string) =>
+  iso ? new Date(iso).toLocaleString() : "";
+const fmtVnd = (n: number) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(n);
+const isArrivableNow = (startIso: string) =>
+  Date.now() >= new Date(startIso).getTime();
 
 function mapApiVehicle(v: any): Vehicle {
   const rawSoc = v?.currentSoc ?? v?.socNow ?? v?.soc_now;
-  const socPct = typeof rawSoc === "number" ? (rawSoc <= 1 ? Math.round(rawSoc * 100) : Math.round(rawSoc)) : undefined;
+  const socPct =
+    typeof rawSoc === "number"
+      ? rawSoc <= 1
+        ? Math.round(rawSoc * 100)
+        : Math.round(rawSoc)
+      : undefined;
   return {
     id: v?.id ?? v?.vehicleId,
     userId: v?.userId ?? v?.user_id,
@@ -179,10 +221,20 @@ function mapStatus(dbStatus?: string, startTime?: string): ReservationStatus {
   if (s === "PLUGGED") return "PLUGGED";
   if (s === "CHARGING") return "CHARGING";
   if (s === "COMPLETED") return "COMPLETED";
-  if (s === "SCHEDULED" || s === "RESERVED" || s === "BOOKED" || s === "PAID" || s === "CONFIRMED") {
-    return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
+  if (
+    s === "SCHEDULED" ||
+    s === "RESERVED" ||
+    s === "BOOKED" ||
+    s === "PAID" ||
+    s === "CONFIRMED"
+  ) {
+    return startTime && new Date(startTime).getTime() > Date.now()
+      ? "SCHEDULED"
+      : "VERIFYING";
   }
-  return startTime && new Date(startTime).getTime() > Date.now() ? "SCHEDULED" : "VERIFYING";
+  return startTime && new Date(startTime).getTime() > Date.now()
+    ? "SCHEDULED"
+    : "VERIFYING";
 }
 
 function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
@@ -210,12 +262,21 @@ function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
   });
 }
 
-function pickNext(items: ReservationItem[]): Partial<ReservationItem> | undefined {
+function pickNext(
+  items: ReservationItem[]
+): Partial<ReservationItem> | undefined {
   const future = items
     .filter((i) => new Date(i.startTime).getTime() > Date.now())
     .sort((a, b) => +new Date(a.startTime) - +new Date(b.startTime));
   const n = future[0];
-  return n ? { stationName: n.stationName, pillarCode: n.pillarCode, connectorType: n.connectorType, startTime: n.startTime } : undefined;
+  return n
+    ? {
+        stationName: n.stationName,
+        pillarCode: n.pillarCode,
+        connectorType: n.connectorType,
+        startTime: n.startTime,
+      }
+    : undefined;
 }
 
 /* ===== UI palette per status ===== */
@@ -298,7 +359,7 @@ const UI: Record<ReservationStatus, UIConf> = {
     text: "text-zinc-700",
     btn: "bg-white hover:bg-slate-50 text-slate-900 border",
     btnGlow: "shadow-[0_8px_24px_-10px_rgba(2,6,23,.12)]",
-    halo: "from-zinc-400/50 via-zinc-500/20 to-zinc-400/50",
+    halo: "from-zinc-400/50 via-zinc-500/30 to-zinc-400/50",
     icon: Icon.danger,
     label: "Expired",
   },
@@ -364,15 +425,34 @@ const UI: Record<ReservationStatus, UIConf> = {
   },
 };
 
+/* ===== Dialog animation  ===== */
+const dialogVariants: Variants = {
+  hidden: { opacity: 0, y: 20, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.25, ease: "easeOut" },
+  },
+  exit: {
+    opacity: 0,
+    y: 16,
+    scale: 0.96,
+    transition: { duration: 0.18 },
+  },
+};
+
 const StatusCards = () => {
-  /* ===== State (kept) ===== */
+  /* ===== State ===== */
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [next, setNext] = useState<MyReservationsResponse["nextBooking"]>();
   const [currentUserId, setCurrentUserId] = useState<number | undefined>();
 
-  const [kycStatus, setKycStatus] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
-  const [kycAtOpen, setKycAtOpen] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  const [kycStatus, setKycStatus] =
+    useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  const [kycAtOpen, setKycAtOpen] =
+    useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
 
   const [qrOpen, setQrOpen] = useState(false);
   const [qrToken, setQrToken] = useState<string | null>(null);
@@ -384,8 +464,12 @@ const StatusCards = () => {
 
   const [pmOpen, setPmOpen] = useState(false);
   const [pmResId, setPmResId] = useState<number | null>(null);
-  const [payFlow, setPayFlow] = useState<"prepaid" | "postpaid" | "cash">("prepaid");
-  const [payChannel, setPayChannel] = useState<"wallet" | "vnpay" | "cash">("wallet");
+  const [payFlow, setPayFlow] = useState<"prepaid" | "postpaid" | "cash">(
+    "prepaid"
+  );
+  const [payChannel, setPayChannel] = useState<
+    "wallet" | "vnpay" | "cash"
+  >("wallet");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleId, setVehicleId] = useState<number | null>(null);
   const [est, setEst] = useState<EstimateResp | null>(null);
@@ -396,6 +480,10 @@ const StatusCards = () => {
     return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
   });
   const TARGET_SOC_FIXED = 100;
+
+  // dialog chi tiết reservation
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailRes, setDetailRes] = useState<ReservationItem | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -424,19 +512,28 @@ const StatusCards = () => {
         if (!userId) throw new Error("Cannot determine current user id.");
         setCurrentUserId(userId);
 
-        const { data } = await api.get<ReservationResponseBE[]>(`/user/${userId}/reservations`, { withCredentials: true });
+        const { data } = await api.get<ReservationResponseBE[]>(
+          `/user/${userId}/reservations`,
+          { withCredentials: true }
+        );
         if (!mounted) return;
         const feItems = mapBEToFE(Array.isArray(data) ? data : []);
         setItems(feItems);
         setNext(pickNext(feItems));
 
         try {
-          const kycRes = await api.get(`/kyc/${userId}`, { withCredentials: true });
+          const kycRes = await api.get(`/kyc/${userId}`, {
+            withCredentials: true,
+          });
           const payload = kycRes?.data ?? {};
           const kyc = payload?.data ?? payload?.result ?? payload;
           const raw = String(kyc?.status ?? "").toUpperCase().trim();
           const norm: "PENDING" | "APPROVED" | "REJECTED" =
-            raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
+            raw === "APPROVED"
+              ? "APPROVED"
+              : raw === "REJECTED"
+              ? "REJECTED"
+              : "PENDING";
           setKycStatus(norm);
         } catch {
           setKycStatus("PENDING");
@@ -448,7 +545,10 @@ const StatusCards = () => {
         setKycStatus("APPROVED");
         toast({
           title: "Showing mock data",
-          description: e?.response?.data?.message || e?.message || "Could not reach backend.",
+          description:
+            e?.response?.data?.message ||
+            e?.message ||
+            "Could not reach backend.",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -463,21 +563,34 @@ const StatusCards = () => {
   /* ===== QR countdown ===== */
   useEffect(() => {
     if (!qrOpen || secondsLeft <= 0) return;
-    const t = setInterval(() => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    const t = setInterval(
+      () => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)),
+      1000
+    );
     return () => clearInterval(t);
   }, [qrOpen, secondsLeft]);
 
   const activeCount = useMemo(
     () =>
       items.filter((i) =>
-        ["CONFIRMED", "SCHEDULED", "PENDING_PAYMENT", "VERIFYING", "VERIFIED", "PLUGGED", "CHARGING"].includes(i.status)
+        [
+          "CONFIRMED",
+          "SCHEDULED",
+          "PENDING_PAYMENT",
+          "VERIFYING",
+          "VERIFIED",
+          "PLUGGED",
+          "CHARGING",
+        ].includes(i.status)
       ).length,
     [items]
   );
 
   /* ===== Actions ===== */
   const gotoReview = (r: ReservationItem) =>
-    navigate(`/stations/${r.stationId}/review`, { state: { stationName: r.stationName, pillarCode: r.pillarCode } });
+    navigate(`/stations/${r.stationId}/review`, {
+      state: { stationName: r.stationName, pillarCode: r.pillarCode },
+    });
 
   const onStartChargingAPI = async (reservationId: number) => {
     try {
@@ -487,8 +600,13 @@ const StatusCards = () => {
       if (!vehicleId) throw new Error("Please choose a vehicle.");
 
       if (USE_MOCK) {
-        toast({ title: "Charging session started ", description: `Reservation #${reservationId}` });
-        navigate(`/charging?start=true&reservationId=${reservationId}&sessionId=MOCK-SESS-1`);
+        toast({
+          title: "Charging session started ",
+          description: `Reservation #${reservationId}`,
+        });
+        navigate(
+          `/charging?start=true&reservationId=${reservationId}&sessionId=MOCK-SESS-1`
+        );
         return;
       }
 
@@ -498,9 +616,16 @@ const StatusCards = () => {
         driverId: currentUserId,
         vehicleId: vehicleId,
         targetSoc: 1,
-        paymentMethod: payChannel === "wallet" ? "WALLET" : payChannel === "vnpay"  ? "VNPAY"  : "CASH",
+        paymentMethod:
+          payChannel === "wallet"
+            ? "WALLET"
+            : payChannel === "vnpay"
+            ? "VNPAY"
+            : "CASH",
       };
-      const { data } = await api.post("/session/create", payload, { withCredentials: true });
+      const { data } = await api.post("/session/create", payload, {
+        withCredentials: true,
+      });
       const ret = data?.data ?? data;
       const sid = ret?.sessionId ?? ret?.id;
       if (!sid) throw new Error("Invalid start response (missing sessionId).");
@@ -511,7 +636,12 @@ const StatusCards = () => {
       const targetSocFrac = 1;
       localStorage.setItem(
         `session_meta_${sid}`,
-        JSON.stringify({ vehicleId, initialSoc: initialSocFrac, targetSoc: targetSocFrac, reservationId })
+        JSON.stringify({
+          vehicleId,
+          initialSoc: initialSocFrac,
+          targetSoc: targetSocFrac,
+          reservationId,
+        })
       );
       localStorage.setItem(
         `reservation_cache_${reservationId}`,
@@ -532,13 +662,21 @@ const StatusCards = () => {
           `&targetSoc=${targetSocFrac}`
       );
     } catch (e: any) {
-      const msg = e?.response?.data?.message || "Cannot start the session.";
-      toast({ title: "Action failed", description: msg, variant: "destructive" });
+      const msg =
+        e?.response?.data?.message || "Cannot start the session.";
+      toast({
+        title: "Action failed",
+        description: msg,
+        variant: "destructive",
+      });
     }
   };
 
   const onPayNow = (r: ReservationItem) => {
-    const amount = (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee) ? r.holdFee : undefined) ?? 50000;
+    const amount =
+      (typeof r.holdFee === "number" && !Number.isNaN(r.holdFee)
+        ? r.holdFee
+        : undefined) ?? 50000;
     navigate("/reservation/deposit", {
       state: {
         reservationId: r.reservationId,
@@ -555,7 +693,9 @@ const StatusCards = () => {
   const openQrFor = async (r: ReservationItem) => {
     if (USE_MOCK) {
       const token = "MOCK-" + r.reservationId;
-      const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      const expires = new Date(
+        Date.now() + 5 * 60 * 1000
+      ).toISOString();
       const qr = `${window.location.origin}/checkin?token=${token}`;
       setQrToken(token);
       setQrExpiresAt(expires);
@@ -576,37 +716,67 @@ const StatusCards = () => {
       const payload = data?.data ?? data;
       const token = String(payload?.token || "");
       let url = payload?.qrUrl || "";
-      if (!url || url.includes("your-fe.com")) url = `${window.location.origin}/checkin?token=${token}`;
+      if (!url || url.includes("your-fe.com"))
+        url = `${window.location.origin}/checkin?token=${token}`;
       const exp = String(payload?.expiresAt || "");
-      if (!token || !url || !exp) throw new Error("Invalid token response.");
+      if (!token || !url || !exp)
+        throw new Error("Invalid token response.");
 
       setQrToken(token);
       setQrUrl(url);
       setQrExpiresAt(exp);
-      setSecondsLeft(Math.max(0, Math.floor((new Date(exp).getTime() - Date.now()) / 1000)));
+      setSecondsLeft(
+        Math.max(
+          0,
+          Math.floor((new Date(exp).getTime() - Date.now()) / 1000)
+        )
+      );
       setQrStation(`${r.stationName} • ${r.pillarCode}`);
       setLastResId(r.reservationId);
       setQrOpen(true);
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || "Could not create check-in token.";
-      toast({ title: "Action failed", description: msg, variant: "destructive" });
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Could not create check-in token.";
+      toast({
+        title: "Action failed",
+        description: msg,
+        variant: "destructive",
+      });
     }
   };
 
   const markPlugged = async (r: ReservationItem) => {
     try {
       if (USE_MOCK) {
-        setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x)));
-        toast({ title: "Plugged in", description: `${r.stationName} • ${r.pillarCode}` });
+        setItems((xs) =>
+          xs.map((x) =>
+            x.reservationId === r.reservationId
+              ? { ...x, status: "PLUGGED" }
+              : x
+          )
+        );
+        toast({
+          title: "Plugged in",
+          description: `${r.stationName} • ${r.pillarCode}`,
+        });
         return;
       }
       await api.post(`/book/${r.reservationId}`, {}, { withCredentials: true });
-      setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "PLUGGED" } : x)));
+      setItems((xs) =>
+        xs.map((x) =>
+          x.reservationId === r.reservationId
+            ? { ...x, status: "PLUGGED" }
+            : x
+        )
+      );
       toast({ title: "Plugged in" });
     } catch (e: any) {
       toast({
         title: "Action failed",
-        description: e?.response?.data?.message || "Cannot mark plugged.",
+        description:
+          e?.response?.data?.message || "Cannot mark plugged.",
         variant: "destructive",
       });
     }
@@ -616,16 +786,33 @@ const StatusCards = () => {
   const onCancel = async (r: ReservationItem) => {
     try {
       if (USE_MOCK) {
-        setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "CANCELLED" } : x)));
+        setItems((xs) =>
+          xs.map((x) =>
+            x.reservationId === r.reservationId
+              ? { ...x, status: "CANCELLED" }
+              : x
+          )
+        );
         toast({ title: "Reservation cancelled (mock)" });
         return;
       }
       await api.post(`/book/cancel/${r.reservationId}`, {}, { withCredentials: true });
-      setItems((xs) => xs.map((x) => (x.reservationId === r.reservationId ? { ...x, status: "CANCELLED" } : x)));
+      setItems((xs) =>
+        xs.map((x) =>
+          x.reservationId === r.reservationId
+            ? { ...x, status: "CANCELLED" }
+            : x
+        )
+      );
       toast({ title: "Reservation cancelled" });
     } catch (e: any) {
-      const msg = e?.response?.data?.message || "Cannot cancel reservation.";
-      toast({ title: "Action failed", description: msg, variant: "destructive" });
+      const msg =
+        e?.response?.data?.message || "Cannot cancel reservation.";
+      toast({
+        title: "Action failed",
+        description: msg,
+        variant: "destructive",
+      });
     }
   };
 
@@ -636,11 +823,20 @@ const StatusCards = () => {
     let effectiveKyc = kycStatus;
     if (currentUserId) {
       try {
-        const kycRes = await api.get(`/kyc/${currentUserId}`, { withCredentials: true });
+        const kycRes = await api.get(`/kyc/${currentUserId}`, {
+          withCredentials: true,
+        });
         const payload = kycRes?.data ?? {};
         const kyc = payload?.data ?? payload?.result ?? payload;
-        const raw = String(kyc?.status ?? "").toUpperCase().trim();
-        effectiveKyc = raw === "APPROVED" ? "APPROVED" : raw === "REJECTED" ? "REJECTED" : "PENDING";
+        const raw = String(kyc?.status ?? "")
+          .toUpperCase()
+          .trim();
+        effectiveKyc =
+          raw === "APPROVED"
+            ? "APPROVED"
+            : raw === "REJECTED"
+            ? "REJECTED"
+            : "PENDING";
         setKycStatus(effectiveKyc);
       } catch {
         // giữ nguyên
@@ -648,13 +844,18 @@ const StatusCards = () => {
     }
     setKycAtOpen(effectiveKyc);
 
-    const initialFlow: "prepaid" | "postpaid" = effectiveKyc === "APPROVED" ? "postpaid" : "prepaid";
+    const initialFlow: "prepaid" | "postpaid" =
+      effectiveKyc === "APPROVED" ? "postpaid" : "prepaid";
     setPayFlow(initialFlow);
     setPayChannel(initialFlow === "prepaid" ? "wallet" : "vnpay");
 
     let enriched = r;
     try {
-      const { data } = await api.post(`/book/${r.reservationId}`, {}, { withCredentials: true });
+      const { data } = await api.post(
+        `/book/${r.reservationId}`,
+        {},
+        { withCredentials: true }
+      );
       const d = data?.data ?? data ?? {};
       enriched = {
         ...r,
@@ -664,7 +865,11 @@ const StatusCards = () => {
         connectorType: d.connectorType ?? r.connectorType,
         pillarCode: d.pillarCode ?? r.pillarCode,
       };
-      setItems(xs => xs.map(x => x.reservationId === r.reservationId ? { ...x, ...enriched } : x));
+      setItems((xs) =>
+        xs.map((x) =>
+          x.reservationId === r.reservationId ? { ...x, ...enriched } : x
+        )
+      );
     } catch {
       // ignore
     }
@@ -673,12 +878,16 @@ const StatusCards = () => {
       api
         .get(`/vehicle/${currentUserId}`, { withCredentials: true })
         .then((res) => {
-          const raw = res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
-          const list: Vehicle[] = Array.isArray(raw) ? raw.map(mapApiVehicle) : [];
+          const raw =
+            res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
+          const list: Vehicle[] = Array.isArray(raw)
+            ? raw.map(mapApiVehicle)
+            : [];
           setVehicles(list);
           if (list.length === 1) {
             setVehicleId(list[0].id);
-            if (typeof list[0].currentSoc === "number") setCurrentSoc(list[0].currentSoc);
+            if (typeof list[0].currentSoc === "number")
+              setCurrentSoc(list[0].currentSoc);
             fetchEstimateFor(enriched, list[0].id, list[0].currentSoc);
           }
         })
@@ -690,13 +899,15 @@ const StatusCards = () => {
   };
 
   // Tìm sessionId đang chạy từ localStorage theo reservationId
-  function findSessionIdByReservation(reservationId: number): string | null {
+  function findSessionIdByReservation(
+    reservationId: number
+  ): string | null {
     try {
       const prefix = "session_meta_";
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i) || "";
         if (!k.startsWith(prefix)) continue;
-        const sid = k.slice(prefix.length); // phần sau prefix chính là sessionId
+        const sid = k.slice(prefix.length);
         const meta = JSON.parse(localStorage.getItem(k) || "null");
         if (meta && Number(meta.reservationId) === Number(reservationId)) {
           return String(sid);
@@ -706,33 +917,48 @@ const StatusCards = () => {
     return null;
   }
 
-  async function fetchEstimateFor(r?: ReservationItem, vehId?: number, socNowOverride?: number) {
+  async function fetchEstimateFor(
+    r?: ReservationItem,
+    vehId?: number,
+    socNowOverride?: number
+  ) {
     if (!r || !vehId || !r.pillarId || !r.connectorId) {
       setEst(null);
       return;
     }
     setEstimating(true);
     try {
-      const socToUse = typeof socNowOverride === "number" ? socNowOverride : currentSoc;
+      const socToUse =
+        typeof socNowOverride === "number" ? socNowOverride : currentSoc;
+
       const payload = {
         vehicleId: vehId,
         stationId: r.stationId,
         pillarId: r.pillarId,
         connectorId: r.connectorId,
-        // BE vẫn nhận key 'socNow' → giữ nguyên tên field request
+        reservationId: r.reservationId,
         socNow: isFinite(socToUse) ? socToUse / 100 : undefined,
         socTarget: 1,
+        kW: DEMO_DEFAULT_KW,
+        tick: DEMO_DEFAULT_TICK_SEC / 1000,
       };
-      const { data } = await api.post("/estimate/estimate-kw", payload, { withCredentials: true });
-      if (typeof data?.estimatedMinutes === "number") {
+
+      const { data } = await api.post("/estimate/estimateReal", payload, {
+        withCredentials: true,
+      });
+      const ret = data?.data ?? data;
+
+      if (ret && typeof ret.estimatedMinutes === "number") {
         setEst({
-          energyKwh: data.energyKwh ?? 0,
-          energyFromStationKwh: data.energyFromStationKwh ?? 0,
-          estimatedCost: data.estimatedCost ?? 0,
-          estimatedMinutes: data.estimatedMinutes ?? 0,
-          advice: data.advice,
+          energyKwh: ret.energyKwh ?? 0,
+          estimatedCost: ret.estimatedCost ?? 0,
+          estimatedMinutes: ret.estimatedMinutes ?? 0,
+          socTarget: ret.socTarget,
+          minuteUntilEnd: ret.minuteUntilEnd,
         });
-      } else setEst(null);
+      } else {
+        setEst(null);
+      }
     } catch {
       setEst(null);
     } finally {
@@ -743,14 +969,26 @@ const StatusCards = () => {
   const copyToken = async () => {
     try {
       await navigator.clipboard.writeText(qrToken || "");
-      toast({ title: "Copied", description: "Token copied to clipboard." });
+      toast({
+        title: "Copied",
+        description: "Token copied to clipboard.",
+      });
     } catch {
-      toast({ title: "Copy failed", description: "Cannot copy token.", variant: "destructive" });
+      toast({
+        title: "Copy failed",
+        description: "Cannot copy token.",
+        variant: "destructive",
+      });
     }
   };
   const regenerate = async () => {
     const r = items.find((x) => x.reservationId === lastResId);
     if (r) await openQrFor(r);
+  };
+
+  const openDetails = (r: ReservationItem) => {
+    setDetailRes(r);
+    setDetailOpen(true);
   };
 
   /* ===== Row renderer ===== */
@@ -775,24 +1013,54 @@ const StatusCards = () => {
         style={{ minHeight: 104 }}
       >
         {/* left stripe */}
-        <div className={`rounded-l-2xl bg-gradient-to-b ${ui.stripe} relative overflow-hidden`}>
+        <div
+          className={`rounded-l-2xl bg-gradient-to-b ${ui.stripe} relative overflow-hidden`}
+        >
           <span className="absolute inset-0 bg-[linear-gradient(transparent,rgba(255,255,255,.25),transparent)] animate-[shine_2.4s_ease-in-out_infinite]" />
         </div>
 
         {/* content */}
         <div className="p-4 sm:p-5">
           <div className="flex items-center gap-2">
-            <div className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${ui.badge} shadow-sm`}>
+            <div
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${ui.badge} shadow-sm`}
+            >
               {ui.icon}
               <span className="font-medium">{ui.label}</span>
             </div>
+
+            {/* Detail button */}
+            <button
+              type="button"
+              onClick={() => openDetails(r)}
+              className="
+                inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full
+                border border-slate-200/70 bg-slate-50/70 text-slate-600
+                hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700
+                transition-colors shadow-sm
+              "
+              title="View reservation details"
+            >
+              <Info className="w-3 h-3" />
+              <span>Details</span>
+            </button>
           </div>
 
-          <h4 className="mt-2 font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 tracking-tight">{r.stationName}</h4>
+          <h4 className="mt-2 font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 tracking-tight">
+            {r.stationName}
+          </h4>
 
           <div className="mt-2 flex flex-wrap gap-2">
-            <Badge variant="outline" className="text-xs rounded-full border-dashed">{`Port ${r.pillarCode}`}</Badge>
-            <Badge variant="outline" className="text-xs rounded-full border-dashed">{r.connectorType}</Badge>
+            <Badge
+              variant="outline"
+              className="text-xs rounded-full border-dashed"
+            >{`Port ${r.pillarCode}`}</Badge>
+            <Badge
+              variant="outline"
+              className="text-xs rounded-full border-dashed"
+            >
+              {r.connectorType}
+            </Badge>
           </div>
 
           <p className={`mt-2 text-[13.5px] font-medium ${ui.text}`}>
@@ -807,15 +1075,21 @@ const StatusCards = () => {
           {ready && (
             <Button
               size="sm"
-              className={["relative overflow-hidden rounded-full px-4 h-9", ui.btn, ui.btnGlow, "transition-all active:scale-[.98]"].join(
-                " "
-              )}
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                ui.btn,
+                ui.btnGlow,
+                "transition-all active:scale-[.98]",
+              ].join(" ")}
               onClick={() => openPayment(r)}
             >
               <span className="relative z-10 flex items-center">
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
               </span>
-              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
             </Button>
           )}
 
@@ -823,22 +1097,34 @@ const StatusCards = () => {
             (isArrivableNow(r.startTime) ? (
               <Button
                 size="sm"
-                className={["relative overflow-hidden rounded-full px-4 h-9", UI.SCHEDULED.btn, UI.SCHEDULED.btnGlow].join(" ")}
+                className={[
+                  "relative overflow-hidden rounded-full px-4 h-9",
+                  UI.SCHEDULED.btn,
+                  UI.SCHEDULED.btnGlow,
+                ].join(" ")}
                 onClick={() => openQrFor(r)}
                 title="Generate QR to check-in"
               >
                 <span className="relative z-10 flex items-center">
                   <QrCode className="w-4 h-4 mr-1" /> Arrived
                 </span>
-                <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+                <span
+                  aria-hidden
+                  className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+                />
               </Button>
             ) : (
-              <Button size="sm" variant="outline" className="rounded-full px-4 h-9 border-amber-200 text-amber-700" disabled>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full px-4 h-9 border-amber-200 text-amber-700"
+                disabled
+              >
                 <Clock className="w-4 h-4 mr-1" /> Not yet
               </Button>
             ))}
 
-          {/* Cancel for SCHEDULED (before arrival window ideally) */}
+          {/* Cancel for SCHEDULED */}
           {r.status === "SCHEDULED" && (
             <Button
               size="sm"
@@ -854,39 +1140,60 @@ const StatusCards = () => {
           {r.status === "VERIFYING" && (
             <Button
               size="sm"
-              className={["relative overflow-hidden rounded-full px-4 h-9", UI.VERIFYING.btn, UI.VERIFYING.btnGlow].join(" ")}
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                UI.VERIFYING.btn,
+                UI.VERIFYING.btnGlow,
+              ].join(" ")}
               onClick={() => openQrFor(r)}
             >
               <span className="relative z-10 flex items-center">
                 <QrCode className="w-4 h-4 mr-1" /> Verify
               </span>
-              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
             </Button>
           )}
 
           {r.status === "VERIFIED" && (
             <Button
               size="sm"
-              className={["relative overflow-hidden rounded-full px-4 h-9", UI.VERIFIED.btn, UI.VERIFIED.btnGlow].join(" ")}
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                UI.VERIFIED.btn,
+                UI.VERIFIED.btnGlow,
+              ].join(" ")}
               onClick={() => markPlugged(r)}
             >
               <span className="relative z-10 flex items-center">
                 <CheckCircle2 className="w-4 h-4 mr-1" /> Plug
               </span>
-              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
             </Button>
           )}
 
           {r.status === "PLUGGED" && (
             <Button
               size="sm"
-              className={["relative overflow-hidden rounded-full px-4 h-9", UI.PLUGGED.btn, UI.PLUGGED.btnGlow].join(" ")}
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                UI.PLUGGED.btn,
+                UI.PLUGGED.btnGlow,
+              ].join(" ")}
               onClick={() => openPayment(r)}
             >
               <span className="relative z-10 flex items-center">
                 <Zap className="w-4 h-4 mr-1" /> Start Charging
               </span>
-              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
             </Button>
           )}
 
@@ -904,7 +1211,10 @@ const StatusCards = () => {
               <span className="relative z-10 flex items-center">
                 <CreditCard className="w-4 h-4 mr-1" /> Pay now
               </span>
-              <span aria-hidden className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full" />
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
+              />
             </Button>
           )}
 
@@ -915,16 +1225,23 @@ const StatusCards = () => {
                 "relative overflow-hidden rounded-full px-4 h-9",
                 UI.CHARGING.btn,
                 UI.CHARGING.btnGlow,
-                "transition-all active:scale-[.98]"
+                "transition-all active:scale-[.98]",
               ].join(" ")}
               onClick={() => {
-                const sid = findSessionIdByReservation(r.reservationId);
+                const sid = findSessionIdByReservation(
+                  r.reservationId
+                );
                 if (sid) {
-                  navigate(`/charging?sessionId=${encodeURIComponent(sid)}&reservationId=${r.reservationId}`);
+                  navigate(
+                    `/charging?sessionId=${encodeURIComponent(
+                      sid
+                    )}&reservationId=${r.reservationId}`
+                  );
                 } else {
                   toast({
                     title: "Cannot find current session",
-                    description: "Phiên sạc đang chạy không tìm thấy trên máy. Thử mở lại từ mục gần đây hoặc vào QR/Start.",
+                    description:
+                      "Phiên sạc đang chạy không tìm thấy trên máy. Thử mở lại từ mục gần đây hoặc vào QR/Start.",
                     variant: "destructive",
                   });
                 }
@@ -941,15 +1258,25 @@ const StatusCards = () => {
             </Button>
           )}
 
-
           {r.status === "COMPLETED" && (
-            <Button size="sm" variant="outline" className={["relative overflow-hidden rounded-full px-4 h-9", UI.COMPLETED.btn, UI.COMPLETED.btnGlow].join(" ")} onClick={() => gotoReview(r)}>
+            <Button
+              size="sm"
+              variant="outline"
+              className={[
+                "relative overflow-hidden rounded-full px-4 h-9",
+                UI.COMPLETED.btn,
+                UI.COMPLETED.btnGlow,
+              ].join(" ")}
+              onClick={() => gotoReview(r)}
+            >
               Review <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           )}
 
           {(r.status === "CANCELLED" || r.status === "EXPIRED") && (
-            <div className={`text-xs px-2 py-1 rounded-full ${ui.badge}`}>{ui.label}</div>
+            <div className={`text-xs px-2 py-1 rounded-full ${ui.badge}`}>
+              {ui.label}
+            </div>
           )}
         </div>
       </div>
@@ -960,7 +1287,9 @@ const StatusCards = () => {
     <section className="space-y-6">
       {/* header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">Today’s Overview</h2>
+        <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">
+          Today’s Overview
+        </h2>
 
         {/* next booking pill */}
         <div className="hidden sm:flex items-center gap-3">
@@ -971,7 +1300,10 @@ const StatusCards = () => {
               <span className="text-[13px] text-slate-800">
                 {new Date(next.startTime).toLocaleDateString()}{" "}
                 <span className="text-slate-500">
-                  {new Date(next.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(next.startTime).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
               </span>
               {next.stationName && (
@@ -982,7 +1314,10 @@ const StatusCards = () => {
               )}
             </div>
           ) : (
-            <Badge variant="outline" className="rounded-full text-slate-600">
+            <Badge
+              variant="outline"
+              className="rounded-full text-slate-600"
+            >
               No upcoming
             </Badge>
           )}
@@ -998,11 +1333,18 @@ const StatusCards = () => {
                 <Calendar className="w-5 h-5 text-primary" />
               </div>
               <span className="text-lg">My Reservations</span>
-              <Badge variant="outline" className="ml-2 border-primary/30 text-primary rounded-full">
+              <Badge
+                variant="outline"
+                className="ml-2 border-primary/30 text-primary rounded-full"
+              >
                 Core
               </Badge>
             </div>
-            {!loading && <Badge variant="secondary" className="rounded-full">{activeCount} active</Badge>}
+            {!loading && (
+              <Badge variant="secondary" className="rounded-full">
+                {activeCount} active
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
 
@@ -1010,264 +1352,621 @@ const StatusCards = () => {
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-[104px] rounded-2xl bg-slate-100/70 animate-pulse" />
+                <div
+                  key={i}
+                  className="h-[104px] rounded-2xl bg-slate-100/70 animate-pulse"
+                />
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">You have no reservations yet.</div>
+            <div className="p-6 text-sm text-muted-foreground">
+              You have no reservations yet.
+            </div>
           ) : (
-            <div className="space-y-4 max-h-[560px] overflow-y-auto pr-1 nice-scroll">{items.map(renderReservation)}</div>
+            <div className="space-y-4 max-h-[560px] overflow-y-auto pr-1 nice-scroll">
+              {items.map(renderReservation)}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* QR dialog */}
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <QrCode className="w-5 h-5" />
-              Check-in QR
-            </DialogTitle>
-            <DialogDescription>
-              Show this QR at the station to check in. Expires in{" "}
-              <span className="font-semibold">
-                {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col items-center gap-3">
-            {qrUrl ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (qrToken) navigate(`/checkin?token=${encodeURIComponent(qrToken)}`);
-                }}
-                title="Open check-in in this tab"
-                className="focus:outline-none"
+      {/* Detail dialog with animation */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent
+          className="
+            sm:max-w-lg p-0 border-none bg-transparent shadow-none
+            overflow-visible
+          "
+        >
+          <AnimatePresence mode="wait">
+            {detailOpen && detailRes && (
+              <motion.div
+                key={detailRes.reservationId}
+                variants={dialogVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="
+                  overflow-hidden rounded-2xl
+                  border border-white/70 bg-white/85 backdrop-blur-xl
+                  shadow-[0_30px_90px_-30px_rgba(2,6,23,.45)]
+                "
               >
-                <img
-                  alt="Check-in QR"
-                  className="rounded-lg border p-2 cursor-pointer"
-                  width={240}
-                  height={240}
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}`}
-                />
-                <div className="mt-1 text-xs text-slate-500 text-center">Tap to open Check-in here</div>
-              </button>
-            ) : null}
+                {/* header */}
+                <div className="px-6 pt-5 pb-4 border-b border-slate-200/60 bg-gradient-to-r from-emerald-50/70 via-white to-cyan-50/70">
+                  <DialogHeader className="space-y-1">
+                    <DialogTitle className="flex items-center gap-2 text-[18px]">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-emerald-500 to-cyan-600">
+                        <Calendar className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent font-extrabold">
+                        Reservation Details
+                      </span>
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-600 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[11px] text-slate-700">
+                        ID&nbsp;#{detailRes.reservationId}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[11px] text-slate-700">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {detailRes.stationName}
+                      </span>
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
 
-            <div className="text-sm text-center text-muted-foreground">{qrStation}</div>
+                {/* body */}
+                <div className="px-6 py-5 space-y-5 bg-slate-50/70">
+                  {/* status row */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div
+                      className={[
+                        "inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full shadow-sm",
+                        UI[detailRes.status].badge,
+                      ].join(" ")}
+                    >
+                      {UI[detailRes.status].icon}
+                      <span className="font-semibold">
+                        {UI[detailRes.status].label}
+                      </span>
+                    </div>
 
-            <div className="w-full text-xs break-all rounded-lg bg-muted p-2">
-              <div className="text-muted-foreground">Token</div>
-              <div className="font-mono">{qrToken}</div>
-            </div>
+                    {detailRes.holdFee ? (
+                      <div className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <Lock className="w-3 h-3" />
+                        Deposit {fmtVnd(detailRes.holdFee)}
+                      </div>
+                    ) : null}
 
-            <div className="flex w-full flex-col gap-2">
-              <div className="flex w-full justify-between gap-2">
-                <Button variant="outline" className="flex-1" onClick={copyToken}>
-                  <Copy className="w-4 h-4 mr-1" /> Copy
-                </Button>
-                <Button className="flex-1" onClick={regenerate}>
-                  <RefreshCw className="w-4 h-4 mr-1" /> Regenerate
-                </Button>
-              </div>
-            </div>
+                    {detailRes.payment?.paid && (
+                      <div className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">
+                        <Check className="w-3 h-3" />
+                        Deposit paid
+                      </div>
+                    )}
+                  </div>
 
-            <div className="text-xs text-muted-foreground">
-              Expires at: {qrExpiresAt ? new Date(qrExpiresAt).toLocaleString() : "—"}
-            </div>
-          </div>
+                  {/* row 1: Station + Start time */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                    {/* Station */}
+                    <div className="h-full rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 mb-1.5">
+                          <MapPin className="w-3.5 h-3.5" />
+                          Station
+                        </div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          {detailRes.stationName}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] rounded-full border-dashed"
+                        >
+                          Port {detailRes.pillarCode}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] rounded-full border-dashed"
+                        >
+                          {detailRes.connectorType}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Start time */}
+                    <div className="h-full rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm flex flex-col justify-center">
+                      <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 mb-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        Start time
+                      </div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {fmtDateTime(detailRes.startTime)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* row 2: Connector ID + Payment */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                    {/* Connector ID */}
+                    <div className="h-full rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm flex flex-col justify-center">
+                      <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 mb-1.5">
+                        <QrCode className="w-3.5 h-3.5" />
+                        Connector ID
+                      </div>
+                      <div className="text-sm text-slate-900">
+                        {typeof detailRes.connectorId === "number"
+                          ? `#${detailRes.connectorId}`
+                          : "—"}
+                      </div>
+                    </div>
+
+                    {/* Payment */}
+                    <div className="h-full rounded-2xl border border-slate-200/70 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 p-4 shadow-sm flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5" />
+                          Payment
+                        </span>
+                        {detailRes.payment?.depositTransactionId && (
+                          <span className="text-[11px] text-slate-500 font-mono truncate max-w-[140px]">
+                            {detailRes.payment.depositTransactionId}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-900 flex items-center gap-1.5">
+                        {detailRes.holdFee ? (
+                          <>
+                            <DollarSign className="w-4 h-4 text-emerald-500" />
+                            Hold fee{" "}
+                            <span className="font-semibold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                              {fmtVnd(detailRes.holdFee)}
+                            </span>
+                          </>
+                        ) : (
+                          <span>No deposit recorded</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* hint */}
+                  <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white/80 px-3.5 py-2.5 text-[11.5px] text-slate-600 flex items-start gap-2">
+                    <ShieldAlert className="w-3.5 h-3.5 mt-0.5 text-amber-500" />
+                    <span>Reservation details are read-only here.</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </DialogContent>
       </Dialog>
 
-      {/* Payment dialog */}
+      {/* QR dialog with animation */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="sm:max-w-md p-0 border-none bg-transparent shadow-none">
+          <AnimatePresence mode="wait">
+            {qrOpen && (
+              <motion.div
+                key={qrToken ?? "qr-shell"}
+                variants={dialogVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="
+                  rounded-2xl border border-white/70 bg-white/90
+                  backdrop-blur-xl p-6
+                  shadow-[0_26px_80px_-30px_rgba(2,6,23,.45)]
+                "
+              >
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <QrCode className="w-5 h-5" />
+                    Check-in QR
+                  </DialogTitle>
+                  <DialogDescription>
+                    Show this QR at the station to check in. Expires in{" "}
+                    <span className="font-semibold">
+                      {Math.floor(secondsLeft / 60)}:
+                      {String(secondsLeft % 60).padStart(2, "0")}
+                    </span>
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="mt-4 flex flex-col items-center gap-3">
+                  {qrUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (qrToken)
+                          navigate(
+                            `/checkin?token=${encodeURIComponent(qrToken)}`
+                          );
+                      }}
+                      title="Open check-in in this tab"
+                      className="focus:outline-none"
+                    >
+                      <img
+                        alt="Check-in QR"
+                        className="rounded-lg border p-2 cursor-pointer"
+                        width={240}
+                        height={240}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
+                          qrUrl
+                        )}`}
+                      />
+                      <div className="mt-1 text-xs text-slate-500 text-center">
+                        Tap to open Check-in here
+                      </div>
+                    </button>
+                  ) : null}
+
+                  <div className="text-sm text-center text-muted-foreground">
+                    {qrStation}
+                  </div>
+
+                  <div className="w-full text-xs break-all rounded-lg bg-muted p-2">
+                    <div className="text-muted-foreground">Token</div>
+                    <div className="font-mono">{qrToken}</div>
+                  </div>
+
+                  <div className="flex w-full flex-col gap-2">
+                    <div className="flex w-full justify-between gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={copyToken}
+                      >
+                        <Copy className="w-4 h-4 mr-1" /> Copy
+                      </Button>
+                      <Button className="flex-1" onClick={regenerate}>
+                        <RefreshCw className="w-4 h-4 mr-1" /> Regenerate
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    Expires at:{" "}
+                    {qrExpiresAt
+                      ? new Date(qrExpiresAt).toLocaleString()
+                      : "—"}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment dialog with animation */}
       <Dialog open={pmOpen} onOpenChange={setPmOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Select Payment Method
-            </DialogTitle>
-            <DialogDescription>
-              {kycAtOpen === "APPROVED"
-                ? "Choose payment flow. Channel is auto-selected by flow."
-                : "Your KYC is not approved. Only Prepaid is available."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-5">
-            {/* method */}
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Method</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={payFlow === "prepaid" ? "default" : "outline"}
-                  className="rounded-xl"
-                  onClick={() => {
-                    setPayFlow("prepaid");
-                    setPayChannel("wallet");
-                  }}
-                >
-                  Prepaid
-                </Button>
-                <Button
-                  variant={payFlow === "postpaid" ? "default" : "outline"}
-                  className="rounded-xl disabled:opacity-60"
-                  disabled={kycAtOpen !== "APPROVED"}
-                  onClick={() => {
-                    setPayFlow("postpaid");
-                    setPayChannel("vnpay");
-                  }}
-                >
-                  Postpaid
-                </Button>
-                <Button
-                  variant={payFlow === "cash" ? "default" : "outline"}
-                  className="rounded-xl"
-                  onClick={() => {
-                    setPayFlow("cash");
-                    setPayChannel("cash");
-                  }}
-                >
-                  Cash
-                </Button>
-              </div>
-            </div>
-
-            {/* channel */}
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Payment</div>
-
-              {payFlow === "prepaid" && (
-                <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2">
-                  <span className="inline-flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span className="font-medium">Wallet</span>
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground inline-flex items-center gap-1">
-                    <Lock className="w-3.5 h-3.5" /> auto-selected for Prepaid
-                  </span>
-                </div>
-              )}
-
-              {payFlow === "postpaid" && (
-                <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2">
-                  <span className="inline-flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    <span className="font-medium">VNPay</span>
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground inline-flex items-center gap-1">
-                    <Lock className="w-3.5 h-3.5" /> auto-selected for Postpaid
-                  </span>
-                </div>
-              )}
-
-              {payFlow === "cash" && (
-                <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2">
-                  <span className="inline-flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" />
-                    <span className="font-medium">Cash (Pay at station)</span>
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground inline-flex items-center gap-1">
-                    On-site payment
-                  </span>
-                </div>
-              )}
-            </div>
-
-
-            {/* vehicle */}
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Charging Vehicle</div>
-              <select
-                className="w-full h-10 border rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                value={vehicleId ?? ""}
-                onChange={(e) => {
-                  const v = Number(e.target.value) || null;
-                  setVehicleId(v);
-                  const picked = vehicles.find((x) => x.id === v);
-                  const socPct = typeof picked?.currentSoc === "number" ? picked!.currentSoc! : currentSoc;
-                  setCurrentSoc(socPct);
-                  const rr = items.find((x) => x.reservationId === pmResId!);
-                  if (rr) fetchEstimateFor(rr, v!, socPct);
-                }}
+        <DialogContent
+          className="
+            sm:max-w-lg p-0 border-none bg-transparent shadow-none
+            overflow-visible
+          "
+        >
+          <AnimatePresence mode="wait">
+            {pmOpen && (
+              <motion.div
+                key={pmResId ?? "payment-shell"}
+                variants={dialogVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="
+                  rounded-2xl overflow-hidden
+                  border border-white/60 bg-white/85 backdrop-blur-xl
+                  shadow-[0_30px_90px_-30px_rgba(2,6,23,.35)]
+                "
               >
-                <option value="" disabled>
-                  Choose vehicle
-                </option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.make || ""} {v.model || ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* header */}
+                <div className="px-6 pt-5 pb-4 border-b border-slate-200/60 bg-gradient-to-r from-emerald-50/60 via-white to-cyan-50/60">
+                  <DialogHeader className="space-y-1">
+                    <DialogTitle className="flex items-center gap-2 text-[18px]">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg
+                                bg-gradient-to-br from-emerald-500 to-cyan-600"
+                      >
+                        <CreditCard className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent font-extrabold">
+                        Select Payment Method
+                      </span>
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-600">
+                      {kycAtOpen === "APPROVED"
+                        ? "Choose a payment flow below. Channel is auto-selected and secured."
+                        : "KYC chưa duyệt: chỉ khả dụng hình thức Prepaid."}
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
 
-            {/* SOC */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">Current SOC</div>
-                <div className="text-sm font-semibold">{currentSoc}%</div>
-              </div>
-              <input type="range" min={0} max={100} step={1} value={currentSoc} disabled readOnly className="w-full opacity-70 cursor-not-allowed" />
-            </div>
-
-            {/* target fixed 100% */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">SOC Target</div>
-                <div className="text-sm font-semibold">{TARGET_SOC_FIXED}%</div>
-              </div>
-              <input type="range" max={100} value={100} readOnly disabled className="w-full opacity-70 cursor-not-allowed" />
-            </div>
-
-            {/* estimate */}
-            <div className="rounded-xl border p-3 bg-muted/40">
-              {!vehicleId || !pmResId ? (
-                <div className="text-sm text-muted-foreground">Select vehicle to estimate.</div>
-              ) : estimating ? (
-                <div className="text-sm text-primary">Estimating…</div>
-              ) : est ? (
-                <div className="text-sm space-y-1">
-                  <div>
-                    Time ~ <b>{est.estimatedMinutes} minutes</b>
+                {/* body */}
+                <div className="px-6 py-5 space-y-6">
+                  {/* Flow segmented */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-slate-800">
+                      Method
+                    </div>
+                    <div
+                      className="
+                  grid grid-cols-3 p-1 rounded-2xl bg-white/70 border border-slate-200/70
+                  shadow-[inset_0_1px_0_rgba(255,255,255,.8)]
+                "
+                    >
+                      <Button
+                        variant="ghost"
+                        className={[
+                          "h-10 rounded-xl text-sm font-semibold transition-all",
+                          "data-[active=true]:text-white data-[active=true]:shadow-[0_8px_22px_-10px_rgba(16,185,129,.55)]",
+                          "data-[active=true]:bg-[linear-gradient(90deg,#10B981_0%,#06B6D4_100%)]",
+                        ].join(" ")}
+                        data-active={payFlow === "prepaid"}
+                        onClick={() => {
+                          setPayFlow("prepaid");
+                          setPayChannel("wallet");
+                        }}
+                      >
+                        Prepaid
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={kycAtOpen !== "APPROVED"}
+                        className={[
+                          "h-10 rounded-xl text-sm font-semibold transition-all disabled:opacity-60",
+                          "data-[active=true]:text-white data-[active=true]:shadow-[0_8px_22px_-10px_rgba(16,185,129,.55)]",
+                          "data-[active=true]:bg-[linear-gradient(90deg,#10B981_0%,#06B6D4_100%)]",
+                        ].join(" ")}
+                        data-active={payFlow === "postpaid"}
+                        onClick={() => {
+                          setPayFlow("postpaid");
+                          setPayChannel("vnpay");
+                        }}
+                      >
+                        Postpaid
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className={[
+                          "h-10 rounded-xl text-sm font-semibold transition-all",
+                          "data-[active=true]:text-white data-[active=true]:shadow-[0_8px_22px_-10px_rgba(16,185,129,.55)]",
+                          "data-[active=true]:bg-[linear-gradient(90deg,#10B981_0%,#06B6D4_100%)]",
+                        ].join(" ")}
+                        data-active={payFlow === "cash"}
+                        onClick={() => {
+                          setPayFlow("cash");
+                          setPayChannel("cash");
+                        }}
+                      >
+                        Cash
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    Cost ~ <b>{fmtVnd(est.estimatedCost)}</b>
+
+                  {/* Channel card */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-slate-800">
+                      Payment
+                    </div>
+
+                    {payFlow === "prepaid" && (
+                      <div
+                        className="
+                    flex items-center gap-3 rounded-xl border border-emerald-200/70
+                    bg-gradient-to-r from-emerald-50/80 to-cyan-50/60 px-4 py-3
+                    shadow-[0_8px_24px_-12px_rgba(16,185,129,.35)]
+                  "
+                      >
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center
+                                  bg-gradient-to-br from-emerald-500 to-cyan-600 shadow-md"
+                        >
+                          <ShieldCheck className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="leading-tight">
+                          <div className="font-semibold text-slate-900">
+                            Wallet
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Auto-selected for Prepaid
+                          </div>
+                        </div>
+                        <span className="ml-auto inline-flex items-center gap-1 text-xs text-emerald-700">
+                          <Lock className="w-3.5 h-3.5" /> secured
+                        </span>
+                      </div>
+                    )}
+
+                    {payFlow === "postpaid" && (
+                      <div
+                        className="
+                    flex items-center gap-3 rounded-xl border border-sky-200/70
+                    bg-gradient-to-r from-sky-50/80 to-emerald-50/60 px-4 py-3
+                    shadow-[0_8px_24px_-12px_rgba(14,165,233,.35)]
+                  "
+                      >
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center
+                                  bg-gradient-to-br from-sky-500 to-emerald-500 shadow-md"
+                        >
+                          <CreditCard className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="leading-tight">
+                          <div className="font-semibold text-slate-900">
+                            VNPay
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Auto-selected for Postpaid
+                          </div>
+                        </div>
+                        <span className="ml-auto inline-flex items-center gap-1 text-xs text-slate-600">
+                          <Lock className="w-3.5 h-3.5" /> secured
+                        </span>
+                      </div>
+                    )}
+
+                    {payFlow === "cash" && (
+                      <div
+                        className="
+                    flex items-center gap-3 rounded-xl border border-slate-200/70
+                    bg-white/70 px-4 py-3 shadow-sm
+                  "
+                      >
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-900/90">
+                          <DollarSign className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="leading-tight">
+                          <div className="font-semibold text-slate-900">
+                            Cash (Pay at station)
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            On-site payment
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vehicle */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-slate-800">
+                      Charging Vehicle
+                    </div>
+                    <select
+                      className="
+                  w-full h-11 rounded-xl px-3 border border-slate-300/80
+                  bg-white/80 focus:outline-none focus:ring-2 focus:ring-emerald-400/50
+                  shadow-[inset_0_1px_0_rgba(255,255,255,.8)]
+                "
+                      value={vehicleId ?? ""}
+                      onChange={(e) => {
+                        const v = Number(e.target.value) || null;
+                        setVehicleId(v);
+                        const picked = vehicles.find(
+                          (x) => x.id === v
+                        );
+                        const socPct =
+                          typeof picked?.currentSoc === "number"
+                            ? picked!.currentSoc!
+                            : currentSoc;
+                        setCurrentSoc(socPct);
+                        const rr = items.find(
+                          (x) => x.reservationId === pmResId!
+                        );
+                        if (rr) fetchEstimateFor(rr, v!, socPct);
+                      }}
+                    >
+                      <option value="" disabled>
+                        Choose vehicle
+                      </option>
+                      {vehicles.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.make || ""} {v.model || ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* SOC */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium text-slate-800">
+                        Current SOC
+                      </div>
+                      <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                        {currentSoc}%
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={currentSoc}
+                      disabled
+                      readOnly
+                      className="w-full opacity-70 cursor-not-allowed accent-emerald-500"
+                    />
+                  </div>
+
+                  {/* Estimate */}
+                  <div
+                    className="
+                rounded-xl border bg-white/70 p-3
+                ring-1 ring-transparent hover:ring-emerald-200/70 transition
+              "
+                  >
+                    {!vehicleId || !pmResId ? (
+                      <div className="text-sm text-slate-500">
+                        Select vehicle to estimate.
+                      </div>
+                    ) : estimating ? (
+                      <div className="text-sm text-emerald-700">
+                        Estimating…
+                      </div>
+                    ) : est ? (
+                      <div className="text-sm flex flex-wrap gap-x-4 gap-y-1">
+                        <div>
+                          Time ~ <b>{est.estimatedMinutes} minutes</b>
+                        </div>
+                        <div>
+                          Cost ~{" "}
+                          <b className="bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                            {fmtVnd(est.estimatedCost)}
+                          </b>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-slate-500">
+                        Cannot estimate.
+                      </div>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">Cannot estimate.</div>
-              )}
-            </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setPmOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!pmResId) return;
-                  if (payFlow === "postpaid" && kycAtOpen !== "APPROVED") {
-                    toast({
-                      title: "KYC required",
-                      description: "Bạn cần KYC ở trạng thái APPROVED để dùng Trả sau.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  setPmOpen(false);
-                  onStartChargingAPI(pmResId);
-                }}
-                disabled={!vehicleId}
-              >
-                <Zap className="w-4 h-4 mr-1" /> Start
-              </Button>
-            </div>
-          </div>
+                {/* footer */}
+                <div className="px-6 pb-5 pt-4 border-t border-slate-200/60 bg-white/70">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setPmOpen(false)}
+                      className="rounded-full"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (!pmResId) return;
+                        if (payFlow === "postpaid" && kycAtOpen !== "APPROVED") {
+                          toast({
+                            title: "KYC required",
+                            description:
+                              "Bạn cần KYC ở trạng thái APPROVED để dùng Trả sau.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setPmOpen(false);
+                        onStartChargingAPI(pmResId);
+                      }}
+                      disabled={!vehicleId}
+                      className="
+                  rounded-full px-5
+                  bg-gradient-to-r from-emerald-600 to-cyan-600 text-white
+                  shadow-[0_10px_28px_-12px_rgba(16,185,129,.6)]
+                  hover:brightness-110 active:scale-[.98] transition
+                  disabled:opacity-50 disabled:shadow-none
+                "
+                    >
+                      <Zap className="w-4 h-4 mr-1" /> Start
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </DialogContent>
       </Dialog>
     </section>
