@@ -15,6 +15,85 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "../../hooks/use-toast";
 import api from "../../api/axios";
 import { ChatBot } from "./../ChatBot";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "../../components/ui/select";
+
+/* ===== EV catalog ===== */
+type CatalogModel = { model: string; acMaxKw: number; dcMaxKw: number; batteryKwh?: number };
+type CatalogMake = { make: string; models: CatalogModel[] };
+
+const EV_CATALOG: CatalogMake[] = [
+  {
+    make: "Tesla",
+    models: [
+      { model: "Model 3 Long Range", acMaxKw: 11, dcMaxKw: 250 }, 
+      { model: "Model Y Long Range", acMaxKw: 11, dcMaxKw: 250 }, 
+    ],
+  },
+  {
+    make: "Hyundai",
+    models: [
+      { model: "IONIQ 5", acMaxKw: 11, dcMaxKw: 233 }, 
+      { model: "Kona Electric", acMaxKw: 11, dcMaxKw: 100 },
+    ],
+  },
+  {
+    make: "Kia",
+    models: [
+      { model: "EV6", acMaxKw: 11, dcMaxKw: 239 }, 
+      { model: "Niro EV", acMaxKw: 11, dcMaxKw: 85 },
+    ],
+  },
+  {
+    make: "Volkswagen",
+    models: [
+      { model: "ID.4 Pro", acMaxKw: 11, dcMaxKw: 135 }, 
+      { model: "ID.3 Pro", acMaxKw: 11, dcMaxKw: 120 },
+    ],
+  },
+  {
+    make: "Nissan",
+    models: [
+      { model: "Leaf", acMaxKw: 6.6, dcMaxKw: 50 }, 
+      { model: "Ariya 87kWh", acMaxKw: 7.4, dcMaxKw: 130 },
+    ],
+  },
+  {
+    make: "Porsche",
+    models: [
+      { model: "Taycan", acMaxKw: 11, dcMaxKw: 270 }, 
+    ],
+  },
+  {
+    make: "BMW",
+    models: [
+      { model: "i4 eDrive40", acMaxKw: 11, dcMaxKw: 205 }, 
+      { model: "iX3", acMaxKw: 11, dcMaxKw: 150 },
+    ],
+  },
+  {
+    make: "BYD",
+    models: [
+      { model: "Atto 3", acMaxKw: 7, dcMaxKw: 88 },
+      { model: "Dolphin", acMaxKw: 7, dcMaxKw: 65 },
+    ],
+  },
+  {
+    make: "MG",
+    models: [
+      { model: "MG4", acMaxKw: 7, dcMaxKw: 117 }, 
+      { model: "ZS EV", acMaxKw: 7, dcMaxKw: 76 },
+    ],
+  },
+  {
+    make: "VinFast",
+    models: [
+      { model: "VF 8", acMaxKw: 11, dcMaxKw: 160 }, 
+      { model: "VF e34", acMaxKw: 7.4, dcMaxKw: 60 },
+    ],
+  },
+];
 
 /* ===== Types ===== */
 type Vehicle = {
@@ -129,14 +208,13 @@ const Profile = () => {
   const [fullName, setFullName] = useState(localStorage.getItem("fullName") || "UserRandom");
   const [email, setEmail] = useState(localStorage.getItem("email") || "userrandom@example.com");
   const [phone, setPhone] = useState(localStorage.getItem("phone") || "0123456789");
-  // Use HTML date input friendly value (yyyy-MM-dd). If LS contains other format, keep empty.
   const [date, setDate] = useState<string>(localStorage.getItem("date") || "");
 
   // avatar state
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
-  // password policy (LOCAL can change; GOOGLE cannot)
+  // password policy
   const [canChangePwd, setCanChangePwd] = useState(false);
 
   const initials = useMemo(
@@ -174,6 +252,18 @@ const Profile = () => {
     variant: "",
   });
 
+  // derived: models for selected make
+  const modelsForMake = useMemo(() => {
+    const mk = EV_CATALOG.find(m => m.make === form.make);
+    return mk?.models ?? [];
+  }, [form.make]);
+
+  const findCatalogSpec = (make?: string, model?: string) => {
+    const mk = EV_CATALOG.find(m => m.make === make);
+    const m = mk?.models.find(x => x.model === model);
+    return m;
+  };
+
   // LOAD PROFILE & VEHICLES
   useEffect(() => {
     (async () => {
@@ -183,14 +273,13 @@ const Profile = () => {
         setFullName(data.fullName ?? fullName);
         setEmail(data.email ?? email);
         setPhone(data.phone ?? phone);
-        // BE returns LocalDate; map to yyyy-MM-dd string
         if (data.dateOfBirth) {
-          setDate(String(data.dateOfBirth)); // already yyyy-MM-dd from BE
+          setDate(String(data.dateOfBirth));
           localStorage.setItem("date", String(data.dateOfBirth));
         }
         if (data.url) setAvatarUrl(data.url as string);
 
-        // --- Detect provider / quyền đổi password ---
+        // provider
         const providerFromApi = String(
           data?.provider ?? data?.authProvider ?? data?.loginType ?? data?.oauthProvider ?? ""
         ).toUpperCase();
@@ -226,11 +315,8 @@ const Profile = () => {
   /* ================= PROFILE ================= */
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // normalize browser date value to yyyy-MM-dd (LocalDate string for BE)
   const normalizeDate = (v: string) => {
     if (!v) return "";
-    // If input type="date" generally gives yyyy-MM-dd already
-    // If user typed dd/MM/yyyy -> try to convert
     if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
     const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (m) return `${m[3]}-${m[1]}-${m[2]}`;
@@ -241,7 +327,6 @@ const Profile = () => {
     const f = e.target.files?.[0];
     if (!f) return;
     setAvatarFile(f);
-    // optimistic preview
     const url = URL.createObjectURL(f);
     setAvatarUrl(url);
   };
@@ -249,10 +334,6 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     try {
       setIsSavingProfile(true);
-
-      // Build multipart body exactly as BE expects:
-      // - part "data": JSON { full_name, phone, email, date_of_birth }
-      // - part "file": optional avatar
       const formData = new FormData();
       const payload = {
         full_name: fullName.trim(),
@@ -270,13 +351,9 @@ const Profile = () => {
 
       const { data } = await api.post("/user/update-profile", formData, {
         withCredentials: true,
-        headers: {
-          // override default "application/json" from axios instance
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // BE returns UpdateUserResponse { fullName, email, phone, dateOfBirth, url }
       const newName = data?.fullName ?? fullName;
       const newEmail = data?.email ?? email;
       const newPhone = data?.phone ?? phone;
@@ -298,7 +375,6 @@ const Profile = () => {
       setIsEditingProfile(false);
       toast({ title: "Profile updated", description: "Saved to server." });
     } catch (err: any) {
-      // keep editing mode so user can retry
       setIsEditingProfile(true);
       const msg =
         err?.response?.data?.message ||
@@ -336,13 +412,22 @@ const Profile = () => {
 
   /* ================= VEHICLES ================= */
   const openAdd = () => {
-    setForm({ make: "", model: "", currentSoc: 50, batteryCapacityKwh: 60, acMaxKw: 7.4, dcMaxKw: 50, year: "", variant: "" });
+    setForm({
+      make: "",
+      model: "",
+      currentSoc: 50,
+      batteryCapacityKwh: 60,
+      acMaxKw: undefined,
+      dcMaxKw: undefined,
+      year: "",
+      variant: "",
+    });
     setIsAddVehicleOpen(true);
   };
 
   const submitAdd = async () => {
     if (!form.make || !form.model || form.currentSoc === undefined || form.batteryCapacityKwh === undefined)
-      return toast({ title: "Validation error", description: "Make, Model, SOC and Battery are required", variant: "destructive" });
+      return toast({ title: "Validation error", description: "Made, Model, SOC and Battery are required", variant: "destructive" });
 
     try {
       setPending(true);
@@ -379,14 +464,16 @@ const Profile = () => {
   };
 
   const openEdit = (v: Vehicle) => {
+    // nếu trùng catalog thì auto-fill AC/DC
+    const spec = findCatalogSpec(v.make, v.model);
     setEditing(v);
     setForm({
       make: v.make,
       model: v.model,
       currentSoc: typeof v.socNowPct === "number" ? v.socNowPct : 50,
       batteryCapacityKwh: v.batteryCapacityKwh ?? 60,
-      acMaxKw: v.acMaxKw,
-      dcMaxKw: v.dcMaxKw,
+      acMaxKw: spec?.acMaxKw ?? v.acMaxKw,
+      dcMaxKw: spec?.dcMaxKw ?? v.dcMaxKw,
       year: v.year,
       variant: v.variant,
     });
@@ -444,6 +531,14 @@ const Profile = () => {
       setPending(false);
     }
   };
+
+  // When make/model changes in form → auto-fill AC/DC from catalog
+  useEffect(() => {
+    const spec = findCatalogSpec(form.make, form.model);
+    if (spec) {
+      setForm((f) => ({ ...f, acMaxKw: spec.acMaxKw, dcMaxKw: spec.dcMaxKw }));
+    }
+  }, [form.make, form.model]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200">
@@ -512,7 +607,6 @@ const Profile = () => {
                       )}
                     </Avatar>
 
-                    {/* Camera button only when editing */}
                     {isEditingProfile && (
                       <>
                         <input
@@ -642,14 +736,53 @@ const Profile = () => {
                       </DialogHeader>
 
                       <div className="grid md:grid-cols-2 gap-4">
+                        {/* Make select */}
                         <div className="space-y-2">
                           <Label>Made *</Label>
-                          <Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Tesla, Nissan, VinFast..." />
+                          <Select
+                            value={form.make || undefined}
+                            onValueChange={(val) => {
+                              setForm((prev) => ({ ...prev, make: val, model: "", acMaxKw: undefined, dcMaxKw: undefined }));
+                            }}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue placeholder="Select brand" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EV_CATALOG.map((mk) => (
+                                <SelectItem key={mk.make} value={mk.make}>{mk.make}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+
+                        {/* Model select (depends on make) */}
                         <div className="space-y-2">
                           <Label>Model *</Label>
-                          <Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Model 3, Leaf, VF8..." />
+                          <Select
+                            value={form.model || undefined}
+                            onValueChange={(val) => {
+                              const spec = findCatalogSpec(form.make, val);
+                              setForm((prev) => ({
+                                ...prev,
+                                model: val,
+                                acMaxKw: spec?.acMaxKw,
+                                dcMaxKw: spec?.dcMaxKw,
+                              }));
+                            }}
+                            disabled={!form.make}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue placeholder={form.make ? "Select model" : "Choose made first"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {modelsForMake.map((m) => (
+                                <SelectItem key={m.model} value={m.model}>{m.model}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+
                         <div className="space-y-2">
                           <Label>State of Charge (%) *</Label>
                           <Input type="number" min={0} max={100} value={form.currentSoc} onChange={(e) => setForm({ ...form, currentSoc: Number(e.target.value) })} placeholder="50" />
@@ -658,13 +791,15 @@ const Profile = () => {
                           <Label>Battery (kWh) *</Label>
                           <Input type="number" min={5} max={200} value={form.batteryCapacityKwh} onChange={(e) => setForm({ ...form, batteryCapacityKwh: Number(e.target.value) })} placeholder="60" />
                         </div>
+
+                        {/* AC & DC */}
                         <div className="space-y-2">
                           <Label>AC Max (kW)</Label>
-                          <Input type="number" min={1} max={50} value={form.acMaxKw ?? ""} onChange={(e) => setForm({ ...form, acMaxKw: toNumberOrUndef(e.target.value) })} placeholder="7.4" />
+                          <Input type="number" value={form.acMaxKw ?? ""} disabled placeholder="auto from model" />
                         </div>
                         <div className="space-y-2">
                           <Label>DC Max (kW)</Label>
-                          <Input type="number" min={10} max={400} value={form.dcMaxKw ?? ""} onChange={(e) => setForm({ ...form, dcMaxKw: toNumberOrUndef(e.target.value) })} placeholder="50" />
+                          <Input type="number" value={form.dcMaxKw ?? ""} disabled placeholder="auto from model" />
                         </div>
                       </div>
 
@@ -691,14 +826,53 @@ const Profile = () => {
                       </DialogHeader>
 
                       <div className="grid md:grid-cols-2 gap-4">
+                        {/* Make select */}
                         <div className="space-y-2">
                           <Label>Made *</Label>
-                          <Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} />
+                          <Select
+                            value={form.make || undefined}
+                            onValueChange={(val) => {
+                              setForm((prev) => ({ ...prev, make: val, model: "", acMaxKw: undefined, dcMaxKw: undefined }));
+                            }}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue placeholder="Select brand" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EV_CATALOG.map((mk) => (
+                                <SelectItem key={mk.make} value={mk.make}>{mk.make}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+
+                        {/* Model select */}
                         <div className="space-y-2">
                           <Label>Model *</Label>
-                          <Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+                          <Select
+                            value={form.model || undefined}
+                            onValueChange={(val) => {
+                              const spec = findCatalogSpec(form.make, val);
+                              setForm((prev) => ({
+                                ...prev,
+                                model: val,
+                                acMaxKw: spec?.acMaxKw,
+                                dcMaxKw: spec?.dcMaxKw,
+                              }));
+                            }}
+                            disabled={!form.make}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue placeholder={form.make ? "Select model" : "Choose made first"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(EV_CATALOG.find(m => m.make === form.make)?.models ?? []).map((m) => (
+                                <SelectItem key={m.model} value={m.model}>{m.model}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+
                         <div className="space-y-2">
                           <Label>State of Charge (%) *</Label>
                           <Input type="number" min={0} max={100} value={form.currentSoc} onChange={(e) => setForm({ ...form, currentSoc: Number(e.target.value) })} />
@@ -707,13 +881,15 @@ const Profile = () => {
                           <Label>Battery (kWh) *</Label>
                           <Input type="number" min={5} max={200} value={form.batteryCapacityKwh} onChange={(e) => setForm({ ...form, batteryCapacityKwh: Number(e.target.value) })} />
                         </div>
+
+                        {/* AC & DC (auto-filled, disabled) */}
                         <div className="space-y-2">
                           <Label>AC Max (kW)</Label>
-                          <Input type="number" min={1} max={50} value={form.acMaxKw ?? ""} onChange={(e) => setForm({ ...form, acMaxKw: toNumberOrUndef(e.target.value) })} />
+                          <Input type="number" value={form.acMaxKw ?? ""} disabled placeholder="auto from model" />
                         </div>
                         <div className="space-y-2">
                           <Label>DC Max (kW)</Label>
-                          <Input type="number" min={10} max={400} value={form.dcMaxKw ?? ""} onChange={(e) => setForm({ ...form, dcMaxKw: toNumberOrUndef(e.target.value) })} />
+                          <Input type="number" value={form.dcMaxKw ?? ""} disabled placeholder="auto from model" />
                         </div>
                       </div>
 

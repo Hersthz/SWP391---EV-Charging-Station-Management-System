@@ -101,12 +101,11 @@ const DashboardHeader = () => {
     >
       <div className="pointer-events-auto mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Brand */}
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="group flex items-center gap-3 outline-none"
-          aria-label="Go to dashboard"
+        <div
+          className="group flex items-center gap-3 select-none"
+          aria-hidden="true"  
         >
-          <div className="relative transition-transform duration-300 group-hover:scale-[1.02] group-active:scale-95">
+          <div className="relative">
             <div className="grid place-items-center w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-500 via-cyan-500 to-emerald-500 shadow-[inset_0_1px_6px_rgba(255,255,255,.55),0_16px_36px_-18px_rgba(14,165,233,.55)]">
               <Zap className="w-5 h-5 text-white drop-shadow" />
             </div>
@@ -122,7 +121,7 @@ const DashboardHeader = () => {
               secure & real-time
             </span>
           </div>
-        </button>
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-3">
