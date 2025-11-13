@@ -16,7 +16,6 @@ public class ReservationResponse {
     private Long connectorId;
     private String status; //pending
     private BigDecimal holdFee;
-    private String depositTransaction;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime createdAt;

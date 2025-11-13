@@ -3,10 +3,7 @@ package com.pham.basis.evcharging.service.Impl;
 import com.pham.basis.evcharging.dto.request.PaymentCreateRequest;
 import com.pham.basis.evcharging.dto.request.StartChargingSessionRequest;
 import com.pham.basis.evcharging.dto.request.VoucherApplyRequest;
-import com.pham.basis.evcharging.dto.response.AdjustTargetSocResponse;
-import com.pham.basis.evcharging.dto.response.ChargingStopResponse;
-import com.pham.basis.evcharging.dto.response.PaymentResponse;
-import com.pham.basis.evcharging.dto.response.VoucherApplyResponse;
+import com.pham.basis.evcharging.dto.response.*;
 import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
@@ -224,9 +221,22 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
             reservation.setEndTime(expectedEnd);
             reservation.setExpiredAt(desiredEndWithGrace);
             Reservation saved = reservationRepo.save(reservation);
+            ReservationResponse reservationResponse = ReservationResponse.builder()
+                    .reservationId(saved.getId())
+                    .stationId(saved.getStation().getId())
+                    .stationName(saved.getStation().getName())
+                    .pillarId(saved.getPillar().getId())
+                    .connectorId(saved.getConnector().getId())
+                    .status(saved.getStatus())
+                    .holdFee(saved.getHoldFee())
+                    .createdAt(saved.getCreatedAt())
+                    .endTime(saved.getEndTime())
+                    .startTime(saved.getStartTime())
+                    .expiredAt(saved.getExpiredAt())
+                    .build();
             return AdjustTargetSocResponse.builder()
                     .updated(true)
-                    .reservation(saved)
+                    .reservationResponse(reservationResponse)
                     .estimatedAmount(estimateAmount)
                     .message("Updated within current reservation")
                     .build();
@@ -243,9 +253,22 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
             reservation.setEndTime(expectedEnd);
             reservation.setExpiredAt(desiredEndWithGrace);
             Reservation saved = reservationRepo.save(reservation);
+            ReservationResponse reservationResponse = ReservationResponse.builder()
+                    .reservationId(saved.getId())
+                    .stationId(saved.getStation().getId())
+                    .stationName(saved.getStation().getName())
+                    .pillarId(saved.getPillar().getId())
+                    .connectorId(saved.getConnector().getId())
+                    .status(saved.getStatus())
+                    .holdFee(saved.getHoldFee())
+                    .createdAt(saved.getCreatedAt())
+                    .endTime(saved.getEndTime())
+                    .startTime(saved.getStartTime())
+                    .expiredAt(saved.getExpiredAt())
+                    .build();
             return AdjustTargetSocResponse.builder()
                     .updated(true)
-                    .reservation(saved)
+                    .reservationResponse(reservationResponse)
                     .estimatedAmount(estimateAmount)
                     .message("Extended reservation (no overlap)")
                     .build();

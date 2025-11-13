@@ -940,7 +940,7 @@ const StatusCards = () => {
         socNow: isFinite(socToUse) ? socToUse / 100 : undefined,
         socTarget: 1,
         kW: DEMO_DEFAULT_KW,
-        tick: DEMO_DEFAULT_TICK_SEC / 1000,
+        tick: DEMO_DEFAULT_TICK_SEC,
       };
 
       const { data } = await api.post("/estimate/estimateReal", payload, {
@@ -1333,12 +1333,6 @@ const StatusCards = () => {
                 <Calendar className="w-5 h-5 text-primary" />
               </div>
               <span className="text-lg">My Reservations</span>
-              <Badge
-                variant="outline"
-                className="ml-2 border-primary/30 text-primary rounded-full"
-              >
-                Core
-              </Badge>
             </div>
             {!loading && (
               <Badge variant="secondary" className="rounded-full">
@@ -1370,7 +1364,7 @@ const StatusCards = () => {
         </CardContent>
       </Card>
 
-      {/* Detail dialog with animation */}
+      {/* Detail dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent
           className="

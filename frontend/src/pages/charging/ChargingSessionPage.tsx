@@ -58,6 +58,16 @@ type VehicleBrief = {
   currentSoc?: number; // 0..1  (đã đổi từ socNow)
 };
 
+/* after-end logic */
+type AfterEndMode = "extendable" | "suggestions";
+
+type AfterEndData = {
+  mode: AfterEndMode;
+  estimatedAmount?: number;
+  newEndTime?: string;
+  suggestedPillars?: any[];
+};
+
 /** ===== Helpers ===== */
 const fmtTime = (sec: number) => {
   const h = Math.floor(sec / 3600);
@@ -103,7 +113,7 @@ const ChargingSessionPage = () => {
   const currentEnergyRef = useRef<number>(0);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Reservation info 
+  // Reservation info
   const [resv, setResv] = useState<ReservationBrief | null>(null);
 
   // Vehicle info => để tính SOC & thanh năng lượng
@@ -120,6 +130,10 @@ const ChargingSessionPage = () => {
 
   const autoStoppingRef = useRef(false);
   const resvEndTimer = useRef<number | null>(null);
+
+  /** state cho after-end modal */
+  const [showAfterEndModal, setShowAfterEndModal] = useState(false);
+  const [afterEndData, setAfterEndData] = useState<AfterEndData | null>(null);
 
   // --- Station/Pillar label
   const stationName = resv?.stationName || "—";
@@ -214,20 +228,23 @@ const ChargingSessionPage = () => {
           } else {
             // Seed tối thiểu nếu chưa có gì lưu
             const nowIso = new Date().toISOString();
-            setSnap(s => s ?? {
-              id: Number(sessionIdParam),
-              stationId: undefined,
-              pillarId: undefined,
-              driverUserId: undefined,
-              vehicleId: meta?.vehicleId,
-              status: "ACTIVE",
-              energyCount: 0,
-              chargedAmount: 0,
-              ratePerKwh: undefined,
-              startTime: nowIso,
-              endTime: null,
-              currency: undefined,
-            });
+            setSnap((s) =>
+              s ??
+              {
+                id: Number(sessionIdParam),
+                stationId: undefined,
+                pillarId: undefined,
+                driverUserId: undefined,
+                vehicleId: meta?.vehicleId,
+                status: "ACTIVE",
+                energyCount: 0,
+                chargedAmount: 0,
+                ratePerKwh: undefined,
+                startTime: nowIso,
+                endTime: null,
+                currency: undefined,
+              }
+            );
             if (typeof meta?.initialSoc === "number") setInitialSocFromBE(meta.initialSoc);
             setTargetSoc(1);
           }
@@ -245,7 +262,9 @@ const ChargingSessionPage = () => {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [sessionIdParam, vehicleIdParam]);
 
   /** === Start/Stop tick helpers === */
@@ -309,20 +328,24 @@ const ChargingSessionPage = () => {
             const total = Number(stopPayload?.totalAmount ?? stopPayload?.totalCost ?? 0);
             const method = String(
               stopPayload?.paymentMethod ??
-              prevLast?.paymentMethod ??
-              (snap as any)?.paymentMethod ??
-              ""
+                prevLast?.paymentMethod ??
+                (snap as any)?.paymentMethod ??
+                ""
             ).toUpperCase();
 
             if ((method === "WALLET" || method === "CASH") && total > 0) {
               try {
-                await api.post("/api/payment/create", {
-                  amount: Math.round(total),
-                  type: "CHARGING-SESSION",
-                  method,
-                  referenceId: Number(sessionIdParam),
-                  description: `Charging session #${sessionIdParam}`
-                }, { withCredentials: true });
+                await api.post(
+                  "/api/payment/create",
+                  {
+                    amount: Math.round(total),
+                    type: "CHARGING-SESSION",
+                    method,
+                    referenceId: Number(sessionIdParam),
+                    description: `Charging session #${sessionIdParam}`,
+                  },
+                  { withCredentials: true }
+                );
               } catch (e: any) {
                 navigate("/session/payment", {
                   replace: true,
@@ -335,8 +358,8 @@ const ChargingSessionPage = () => {
                     endTime: stopPayload?.endTime || new Date().toISOString(),
                     energyKwh: stopPayload?.totalEnergy ?? snap?.energyCount ?? 0,
                     description: `Charging session #${sessionIdParam}`,
-                    forceMethod: "VNPAY"
-                  }
+                    forceMethod: "VNPAY",
+                  },
                 });
                 return;
               }
@@ -346,21 +369,21 @@ const ChargingSessionPage = () => {
             const meta = JSON.parse(localStorage.getItem(`session_meta_${sessionIdParam}`) || "null");
             const energy = Number(
               stopPayload?.totalEnergy ??
-              currentEnergyRef.current ??
-              prevLast?.energyCount ??
-              snap?.energyCount ??
-              0
+                currentEnergyRef.current ??
+                prevLast?.energyCount ??
+                snap?.energyCount ??
+                0
             );
             const amount = Number(
               stopPayload?.totalAmount ??
-              stopPayload?.totalCost ??
-              prevLast?.chargedAmount ??
-              snap?.chargedAmount ??
-              0
+                stopPayload?.totalCost ??
+                prevLast?.chargedAmount ??
+                snap?.chargedAmount ??
+                0
             );
             const rateCalc = Number(
               stopPayload?.ratePerKwh ??
-              (energy > 0 && amount > 0 ? amount / energy : NaN)
+                (energy > 0 && amount > 0 ? amount / energy : NaN)
             );
             const currency = String(stopPayload?.currency ?? prevLast?.currency ?? snap?.currency ?? "VND");
 
@@ -375,16 +398,20 @@ const ChargingSessionPage = () => {
 
             const finalSnap: SessionSnapshot = {
               id: Number(sessionIdParam),
-              stationId:   prevLast?.stationId ?? snap?.stationId ?? stopPayload?.stationId,
-              pillarId:    prevLast?.pillarId  ?? snap?.pillarId  ?? stopPayload?.pillarId,
+              stationId: prevLast?.stationId ?? snap?.stationId ?? stopPayload?.stationId,
+              pillarId: prevLast?.pillarId ?? snap?.pillarId ?? stopPayload?.pillarId,
               driverUserId: snap?.driverUserId,
-              vehicleId:   prevLast?.vehicleId ?? snap?.vehicleId ?? meta?.vehicleId ?? stopPayload?.vehicleId,
+              vehicleId: prevLast?.vehicleId ?? snap?.vehicleId ?? meta?.vehicleId ?? stopPayload?.vehicleId,
               status: "COMPLETED",
               energyCount: energy,
               chargedAmount: amount,
               ratePerKwh: Number.isFinite(rateCalc) ? rateCalc : undefined,
-              startTime: prevLast?.startTime ?? snap?.startTime ?? stopPayload?.startTime ?? new Date().toISOString(),
-              endTime:   stopPayload?.endTime ?? new Date().toISOString(),
+              startTime:
+                prevLast?.startTime ??
+                snap?.startTime ??
+                stopPayload?.startTime ??
+                new Date().toISOString(),
+              endTime: stopPayload?.endTime ?? new Date().toISOString(),
               currency,
               paymentMethod: stopPayload?.paymentMethod ?? prevLast?.paymentMethod ?? (snap as any)?.paymentMethod,
             };
@@ -394,7 +421,11 @@ const ChargingSessionPage = () => {
             // nếu /stop fail vẫn điều hướng, Receipt sẽ ráng đọc được phần đã lưu
           }
 
-          navigate(`/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${reservationIdParam || ""}`);
+          navigate(
+            `/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${
+              reservationIdParam || ""
+            }`
+          );
           return;
         }
 
@@ -484,6 +515,71 @@ const ChargingSessionPage = () => {
     return null;
   }
 
+  /** ===== helper: xử lý khi chạm endTime của reservation ===== */
+  const handleReservationEndReached = async () => {
+    if (!sessionIdParam) {
+      await doStopAndPay();
+      return;
+    }
+
+    try {
+      const { data } = await api.post(
+        `/session/${sessionIdParam}/adjust-soc-target`,
+        { targetSoc: 1.0 },
+        { withCredentials: true }
+      );
+      const resp: any = data?.data ?? data;
+
+      const updated = !!resp?.updated;
+      const suggestions: any[] = Array.isArray(resp?.suggestedPillars ?? resp?.suggested_pillars)
+        ? (resp?.suggestedPillars ?? resp?.suggested_pillars)
+        : [];
+      const estimatedAmountRaw = resp?.estimatedAmount ?? resp?.estimated_amount;
+      const estimatedAmount =
+        typeof estimatedAmountRaw === "number" ? estimatedAmountRaw : Number(estimatedAmountRaw || NaN);
+
+      // BE đang trả reservationResponse
+      const reservationPayload =
+        resp?.reservation ??
+        resp?.reservationResponse ??
+        resp?.reservation_response ??
+        null;
+
+      const newEndTime =
+        reservationPayload?.endTime ??
+        reservationPayload?.end_time ??
+        null;
+
+      if (updated && newEndTime) {
+        // Case A: extend được reservation hiện tại
+        setAfterEndData({
+          mode: "extendable",
+          newEndTime,
+          estimatedAmount: Number.isFinite(estimatedAmount) ? estimatedAmount : undefined,
+        });
+        setShowAfterEndModal(true);
+        return;
+      }
+
+      if (!updated && suggestions.length > 0) {
+        // Case B: không extend được, nhưng có cổng khác cùng loại
+        setAfterEndData({
+          mode: "suggestions",
+          suggestedPillars: suggestions,
+          estimatedAmount: Number.isFinite(estimatedAmount) ? estimatedAmount : undefined,
+        });
+        setShowAfterEndModal(true);
+        return;
+      }
+
+      // Case C: không gì đặc biệt -> fallback stop như cũ
+      await doStopAndPay();
+    } catch {
+      // lỗi BE -> fallback
+      await doStopAndPay();
+    }
+  };
+
   /** ===== Stop flow ===== */
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const onRequestStop = () => setShowStopConfirm(true);
@@ -499,19 +595,19 @@ const ChargingSessionPage = () => {
 
       const energy = Number(
         stopPayload?.totalEnergy ??
-        currentEnergyRef.current ??           // <— ƯU TIÊN NHẤT
-        snap?.energyCount ??                 // <— sau đó mới đến snap (có thể chậm 1 tick)
-        0
+          currentEnergyRef.current ?? // <— ƯU TIÊN NHẤT
+          snap?.energyCount ?? // <— sau đó mới đến snap (có thể chậm 1 tick)
+          0
       );
       const amount = Number(
         stopPayload?.totalAmount ??
-        stopPayload?.totalCost ??
-        snap?.chargedAmount ??
-        0
+          stopPayload?.totalCost ??
+          snap?.chargedAmount ??
+          0
       );
       const rateCalc = Number(
         stopPayload?.ratePerKwh ??
-        (energy > 0 && amount > 0 ? amount / energy : NaN)
+          (energy > 0 && amount > 0 ? amount / energy : NaN)
       );
       const currency = String(stopPayload?.currency ?? snap?.currency ?? "VND");
 
@@ -529,13 +625,17 @@ const ChargingSessionPage = () => {
 
       if ((method === "WALLET" || method === "CASH") && total > 0) {
         try {
-          await api.post("/api/payment/create", {
-            amount: Math.round(total),
-            type: "CHARGING-SESSION",
-            method,
-            referenceId: Number(sessionIdParam),
-            description: `Charging session #${sessionIdParam}`
-          }, { withCredentials: true });
+          await api.post(
+            "/api/payment/create",
+            {
+              amount: Math.round(total),
+              type: "CHARGING-SESSION",
+              method,
+              referenceId: Number(sessionIdParam),
+              description: `Charging session #${sessionIdParam}`,
+            },
+            { withCredentials: true }
+          );
         } catch (e: any) {
           navigate("/session/payment", {
             replace: true,
@@ -548,8 +648,8 @@ const ChargingSessionPage = () => {
               endTime: stopPayload?.endTime || new Date().toISOString(),
               energyKwh: energy,
               description: `Charging session #${sessionIdParam}`,
-              forceMethod: "VNPAY"
-            }
+              forceMethod: "VNPAY",
+            },
           });
           return;
         }
@@ -573,7 +673,11 @@ const ChargingSessionPage = () => {
       };
       localStorage.setItem(`session_last_${sessionIdParam}`, JSON.stringify(finalSnap));
 
-      navigate(`/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${reservationIdParam || ""}`);
+      navigate(
+        `/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${
+          reservationIdParam || ""
+        }`
+      );
     } catch (e: any) {
       toast({
         title: "Stop failed",
@@ -602,7 +706,8 @@ const ChargingSessionPage = () => {
     if (now >= endMs) {
       if (!autoStoppingRef.current) {
         autoStoppingRef.current = true;
-        doStopAndPay();
+        stopTick();
+        handleReservationEndReached();
       }
       return;
     }
@@ -611,7 +716,8 @@ const ChargingSessionPage = () => {
     resvEndTimer.current = window.setTimeout(() => {
       if (!autoStoppingRef.current) {
         autoStoppingRef.current = true;
-        doStopAndPay();
+        stopTick();
+        handleReservationEndReached();
       }
     }, delay);
 
@@ -680,7 +786,10 @@ const ChargingSessionPage = () => {
               </div>
 
               {/* SOC progress */}
-              <Progress value={socPercent == null ? 0 : Math.max(0, Math.min(100, Number(socPercent)))} className="h-3 bg-muted/40 rounded-full" />
+              <Progress
+                value={socPercent == null ? 0 : Math.max(0, Math.min(100, Number(socPercent)))}
+                className="h-3 bg-muted/40 rounded-full"
+              />
               <div className="text-xs text-center text-amber-600 mt-2">⚡ Fast charging</div>
 
               {(typeof socPercent === "number" || typeof targetSoc === "number") && (
@@ -690,7 +799,9 @@ const ChargingSessionPage = () => {
                       <Battery className="w-4 h-4" />
                       SOC Now
                     </span>
-                    <span className="font-bold text-emerald-800">{typeof socPercent === "number" ? `${socPercent}%` : "—"}</span>
+                    <span className="font-bold text-emerald-800">
+                      {typeof socPercent === "number" ? `${socPercent}%` : "—"}
+                    </span>
                   </div>
                   <div className="rounded-xl border bg-amber-50 border-amber-100 p-3 flex items-center justify-between">
                     <span className="flex items-center gap-2 text-amber-700">
@@ -713,7 +824,9 @@ const ChargingSessionPage = () => {
                 </div>
                 <div className="rounded-2xl bg-sky-50 border border-sky-100 p-6 text-center">
                   <Clock className="w-5 h-5 text-sky-600 mx-auto mb-2" />
-                  <div className="text-4xl font-extrabold text-sky-700">{loading || !snap ? "—" : fmtTime(elapsedSec)}</div>
+                  <div className="text-4xl font-extrabold text-sky-700">
+                    {loading || !snap ? "—" : fmtTime(elapsedSec)}
+                  </div>
                   <div className="text-xs text-sky-700/80 mt-1">Session Time</div>
                 </div>
                 <div className="rounded-2xl bg-amber-50 border border-amber-100 p-6 text-center">
@@ -753,7 +866,12 @@ const ChargingSessionPage = () => {
                 )}
               </Button>
 
-              <Button variant="destructive" className="h-14 text-base rounded-xl" onClick={onRequestStop} disabled={busy || loading || isCompleted}>
+              <Button
+                variant="destructive"
+                className="h-14 text-base rounded-xl"
+                onClick={onRequestStop}
+                disabled={busy || loading || isCompleted}
+              >
                 <StopCircle className="w-5 h-5 mr-2" />
                 Stop & Pay
               </Button>
@@ -765,7 +883,13 @@ const ChargingSessionPage = () => {
 
             {/* Status badge */}
             <div className="flex justify-center">
-              <Badge className={isCompleted ? "bg-primary/10 text-primary border-primary/20" : "bg-emerald-100 text-emerald-700 border-emerald-200"}>
+              <Badge
+                className={
+                  isCompleted
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : "bg-emerald-100 text-emerald-700 border-emerald-200"
+                }
+              >
                 {isCompleted ? "Completed" : "Active"}
               </Badge>
             </div>
@@ -815,6 +939,133 @@ const ChargingSessionPage = () => {
                 Continue charging
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* After-end options modal */}
+      {showAfterEndModal && afterEndData && (
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              <div className="text-lg font-bold">Reservation time has ended</div>
+            </div>
+
+            {afterEndData.mode === "extendable" && (
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  The current port is still available. Would you like to{" "}
+                  <span className="font-semibold text-emerald-700">
+                    extend your reservation and continue charging at {pillarCode}
+                  </span>{" "}
+                  until around{" "}
+                  <span className="font-semibold">
+                    {afterEndData.newEndTime
+                      ? new Date(afterEndData.newEndTime).toLocaleTimeString()
+                      : "the new end time"}
+                  </span>
+                  ?
+                </p>
+                {typeof afterEndData.estimatedAmount === "number" && (
+                  <p className="text-xs text-amber-700">
+                    Estimated total cost to reach the new target is{" "}
+                    {afterEndData.estimatedAmount.toLocaleString("vi-VN", {
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    đ (approximate).
+                  </p>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  <Button
+                    className="h-11"
+                    onClick={() => {
+                      // already extended on BE, just update local endTime + resume tick
+                      if (afterEndData.newEndTime && resv) {
+                        setResv({
+                          ...resv,
+                          endTime: afterEndData.newEndTime,
+                        });
+                      }
+                      autoStoppingRef.current = false;
+                      setShowAfterEndModal(false);
+                      startTick();
+                    }}
+                  >
+                    Continue charging on this port
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11"
+                    onClick={() => {
+                      setShowAfterEndModal(false);
+                      doStopAndPay();
+                    }}
+                  >
+                    End session & pay
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {afterEndData.mode === "suggestions" && (
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  This port has another reservation right after your slot. However, there are{" "}
+                  <span className="font-semibold">other connectors of the same type</span> currently
+                  available at this station.
+                </p>
+
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {afterEndData.suggestedPillars?.map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="border rounded-xl p-3 flex items-center justify-between"
+                    >
+                      <div className="text-xs">
+                        <div className="font-semibold">
+                          Port {p.code || p.pillarCode || `P${p.id}`}
+                        </div>
+                        {p.power && (
+                          <div className="text-muted-foreground">
+                            Power ~ {p.power} kW
+                          </div>
+                        )}
+                        {p.connectorType && (
+                          <div className="text-muted-foreground">
+                            Type: {p.connectorType}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {typeof afterEndData.estimatedAmount === "number" && (
+                  <p className="text-xs text-amber-700">
+                    Estimated cost to reach your current SOC target:{" "}
+                    {afterEndData.estimatedAmount.toLocaleString("vi-VN", {
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    đ (approximate).
+                  </p>
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    className="h-11"
+                    onClick={() => {
+                      setShowAfterEndModal(false);
+                      doStopAndPay();
+                    }}
+                  >
+                    End session & pay
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

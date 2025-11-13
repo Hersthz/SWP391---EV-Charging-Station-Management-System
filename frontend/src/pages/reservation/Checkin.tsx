@@ -74,37 +74,64 @@ export default function Checkin() {
         const stationId = Number(payload?.stationId ?? payload?.station_id);
         const pillarId = Number(payload?.pillarId ?? payload?.pillar_id);
         const connectorId = Number(payload?.connectorId ?? payload?.connector_id);
-        const newStatus = String(payload?.newStatus ?? payload?.status ?? "CHARGING");
+        const newStatus = String(payload?.newStatus ?? payload?.status ?? "VERIFIED");
         const startTime = payload?.startTime;
 
-        // 3) Lấy chi tiết reservation/station/pillar/connector từ /book/{id}
+        // 3) Build base từ payload verify
         let enriched: ResLite = {
           reservationId,
           stationId,
+          stationName: payload?.stationName ?? payload?.station_name,
           pillarId,
+          pillarCode:
+            payload?.pillarCode ??
+            payload?.pillar_code ??
+            (pillarId ? `P${pillarId}` : undefined),
           connectorId,
+          connectorType:
+            payload?.connectorType ??
+            payload?.connector_type ??
+            (connectorId ? `Connector ${connectorId}` : undefined),
           newStatus,
           startTime,
         };
-        if (reservationId) {
+
+        // Nếu có userId + reservationId → enrich thêm từ /user/{userId}/reservations
+        if (userId && reservationId) {
           try {
-            const detail = await api.post(`/book/${reservationId}`, {}, { withCredentials: true });
-            const d = detail?.data?.data ?? detail?.data ?? {};
-            enriched = {
-              ...enriched,
-              stationId: d.stationId ?? enriched.stationId,
-              stationName: d.stationName ?? d.name ?? enriched.stationName,
-              pillarId: d.pillarId ?? enriched.pillarId,
-              pillarCode: d.pillarCode ?? (d.pillarId ? `P${d.pillarId}` : enriched.pillarCode),
-              connectorId: d.connectorId ?? enriched.connectorId,
-              connectorType: d.connectorType ?? (d.connectorId ? `Connector ${d.connectorId}` : enriched.connectorType),
-              startTime: d.startTime ?? enriched.startTime,
-            };
+            const res = await api.get(`/user/${userId}/reservations`, {
+              withCredentials: true,
+            });
+            const arr =
+              Array.isArray(res.data) ? res.data :
+              Array.isArray(res.data?.data) ? res.data.data :
+              [];
+
+            const row = arr.find(
+              (x: any) => Number(x?.reservationId) === reservationId
+            );
+            if (row) {
+              enriched = {
+                ...enriched,
+                stationId: row.stationId ?? enriched.stationId,
+                stationName: row.stationName ?? enriched.stationName,
+                pillarId: row.pillarId ?? enriched.pillarId,
+                pillarCode:
+                  row.pillarCode ??
+                  enriched.pillarCode ??
+                  (row.pillarId ? `P${row.pillarId}` : undefined),
+                connectorId: row.connectorId ?? enriched.connectorId,
+                connectorType: row.connectorType ?? enriched.connectorType,
+                startTime: row.startTime ?? enriched.startTime,
+              };
+            }
           } catch {
-            // best-effort
+            // nếu fail vẫn dùng enriched hiện tại
           }
         }
+
         setResv(enriched);
+
 
         // 4) Lấy vehicle: chọn theo localStorage.vehicle_id nếu có, fallback [0]
         if (userId) {
