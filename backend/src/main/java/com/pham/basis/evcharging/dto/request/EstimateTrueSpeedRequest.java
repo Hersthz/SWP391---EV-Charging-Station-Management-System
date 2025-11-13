@@ -1,6 +1,7 @@
 package com.pham.basis.evcharging.dto.request;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +28,7 @@ public class EstimateTrueSpeedRequest {
         @NotNull(message = "Target SOC is required")
         private Double socTarget;
 
+        @JsonProperty("kW")
         private Double kW;
 
         private Double tick;

@@ -14,7 +14,7 @@ import java.util.List;
 @Builder
 public class AdjustTargetSocResponse {
     private boolean updated;
-    private Reservation reservation;
+    private ReservationResponse reservationResponse;
     private List<ChargerPillar> suggestedPillars;
     private BigDecimal estimatedAmount;
     private boolean walletSufficient;
