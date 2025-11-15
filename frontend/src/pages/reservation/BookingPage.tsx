@@ -144,7 +144,7 @@ const minEndForDate = (yyyyMmDd?: string, start?: string) => {
 };
 
 // tạo list mốc giờ trong ngày theo bước )
-const STEP_MIN = 5; 
+const STEP_MIN = 2; 
 const genTimes = (step: number = STEP_MIN) => {
   const out: string[] = [];
   for (let m = 0; m < 24 * 60; m += step) {
@@ -427,6 +427,14 @@ export default function BookingPage() {
 
   // flow
   const goSummary = () => {
+    if (!selectedVehicleId) {
+      toast({
+        title: "Chưa chọn xe",
+        description: "Vui lòng chọn một xe để đặt chỗ.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!selectedPillarId) {
       toast({ title: "Chưa chọn trụ sạc (Pillar).", variant: "destructive" });
       return;
@@ -482,6 +490,16 @@ export default function BookingPage() {
   const confirmAndCreateBooking = async () => {
     if (!station) return;
 
+    if (!selectedVehicleId) {
+      toast({
+        title: "Chưa chọn xe",
+        description: "Vui lòng chọn xe trước khi xác nhận.",
+        variant: "destructive",
+      });
+      setCurrentStep("selection");
+      setSubmitting(false);
+      return;
+    }
     if (!selectedPillarId) {
       toast({
         title: "Chưa chọn trụ sạc (Pillar)",
@@ -549,6 +567,7 @@ export default function BookingPage() {
         connectorId: Number(selectedConnectorIdNum),
         startTime: startStr,
         endTime: endStr,
+        vehicleId: selectedVehicleId!,
       };
 
       const { data } = await api.post("/book/booking", payload);
@@ -1172,6 +1191,90 @@ export default function BookingPage() {
 
   const renderConfirmedStep = () => {
     const holdToShow = serverHoldFee ?? estimatedHold;
+    const vehicleChosen = vehicles.find((v) => v.id === selectedVehicleId);
+    const vehicleLabel = vehicleChosen
+      ? vehicleChosen.name ||
+        [vehicleChosen.brand, vehicleChosen.model].filter(Boolean).join(" ") ||
+        `Vehicle #${vehicleChosen.id}`
+      : "—";
+
+    const infoCards = [
+      {
+        key: "station",
+        title: "Station",
+        value: station!.name,
+        sub: station!.address,
+        bg: "from-emerald-50 to-cyan-50",
+        border: "border-emerald-200/60",
+        icon: <MapPin className="w-5 h-5 text-emerald-600" />,
+        fullRow: false,
+      },
+      {
+        key: "connector",
+        title: "Connector",
+        value: selectedConnectorLabel || "—",
+        sub: "",
+        bg: "from-emerald-50 to-emerald-100/40",
+        border: "border-emerald-200/60",
+        icon: <Zap className="w-5 h-5 text-emerald-600" />,
+        fullRow: false,
+      },
+      {
+        key: "pillar",
+        title: "Pillar",
+        value: selectedPillarCode || "—",
+        sub: "",
+        bg: "from-amber-50 to-amber-100/40",
+        border: "border-amber-200/60",
+        icon: <Battery className="w-5 h-5 text-amber-600" />,
+        fullRow: false,
+      },
+      {
+        key: "vehicle",
+        title: "Vehicle",
+        value: vehicleLabel,
+        sub: "",
+        bg: "from-emerald-50 to-emerald-100/40",
+        border: "border-emerald-200/60",
+        icon: <Car className="w-5 h-5 text-emerald-600" />,
+        fullRow: false,
+      },
+      {
+        key: "timeslot",
+        title: "Timeslot",
+        value: bookingDate
+          ? `${bookingDate} • ${startTime || "--:--"} → ${
+              endTime || "--:--"
+            } (${durationMinutes}’)`
+          : "—",
+        sub: "",
+        bg: "from-sky-50 to-sky-100/40",
+        border: "border-sky-200/60",
+        icon: <Clock className="w-5 h-5 text-sky-600" />,
+        fullRow: false,
+      },
+      {
+        key: "bookingId",
+        title: "Booking ID",
+        value: (reservationId ?? "—").toString(),
+        sub: "",
+        bg: "from-zinc-50 to-zinc-100",
+        border: "border-zinc-200",
+        icon: <Receipt className="w-5 h-5 text-zinc-600" />,
+        fullRow: false,
+      },
+      {
+        key: "holdFee",
+        title: "Hold fee",
+        value: formatVND(holdToShow),
+        sub: "",
+        bg: "from-emerald-50 to-cyan-50",
+        border: "border-emerald-200/60",
+        icon: <Zap className="w-5 h-5 text-emerald-600" />,
+        fullRow: true, // <- span 2 cột
+      },
+    ];
+
     return (
       <motion.div
         key="confirmed"
@@ -1189,7 +1292,11 @@ export default function BookingPage() {
             transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.2 }}
             className="w-24 h-24 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/30 bg-gradient-to-br from-emerald-500 to-cyan-600"
           >
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4, duration: 0.3 }}>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.4, duration: 0.3 }}
+            >
               <CheckCircle className="w-12 h-12 text-white" />
             </motion.div>
           </motion.div>
@@ -1207,7 +1314,8 @@ export default function BookingPage() {
           </div>
           {transactionId && (
             <p className="text-emerald-700 font-bold text-lg mb-6">
-              Transaction ID: <span className="font-mono text-zinc-900">{transactionId}</span>
+              Transaction ID:{" "}
+              <span className="font-mono text-zinc-900">{transactionId}</span>
             </p>
           )}
         </div>
@@ -1219,42 +1327,33 @@ export default function BookingPage() {
               Your Reservation Details
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-200/60">
-                  <div className="text-sm text-zinc-600 mb-1">Station</div>
-                  <div className="font-bold text-lg text-zinc-900">{station!.name}</div>
-                </div>
-
-                <div className="bg-gradient-to-r from-amber-50 to-amber-100/40 p-4 rounded-xl border border-amber-200/60">
-                  <div className="text-sm text-zinc-600 mb-1">Pillar</div>
-                  <div className="font-bold text-lg text-amber-700">{selectedPillarCode}</div>
-                </div>
-
-                <div className="bg-gradient-to-r from-sky-50 to-sky-100/40 p-4 rounded-xl border border-sky-200/60">
-                  <div className="text-sm text-zinc-600 mb-1">Timeslot</div>
-                  <div className="font-bold text-lg text-zinc-900">
-                    {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} ({durationMinutes}’)
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-left">
+              {infoCards.map((c) => (
+                <div
+                  key={c.key}
+                  className={[
+                    "flex items-start gap-3 p-4 rounded-xl border bg-gradient-to-r",
+                    c.border,
+                    c.bg,
+                    c.fullRow ? "md:col-span-2" : "",
+                  ].join(" ")}
+                >
+                  <div className="mt-0.5 flex-shrink-0">{c.icon}</div>
+                  <div className="flex-1">
+                    <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wide">
+                      {c.title}
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-zinc-900">
+                      {c.value}
+                    </div>
+                    {c.sub && (
+                      <div className="mt-0.5 text-xs text-zinc-500">
+                        {c.sub}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-emerald-50 to-emerald-100/40 p-4 rounded-xl border border-emerald-200/60">
-                  <div className="text-sm text-zinc-600 mb-1">Connector</div>
-                  <div className="font-bold text-lg text-zinc-900">{selectedConnectorLabel}</div>
-                </div>
-
-                <div className="bg-gradient-to-r from-zinc-50 to-zinc-100 p-4 rounded-xl border border-zinc-200">
-                  <div className="text-sm text-zinc-600 mb-1">Booking ID</div>
-                  <div className="font-bold text-lg text-zinc-900">{reservationId ?? "—"}</div>
-                </div>
-
-                <div className="bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-200/60">
-                  <div className="text-sm text-zinc-600 mb-1">Hold fee</div>
-                  <div className="font-bold text-lg text-zinc-900">{formatVND(holdToShow)}</div>
-                </div>
-              </div>
+              ))}
             </div>
 
             <div className="flex gap-4 justify-center mt-2">
@@ -1342,6 +1441,7 @@ export default function BookingPage() {
                 <Button
                   onClick={goSummary}
                   disabled={
+                    !selectedVehicleId ||
                     !selectedPillarId ||
                     !selectedConnectorIdNum ||
                     !bookingDate ||

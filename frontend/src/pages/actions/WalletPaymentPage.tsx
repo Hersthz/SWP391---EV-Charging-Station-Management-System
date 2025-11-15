@@ -27,7 +27,7 @@ import {
   Zap,
   Plus,
   AlertTriangle,
-  CheckCircle,
+  Banknote,
 } from "lucide-react";
 import api from "../../api/axios";
 import { ChatBot } from "./../ChatBot";
@@ -321,30 +321,43 @@ export default function WalletPaymentPage() {
           <p className="text-slate-600 text-lg">Manage your balance, transactions and payment methods</p>
         </div>
 
-        {/* Overview */}
+                {/* Overview */}
         <motion.div
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 gap-6"
           variants={kpiContainerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* Thẻ số dư */}
-          <motion.div className="lg:col-span-2" variants={kpiCardVariants}>
+          <motion.div className="lg:col-span-1" variants={kpiCardVariants}>
             <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15 h-full">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-4">
+                  {/* Bên trái: tiêu đề + icon */}
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500 shadow-lg shadow-cyan-500/30">
                       <Wallet className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-2xl font-bold text-slate-900">Wallet Balance</CardTitle>
+                      <CardTitle className="text-2xl font-bold text-slate-900">
+                        Wallet Balance
+                      </CardTitle>
                       <CardDescription>Available for charging</CardDescription>
                     </div>
                   </div>
-                  <Sparkles className="h-8 w-8 text-sky-400" />
+
+                  {/* Bên phải: info nhỏ gọn cho đỡ trống */}
+                  <div className="hidden sm:flex flex-col items-end gap-1 text-xs min-w-[220px]">
+                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>
+                        Keep at least <b>100.000₫</b>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
+
               <CardContent>
                 <div className="text-6xl font-extrabold bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
                   {loadingBalance ? "..." : balance === null ? "Error" : fmtMoney(balance)}
@@ -365,7 +378,9 @@ export default function WalletPaymentPage() {
                     <DialogContent className="bg-white">
                       <DialogHeader>
                         <DialogTitle>Top Up Your Wallet</DialogTitle>
-                        <DialogDescription>Choose a preset or enter a custom amount</DialogDescription>
+                        <DialogDescription>
+                          Choose a preset or enter a custom amount
+                        </DialogDescription>
                       </DialogHeader>
 
                       <div className="space-y-4 py-2">
@@ -379,7 +394,9 @@ export default function WalletPaymentPage() {
                               disabled={topupLoading}
                             >
                               <Zap className="h-5 w-5 text-sky-600" />
-                              <span className="font-bold">{(amt / 1000).toFixed(0)}K</span>
+                              <span className="font-bold">
+                                {(amt / 1000).toFixed(0)}K
+                              </span>
                             </Button>
                           ))}
                         </div>
@@ -405,40 +422,12 @@ export default function WalletPaymentPage() {
                         </Button>
 
                         <p className="text-xs text-muted-foreground text-center">
-                          VNPAY will process your payment. Your wallet will be credited after a successful confirmation.
+                          VNPAY will process your payment. Your wallet will be
+                          credited after a successful confirmation.
                         </p>
                       </div>
                     </DialogContent>
                   </Dialog>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Thẻ Quick Stats */}
-          <motion.div className="lg:col-span-1" variants={kpiCardVariants}>
-            <Card className="bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-900/15 h-full">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-slate-900">Quick Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600">This month</span>
-                    <span className="font-medium text-slate-900">—</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600">Pending holds</span>
-                    <span className="font-medium text-slate-900">—</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600">Total top-ups</span>
-                    <span className="font-medium text-slate-900">—</span>
-                  </div>
-                </div>
-                <div className="mt-6 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>Keep at least <b>100.000₫</b> for smooth check-in at stations.</span>
                 </div>
               </CardContent>
             </Card>
@@ -612,18 +601,29 @@ export default function WalletPaymentPage() {
                       </Card>
                     </motion.div>
 
-                    {/* === Thẻ 3: Add New === */}
-                    <motion.div variants={kpiCardVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
-                      <Button
-                        variant="outline"
-                        className="h-full w-full bg-white/60 backdrop-blur-md border-2 border-dashed border-slate-400 text-slate-600
-                                       hover:bg-white/90 hover:border-emerald-500 hover:text-emerald-600 transition-all duration-300
-                                       flex flex-col items-center justify-center gap-2 py-10 shadow-lg shadow-slate-900/10"
-                        disabled
-                      >
-                        <Plus className="w-8 h-8" />
-                        <span className="text-base font-semibold">Add new method</span>
-                      </Button>
+                    {/* === Thẻ 3: Cash (Pay at station) === */}
+                    <motion.div
+                      variants={kpiCardVariants}
+                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                    >
+                      <Card className="relative bg-white/80 backdrop-blur-md border-2 border-slate-300 shadow-2xl shadow-slate-900/10 h-full">
+                        <CardContent className="p-6 flex flex-col items-center text-center justify-between h-full">
+                          <div>
+                            <div className="p-3 inline-block rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/30">
+                              <Banknote className="w-8 h-8" />
+                            </div>
+                            <h3 className="mt-4 text-lg font-semibold text-slate-900">Cash</h3>
+                            <p className="text-sm text-slate-600">Pay at station counter</p>
+                          </div>
+
+                          <Badge
+                            variant="outline"
+                            className="mt-4 text-xs border-dashed border-slate-300 text-slate-500"
+                          >
+                            On-site only
+                          </Badge>
+                        </CardContent>
+                      </Card>
                     </motion.div>
                   </motion.div>
                 </div>

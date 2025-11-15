@@ -959,23 +959,8 @@ const ChargingSessionPage = () => {
                   <span className="font-semibold text-emerald-700">
                     extend your reservation and continue charging at {pillarCode}
                   </span>{" "}
-                  until around{" "}
-                  <span className="font-semibold">
-                    {afterEndData.newEndTime
-                      ? new Date(afterEndData.newEndTime).toLocaleTimeString()
-                      : "the new end time"}
-                  </span>
                   ?
                 </p>
-                {typeof afterEndData.estimatedAmount === "number" && (
-                  <p className="text-xs text-amber-700">
-                    Estimated total cost to reach the new target is{" "}
-                    {afterEndData.estimatedAmount.toLocaleString("vi-VN", {
-                      maximumFractionDigits: 0,
-                    })}{" "}
-                    đ (approximate).
-                  </p>
-                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                   <Button

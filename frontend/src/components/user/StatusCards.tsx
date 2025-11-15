@@ -18,6 +18,7 @@ import {
   XCircle,
   DollarSign,
   Info,
+  Car,
 } from "lucide-react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -85,6 +86,7 @@ interface ReservationItem {
   status: ReservationStatus;
   holdFee?: number;
   payment?: { depositTransactionId?: string; paid: boolean };
+  vehicleId?: number;
 }
 
 interface MyReservationsResponse {
@@ -108,6 +110,9 @@ interface ReservationResponseBE {
   createdAt?: string;
   expiredAt?: string;
   payment?: { paid?: boolean; depositTransactionId?: string };
+  vehicleId?: number;       
+  vehicleMade?: string;
+  vehicleModel?: string;
 }
 
 /* ===== Mock ===== */
@@ -258,6 +263,7 @@ function mapBEToFE(rows: ReservationResponseBE[]): ReservationItem[] {
           normalized === "PAID_CONFIRMED",
         depositTransactionId: d.payment?.depositTransactionId || undefined,
       },
+      vehicleId: d.vehicleId,
     };
   });
 }
@@ -479,7 +485,25 @@ const StatusCards = () => {
     const v = Number(localStorage.getItem("soc_now"));
     return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
   });
-  const TARGET_SOC_FIXED = 100;
+
+  const reservationForDialog = useMemo(
+    () =>
+      pmResId
+        ? items.find((r) => r.reservationId === pmResId) || null
+        : null,
+    [items, pmResId]
+  );
+
+  const vehicleForDialog = useMemo(() => {
+    const vid = reservationForDialog?.vehicleId ?? vehicleId;
+    if (!vid) return null;
+    return vehicles.find((v) => v.id === vid) || null;
+  }, [vehicles, reservationForDialog, vehicleId]);
+
+  const effectiveVehicleId = useMemo(
+    () => reservationForDialog?.vehicleId ?? vehicleId,
+    [reservationForDialog, vehicleId]
+  );
 
   // dialog chi tiết reservation
   const [detailOpen, setDetailOpen] = useState(false);
@@ -520,6 +544,20 @@ const StatusCards = () => {
         const feItems = mapBEToFE(Array.isArray(data) ? data : []);
         setItems(feItems);
         setNext(pickNext(feItems));
+
+        // load vehicles của user 
+        try {
+          const vRes = await api.get(`/vehicle/${userId}`, { withCredentials: true });
+          const rawV = vRes.data?.data ?? vRes.data?.content ?? vRes.data ?? [];
+          const list: Vehicle[] = Array.isArray(rawV)
+            ? rawV.map(mapApiVehicle)
+            : [];
+          if (mounted) {
+            setVehicles(list);
+          }
+        } catch {
+          if (mounted) setVehicles([]);
+        }
 
         try {
           const kycRes = await api.get(`/kyc/${userId}`, {
@@ -597,7 +635,9 @@ const StatusCards = () => {
       const r = items.find((x) => x.reservationId === reservationId);
       if (!r) throw new Error("Reservation not found.");
       if (!currentUserId) throw new Error("Cannot determine current user id.");
-      if (!vehicleId) throw new Error("Please choose a vehicle.");
+
+      const vehId = r.vehicleId ?? vehicleId;
+      if (!vehId) throw new Error("Vehicle not found for this reservation.");
 
       if (USE_MOCK) {
         toast({
@@ -614,7 +654,7 @@ const StatusCards = () => {
         reservationId: r.reservationId,
         pillarId: r.pillarId,
         driverId: currentUserId,
-        vehicleId: vehicleId,
+        vehicleId: vehId,
         targetSoc: 1,
         paymentMethod:
           payChannel === "wallet"
@@ -637,7 +677,7 @@ const StatusCards = () => {
       localStorage.setItem(
         `session_meta_${sid}`,
         JSON.stringify({
-          vehicleId,
+          vehicleId: vehId,
           initialSoc: initialSocFrac,
           targetSoc: targetSocFrac,
           reservationId,
@@ -657,7 +697,7 @@ const StatusCards = () => {
       navigate(
         `/charging?sessionId=${encodeURIComponent(sid)}` +
           `&reservationId=${reservationId}` +
-          `&vehicleId=${vehicleId}` +
+          `&vehicleId=${vehId}` +
           `&initialSoc=${initialSocFrac}` +
           `&targetSoc=${targetSocFrac}`
       );
@@ -864,6 +904,7 @@ const StatusCards = () => {
         connectorId: d.connectorId ?? r.connectorId,
         connectorType: d.connectorType ?? r.connectorType,
         pillarCode: d.pillarCode ?? r.pillarCode,
+        vehicleId: d.vehicleId ?? r.vehicleId,
       };
       setItems((xs) =>
         xs.map((x) =>
@@ -874,27 +915,22 @@ const StatusCards = () => {
       // ignore
     }
 
-    if (currentUserId) {
-      api
-        .get(`/vehicle/${currentUserId}`, { withCredentials: true })
-        .then((res) => {
-          const raw =
-            res?.data?.data ?? res?.data?.content ?? res?.data ?? [];
-          const list: Vehicle[] = Array.isArray(raw)
-            ? raw.map(mapApiVehicle)
-            : [];
-          setVehicles(list);
-          if (list.length === 1) {
-            setVehicleId(list[0].id);
-            if (typeof list[0].currentSoc === "number")
-              setCurrentSoc(list[0].currentSoc);
-            fetchEstimateFor(enriched, list[0].id, list[0].currentSoc);
-          }
-        })
-        .catch(() => setVehicles([]));
+    // Auto bind vehicle cho dialog theo reservation
+    const vid = enriched.vehicleId;
+    setVehicleId(vid ?? null);
+
+    if (vid) {
+      const veh = vehicles.find((v) => v.id === vid);
+      if (veh && typeof veh.currentSoc === "number") {
+        setCurrentSoc(veh.currentSoc);
+        fetchEstimateFor(enriched, vid, veh.currentSoc);
+      } else {
+        fetchEstimateFor(enriched, vid);
+      }
+    } else {
+      setEst(null);
     }
 
-    setEst(null);
     setPmOpen(true);
   };
 
@@ -997,6 +1033,14 @@ const StatusCards = () => {
     const scheduled = r.status === "SCHEDULED";
     const pending = r.status === "PENDING_PAYMENT";
     const ui = UI[r.status];
+    const vehicle = vehicles.find((v) => v.id === r.vehicleId);
+    const vehicleLabel = vehicle
+      ? vehicle.make ||
+        vehicle.model ||
+        `Vehicle #${vehicle.id}`
+      : r.vehicleId
+      ? `Vehicle #${r.vehicleId}`
+      : undefined;
 
     return (
       <div
@@ -1061,6 +1105,12 @@ const StatusCards = () => {
             >
               {r.connectorType}
             </Badge>
+            {vehicleLabel && (
+              <p className="mt-1 text-[12.5px] text-slate-600 flex items-center gap-1.5">
+                <Car className="w-3.5 h-3.5" />
+                {vehicleLabel}
+              </p>
+            )}
           </div>
 
           <p className={`mt-2 text-[13.5px] font-medium ${ui.text}`}>
@@ -1633,7 +1683,7 @@ const StatusCards = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Payment dialog with animation */}
+      {/* Payment dialog */}
       <Dialog open={pmOpen} onOpenChange={setPmOpen}>
         <DialogContent
           className="
@@ -1828,73 +1878,43 @@ const StatusCards = () => {
                     <div className="text-sm font-medium text-slate-800">
                       Charging Vehicle
                     </div>
-                    <select
-                      className="
-                  w-full h-11 rounded-xl px-3 border border-slate-300/80
-                  bg-white/80 focus:outline-none focus:ring-2 focus:ring-emerald-400/50
-                  shadow-[inset_0_1px_0_rgba(255,255,255,.8)]
-                "
-                      value={vehicleId ?? ""}
-                      onChange={(e) => {
-                        const v = Number(e.target.value) || null;
-                        setVehicleId(v);
-                        const picked = vehicles.find(
-                          (x) => x.id === v
-                        );
-                        const socPct =
-                          typeof picked?.currentSoc === "number"
-                            ? picked!.currentSoc!
-                            : currentSoc;
-                        setCurrentSoc(socPct);
-                        const rr = items.find(
-                          (x) => x.reservationId === pmResId!
-                        );
-                        if (rr) fetchEstimateFor(rr, v!, socPct);
-                      }}
-                    >
-                      <option value="" disabled>
-                        Choose vehicle
-                      </option>
-                      {vehicles.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.make || ""} {v.model || ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* SOC */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-slate-800">
-                        Current SOC
+                    <div className="
+                        w-full rounded-xl px-3 py-2.5 border border-slate-200/80
+                        bg-slate-50/80 text-sm flex items-center justify-between
+                      ">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900">
+                          {vehicleForDialog
+                            ? vehicleForDialog.make ||
+                              vehicleForDialog.model ||
+                              `Vehicle #${vehicleForDialog.id}`
+                            : reservationForDialog?.vehicleId
+                            ? `Vehicle #${reservationForDialog.vehicleId}`
+                            : "Không có thông tin xe"}
+                        </span>
+                        {typeof vehicleForDialog?.currentSoc === "number" && (
+                          <span className="text-xs text-slate-500 mt-0.5">
+                            SOC Now ~ {vehicleForDialog.currentSoc}%
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
-                        {currentSoc}%
-                      </div>
+                      <span className="ml-3 inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+                        <Lock className="w-3 h-3" />
+                        Fixed
+                      </span>
                     </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={currentSoc}
-                      disabled
-                      readOnly
-                      className="w-full opacity-70 cursor-not-allowed accent-emerald-500"
-                    />
                   </div>
 
                   {/* Estimate */}
                   <div
                     className="
-                rounded-xl border bg-white/70 p-3
-                ring-1 ring-transparent hover:ring-emerald-200/70 transition
-              "
+                      rounded-xl border bg-white/70 p-3
+                      ring-1 ring-transparent hover:ring-emerald-200/70 transition
+                    "
                   >
-                    {!vehicleId || !pmResId ? (
+                    {!effectiveVehicleId || !pmResId ? (
                       <div className="text-sm text-slate-500">
-                        Select vehicle to estimate.
+                        Cannot estimate (missing vehicle).
                       </div>
                     ) : estimating ? (
                       <div className="text-sm text-emerald-700">
@@ -1911,6 +1931,11 @@ const StatusCards = () => {
                             {fmtVnd(est.estimatedCost)}
                           </b>
                         </div>
+                        {typeof est.socTarget === "number" && (
+                          <div>
+                            Soc Target ~ <b>{Math.round(est.socTarget * 100)} %</b>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-sm text-slate-500">
@@ -1945,14 +1970,14 @@ const StatusCards = () => {
                         setPmOpen(false);
                         onStartChargingAPI(pmResId);
                       }}
-                      disabled={!vehicleId}
+                      disabled={!effectiveVehicleId}
                       className="
-                  rounded-full px-5
-                  bg-gradient-to-r from-emerald-600 to-cyan-600 text-white
-                  shadow-[0_10px_28px_-12px_rgba(16,185,129,.6)]
-                  hover:brightness-110 active:scale-[.98] transition
-                  disabled:opacity-50 disabled:shadow-none
-                "
+                        rounded-full px-5
+                        bg-gradient-to-r from-emerald-600 to-cyan-600 text-white
+                        shadow-[0_10px_28px_-12px_rgba(16,185,129,.6)]
+                        hover:brightness-110 active:scale-[.98] transition
+                        disabled:opacity-50 disabled:shadow-none
+                      "
                     >
                       <Zap className="w-4 h-4 mr-1" /> Start
                     </Button>
