@@ -14,6 +14,7 @@ public class ReservationResponse {
     private String stationName;
     private Long pillarId;
     private Long connectorId;
+    private Long vehicleId;
     private String status; //pending
     private BigDecimal holdFee;
     private LocalDateTime startTime;

@@ -28,4 +28,7 @@ public class ReservationRequest {
 
     @NotNull(message = "EndTime is required")
     private LocalDateTime endTime;
+
+    @NotNull(message = "Vehicle Id is required")
+    private Long vehicleId;
 }

@@ -30,7 +30,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final ChargingStationRepository chargingStationRepository;
     private final ChargerPillarRepository chargerPillarRepository;
     private final ConnectorRepository connectorRepository;
-
+    private final VehicleRepository vehicleRepository;
     private final WalletRepository walletRepository;
     private final NotificationService notificationService;
 
@@ -48,7 +48,14 @@ public class ReservationServiceImpl implements ReservationService {
                 .orElseThrow(() -> new AppException.BadRequestException("Pillar not found"));
         Connector connector = connectorRepository.findById(request.getConnectorId())
                 .orElseThrow(() -> new AppException.BadRequestException("Connector not found"));
-        // kieem tra có đúng pillar ko không ?
+        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+                .orElseThrow(() -> new AppException.BadRequestException("Vehicle not found"));
+
+        if (!vehicle.getUser().getId().equals(user.getId())) {
+            throw new AppException.BadRequestException("Vehicle does not belong to this user");
+        }
+
+        // kieem tra có đúng pillar ko
         if(!connector.getPillar().getId().equals(chargerPillar.getId())){
             throw new AppException.BadRequestException("Connector does not belong to the selected pillar");
         }
@@ -58,16 +65,20 @@ public class ReservationServiceImpl implements ReservationService {
         //kiểm tra chồng reservation
         checkForOverlappingReservations(request);
 
+        // check vehicle overlapping
+        checkVehicleOverlappingReservations(request);
+
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiredAt = request.getEndTime().plusMinutes(15);
+        LocalDateTime expiredAt = request.getEndTime().plusMinutes(10);
 
         //tinhs holdFee 300d/p
         long minutes = ChronoUnit.MINUTES.between(request.getStartTime(), request.getEndTime());
-        BigDecimal holdFee = BigDecimal.valueOf(minutes).multiply(BigDecimal.valueOf(300));
+        BigDecimal holdFee = BigDecimal.valueOf(minutes).multiply(HOLD_FEE_PER_MINUTE);
 
         //lưu db với status pending
         Reservation reservation = Reservation.builder()
                 .user(user)
+                .vehicle(vehicle)
                 .station(chargingStation)
                 .pillar(chargerPillar)
                 .connector(connector)
@@ -116,6 +127,19 @@ public class ReservationServiceImpl implements ReservationService {
             throw new AppException.BadRequestException("Reservation cannot be cancelled");
         }
 
+        // Giới hạn số lần cancel trong ngày
+        LocalDate today = LocalDate.now();
+        long cancelCountToday = reservationRepository.countByUserIdAndStatusAndExpiredAtBetween(
+                user.getId(),
+                "CANCELLED",
+                today.atStartOfDay(),
+                today.plusDays(1).atStartOfDay()
+        );
+
+        if (cancelCountToday >= 3) {
+            throw new AppException.BadRequestException("You have reached the maximum of 3 cancellations today");
+        }
+
         LocalDateTime now = LocalDateTime.now();
         Duration diff = Duration.between(reservation.getCreatedAt(), now);
         long minutes = diff.toMinutes();
@@ -162,6 +186,7 @@ public class ReservationServiceImpl implements ReservationService {
     private ReservationResponse toResponse(Reservation saved) {
         return ReservationResponse.builder()
                 .reservationId(saved.getId())
+                .vehicleId(saved.getVehicle().getId())
                 .stationId(saved.getStation().getId())
                 .stationName(saved.getStation().getName())
                 .pillarId(saved.getPillar().getId())
@@ -190,12 +215,6 @@ public class ReservationServiceImpl implements ReservationService {
             throw new AppException.BadRequestException("Reservations can only be made within 7 days from today");
         }
 
-//        // kiem tra min
-//        long durationMinutes = ChronoUnit.MINUTES.between(req.getStartTime(), req.getEndTime());
-//
-//        if (durationMinutes < 15) {
-//            throw new AppException.BadRequestException("Minimum reservation time is 15 minutes");
-//        }
     }
 
     private void checkForOverlappingReservations(ReservationRequest req) {
@@ -203,7 +222,7 @@ public class ReservationServiceImpl implements ReservationService {
                 .findOverlappingReservations(
                         req.getConnectorId(),
                         req.getStartTime(),
-                        req.getEndTime().plusMinutes(15)
+                        req.getEndTime().plusMinutes(10)
                 );
 
         if (!existingReservations.isEmpty()) {
@@ -219,6 +238,20 @@ public class ReservationServiceImpl implements ReservationService {
                     start,
                     end
             ));
+        }
+    }
+    private void checkVehicleOverlappingReservations(ReservationRequest req) {
+        List<Reservation> reservations = reservationRepository
+                .findVehicleOverlappingReservations(
+                        req.getVehicleId(),
+                        req.getStartTime(),
+                        req.getEndTime().plusMinutes(GRACE_MINUTES)
+                );
+
+        if (!reservations.isEmpty()) {
+            throw new AppException.BadRequestException(
+                    "This vehicle already has a reservation in the selected time range"
+            );
         }
     }
 
