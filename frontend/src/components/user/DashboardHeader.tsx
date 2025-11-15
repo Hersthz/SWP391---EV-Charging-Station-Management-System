@@ -9,12 +9,13 @@ import {
 } from "../ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import NotificationModal from "../homepage/NotificationModal";
+import NotificationModal from "../user/NotificationModal";
 import api from "../../api/axios";
 
 const DashboardHeader = () => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const userId = Number(
     localStorage.getItem("user_id") ||
@@ -134,6 +135,15 @@ const DashboardHeader = () => {
             aria-label="Open notifications"
           >
             <Bell className="w-5 h-5 text-slate-700" />
+            {unreadCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-[3px]
+                          rounded-full bg-rose-500 text-[11px] font-semibold text-white
+                          flex items-center justify-center shadow-md shadow-rose-400/40"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </Button>
 
           {/* User Avatar */}
@@ -201,6 +211,7 @@ const DashboardHeader = () => {
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
         userId={userId}
+        onUnreadChange={(n) => setUnreadCount(n)}
       />
     </header>
   );

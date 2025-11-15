@@ -991,8 +991,8 @@ const StationMap = () => {
                                   hover:-translate-y-1 hover:border-emerald-400 hover:ring-emerald-400/40
                                   hover:shadow-[0_20px_45px_rgba(16,185,129,0.35)]"
                     >
-                      <div className="flex gap-4 p-4">
-                        <div className="relative h-36 w-48 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-zinc-50 to-emerald-50">
+                      <div className="flex items-center gap-4 p-4">
+                        <div className="relative h-40 w-48 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-zinc-50 to-emerald-50">
                           {station.url ? (
                             <img
                               src={station.url}
@@ -1236,7 +1236,7 @@ const StationMap = () => {
                     <button
                       type="button"
                       onClick={() => setDetailOpen(false)}
-                      className="absolute right-3 top-3 rounded-full bg-white/95 p-2 shadow hover:bg-white"
+                      className="absolute right-3 top-3 z-20 rounded-full bg-white/95 p-2 shadow hover:bg-white"
                       aria-label="Close"
                     >
                       <X className="h-5 w-5" />
