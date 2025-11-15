@@ -6,12 +6,13 @@
     "latitude": 10.8781,
     "longitude": 106.8022,
     "status": "Available",
+    "url": "https://greencharge.vn/wp-content/uploads/2023/04/greencharge-38.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P4", "power": 180, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P5", "power": 180, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 2500, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 2500, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 2500, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 180, "pricePerKwh": 3500, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P5", "power": 180, "pricePerKwh": 3500, "connectors": [ { "type": "CCS", "status": "Available" } ] }
     ]
   },
   {
@@ -21,11 +22,12 @@
     "latitude": 10.8729,
     "longitude": 106.7979,
     "status": "Available",
+    "url": "https://greencharge.vn/wp-content/uploads/2023/04/greencharge-35.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 260, "pricePerKwh": 18750, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P2", "power": 260, "pricePerKwh": 18750, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 10, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 10, "pricePerKwh": 11250, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 260, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 260, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 2200, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 2200, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -35,11 +37,12 @@
     "latitude": 10.8804,
     "longitude": 106.7991,
     "status": "Available",
+    "url": "https://oto-vinfastsaigon.com/wp-content/uploads/2024/10/tr…xe-dien-vinfast-tai-viet-nam-vi-tri-chi-phi-sac-vaFoUgSD.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 13750, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 13750, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 200, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P4", "power": 200, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 2800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 2800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 200, "pricePerKwh": 3800, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 3800, "connectors": [ { "type": "CCS", "status": "Available" } ] }
     ]
   },
   {
@@ -49,26 +52,28 @@
     "latitude": 10.8718,
     "longitude": 106.8046,
     "status": "Available",
+    "url": "https://thanhnien.mediacdn.vn/Uploaded/chicuong/2022_10_31/ev-one-5-4933.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 330, "pricePerKwh": 20000, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P2", "power": 330, "pricePerKwh": 20000, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "AC-P3", "power": 10, "pricePerKwh": 10000, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 10, "pricePerKwh": 10000, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P5", "power": 20, "pricePerKwh": 13750, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 330, "pricePerKwh": 4800, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 330, "pricePerKwh": 4800, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 2000, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 2000, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P5", "power": 20, "pricePerKwh": 2800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
     "id": 5,
     "name": "VNU Campus Station",
     "address": "Zone A, Vietnam National University, Thu Duc City, HCMC",
-    "latitude": 10.877,
+    "latitude": 10.8770,
     "longitude": 106.8061,
     "status": "Available",
+    "url": "https://greencharge.vn/wp-content/uploads/2023/04/greencharge-33.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 270, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Maintenance"}, {"type":"CHAdeMO","status":"Maintenance"} ] },
-      { "code": "DC-P2", "power": 270, "pricePerKwh": 16250, "connectors": [ {"type":"CCS","status":"Maintenance"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 12500, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 20, "pricePerKwh": 12500, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 270, "pricePerKwh": 3800, "connectors": [ { "type": "CCS", "status": "Maintenance" }, { "type": "CHAdeMO", "status": "Maintenance" } ] },
+      { "code": "DC-P2", "power": 270, "pricePerKwh": 3800, "connectors": [ { "type": "CCS", "status": "Maintenance" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 2600, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 2600, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -78,11 +83,12 @@
     "latitude": 10.8696,
     "longitude": 106.7987,
     "status": "Available",
+    "url": "https://static.automotor.vn/images/upload/2025/05/29/chinh-sach-tram-sac-xe-dien-vneconomyautomotive-1.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 200, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P4", "power": 200, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Occupied"} ] }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 1800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 1800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 200, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Occupied" } ] }
     ]
   },
   {
@@ -92,11 +98,12 @@
     "latitude": 10.8766,
     "longitude": 106.7938,
     "status": "Available",
+    "url": "https://photo2.tinhte.vn/data/attachment-files/2023/12/8205161_tram-sac-vinfast.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 220, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P2", "power": 220, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 220, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 220, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 2400, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 2400, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -106,24 +113,26 @@
     "latitude": 10.8747,
     "longitude": 106.8015,
     "status": "Available",
+    "url": "https://evbattery.vn/wp-content/uploads/2023/04/tram-sac-xe-dien-4.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Occupied"} ] }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 180, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 180, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Occupied" } ] }
     ]
   },
   {
     "id": 9,
     "name": "Nguyen Van Ba Point",
     "address": "180 Nguyen Van Ba, Truong Tho, Thu Duc City, HCMC",
-    "latitude": 10.8735,
-    "longitude": 106.8068,
+    "latitude": 10.8835,
+    "longitude": 106.8168,
     "status": "Available",
+    "url": "https://autobikes.vn/stores/news_dataimages/vantrinh/042022…6/09/1150_Tram-sac-nhanh-VinFast-300kw.jpg?rt=20221027100402",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 2700, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 2700, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Available" } ] }
     ]
   },
   {
@@ -133,11 +142,12 @@
     "latitude": 10.8743,
     "longitude": 106.8009,
     "status": "Available",
+    "url": "https://tse2.mm.bing.net/th/id/OIP.ueuYRI_a3tcJG9IXjx0I2AHaEc?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
     "pillars": [
-      { "code": "DC-P1", "power": 180, "pricePerKwh": 14460, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P2", "power": 180, "pricePerKwh": 14460, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 10, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 10, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Occupied"} ] }
+      { "code": "DC-P1", "power": 180, "pricePerKwh": 3200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 180, "pricePerKwh": 3200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 2400, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 2400, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Occupied" } ] }
     ]
   },
   {
@@ -147,11 +157,12 @@
     "latitude": 10.8893,
     "longitude": 106.8157,
     "status": "Available",
+    "url": "https://storage.googleapis.com/vinfast-data-01/Kinh%20doanh…xe%20%C3%B4%20t%C3%B4%20c%E1%BB%A7a%20VinFast_1657637005.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 2400, "connectors": [ { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 2400, "connectors": [ { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -161,11 +172,12 @@
     "latitude": 10.8607,
     "longitude": 106.7875,
     "status": "Available",
+    "url": "https://ircdn.vingroup.net/storage/Uploads/0_Tintuchoatdong/2024/T3/Vgreen.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 90, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 90, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 90, "pricePerKwh": 3400, "connectors": [ { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 90, "pricePerKwh": 3400, "connectors": [ { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -175,11 +187,12 @@
     "latitude": 10.8442,
     "longitude": 106.7996,
     "status": "Available",
+    "url": "https://cdn.tuoitre.vn/thumb_w/730/471584752817336320/2023/7/7/base64-16887063641131353648132.png",
     "pillars": [
-      { "code": "DC-P1", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Occupied"} ] },
-      { "code": "DC-P2", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 10, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 10, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Occupied" } ] },
+      { "code": "DC-P2", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 3200, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 3200, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -187,13 +200,14 @@
     "name": "Binh Tho Corner",
     "address": "Dang Van Bi, Binh Tho, Thu Duc City, HCMC",
     "latitude": 10.8689,
-    "longitude": 106.814,
+    "longitude": 106.8140,
     "status": "Available",
+    "url": "https://tse1.mm.bing.net/th/id/OIP.wj41-s5Nf4fT2HuF0lL9uwHaFf?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 70, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 200, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 2700, "connectors": [ { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 2700, "connectors": [ { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 70, "pricePerKwh": 3400, "connectors": [ { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Available" } ] }
     ]
   },
   {
@@ -203,11 +217,12 @@
     "latitude": 10.8087,
     "longitude": 106.7404,
     "status": "Available",
+    "url": "https://evbattery.vn/wp-content/uploads/2023/04/tram-sac-xe-dien-6.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 250, "pricePerKwh": 17090, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P2", "power": 250, "pricePerKwh": 17090, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 250, "pricePerKwh": 4000, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 250, "pricePerKwh": 4000, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 3000, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 3000, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -217,11 +232,12 @@
     "latitude": 10.8525,
     "longitude": 106.7108,
     "status": "Available",
+    "url": "https://petrotimes.vn/stores/news_dataimages/2024/092024/06/14/tram-sac-120240906140800.jpg?rt=20240906140802",
     "pillars": [
-      { "code": "AC-P1", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"} ] },
-      { "code": "AC-P2", "power": 10, "pricePerKwh": 9200, "connectors": [ {"type":"AC","status":"Available"} ] },
-      { "code": "DC-P3", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 1800, "connectors": [ { "type": "AC", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 1800, "connectors": [ { "type": "AC", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 180, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 180, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -231,11 +247,12 @@
     "latitude": 10.7824,
     "longitude": 106.8091,
     "status": "Available",
+    "url": "https://media-cdn-v2.laodong.vn/Storage/NewsPortal/2021/9/15/953777/PR1_Anh-1.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 330, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P2", "power": 330, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"}, {"type":"AC","status":"Available"} ] },
-      { "code": "AC-P4", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"}, {"type":"AC","status":"Available"} ] }
+      { "code": "DC-P1", "power": 330, "pricePerKwh": 5000, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 330, "pricePerKwh": 5000, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 3200, "connectors": [ { "type": "Type2", "status": "Available" }, { "type": "AC", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 20, "pricePerKwh": 3200, "connectors": [ { "type": "Type2", "status": "Available" }, { "type": "AC", "status": "Available" } ] }
     ]
   },
   {
@@ -245,11 +262,12 @@
     "latitude": 10.7901,
     "longitude": 106.7768,
     "status": "Available",
+    "url": "https://static.automotor.vn/images/upload/2023/03/01/tram-sac-xe-dien-dung-chung-vneconomyautomotive-1.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 80, "pricePerKwh": 17090, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 3200, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 3200, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 80, "pricePerKwh": 3400, "connectors": [ { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -259,10 +277,11 @@
     "latitude": 10.8898,
     "longitude": 106.7846,
     "status": "Available",
+    "url": "https://th.bing.com/th?id=OIF.X0W%2fak%2fwbQZ64PZaGAzFcg&cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
     "pillars": [
-      { "code": "DC-P1", "power": 180, "pricePerKwh": 15770, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 180, "pricePerKwh": 3600, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -272,11 +291,12 @@
     "latitude": 10.8622,
     "longitude": 106.8185,
     "status": "Available",
+    "url": "https://photo.znews.vn/Uploaded/wyhktpu/2025_09_11/5_1.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
-      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
-      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P4", "power": 70, "pricePerKwh": 15770, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 4500, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 70, "pricePerKwh": 3600, "connectors": [ { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -286,11 +306,12 @@
     "latitude": 10.8002,
     "longitude": 106.7119,
     "status": "Available",
+    "url": "https://skds.1cdn.vn/2025/11/13/cdn-i.vtcnews.vn-upload-202…tram-sac-xe-dien-tai-trung-quoc-nguon-electrive-07045518.jpg",
     "pillars": [
-      { "code": "DC-P1", "power": 350, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P2", "power": 350, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P4", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] }
+      { "code": "DC-P1", "power": 350, "pricePerKwh": 5200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P2", "power": 350, "pricePerKwh": 5200, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 10, "pricePerKwh": 2800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 2800, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] }
     ]
   },
   {
@@ -300,11 +321,12 @@
     "latitude": 10.8536,
     "longitude": 106.6477,
     "status": "Available",
+    "url": "https://cdn-i.vtcnews.vn/resize/th/upload/2025/11/13/tram-s…p-dien-tu-50-xe-dien-vao-luoi-dien-nguon-xinhua-07034720.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
-      { "code": "AC-P2", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"} ] },
-      { "code": "DC-P3", "power": 250, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 250, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 250, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 250, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -314,11 +336,12 @@
     "latitude": 10.8008,
     "longitude": 106.6804,
     "status": "Available",
+    "url": "https://tse3.mm.bing.net/th/id/OIP.bRvtaEYAkx2EsnASs_gxuQHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 11830, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] },
-      { "code": "DC-P4", "power": 300, "pricePerKwh": 19720, "connectors": [ {"type":"CCS","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 3000, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 3000, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 300, "pricePerKwh": 4800, "connectors": [ { "type": "CCS", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 300, "pricePerKwh": 4800, "connectors": [ { "type": "CCS", "status": "Available" } ] }
     ]
   },
   {
@@ -328,11 +351,12 @@
     "latitude": 10.7873,
     "longitude": 106.7261,
     "status": "Available",
+    "url": "https://evcs.vn/img/charging-stations/kien-an-hai-phong/tram-sac-bai-do-xe-cong-ty-en-vang.jpg",
     "pillars": [
-      { "code": "AC-P1", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"} ] },
-      { "code": "AC-P2", "power": 20, "pricePerKwh": 14460, "connectors": [ {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P3", "power": 200, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Available"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "DC-P4", "power": 200, "pricePerKwh": 18400, "connectors": [ {"type":"CCS","status":"Maintenance"}, {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "AC-P1", "power": 20, "pricePerKwh": 3200, "connectors": [ { "type": "Type2", "status": "Available" } ] },
+      { "code": "AC-P2", "power": 20, "pricePerKwh": 3200, "connectors": [ { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P3", "power": 200, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Available" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "DC-P4", "power": 200, "pricePerKwh": 4200, "connectors": [ { "type": "CCS", "status": "Maintenance" }, { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   },
   {
@@ -342,12 +366,13 @@
     "latitude": 10.8499,
     "longitude": 106.8463,
     "status": "Available",
+    "url": "https://media-cdn-v2.laodong.vn/storage/newsportal/2025/7/1…09/Tram-Sac-Xe-Buyt-Die.jpg?w=800&h=496&crop=auto&scale=both",
     "pillars": [
-      { "code": "DC-P1", "power": 300, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Occupied"} ] },
-      { "code": "DC-P2", "power": 300, "pricePerKwh": 21030, "connectors": [ {"type":"CCS","status":"Occupied"}, {"type":"CHAdeMO","status":"Available"} ] },
-      { "code": "AC-P3", "power": 20, "pricePerKwh": 13150, "connectors": [ {"type":"Type2","status":"Available"}, {"type":"AC","status":"Available"} ] },
-      { "code": "AC-P4", "power": 10, "pricePerKwh": 10520, "connectors": [ {"type":"AC","status":"Available"}, {"type":"Type2","status":"Available"} ] },
-      { "code": "DC-P5", "power": 90, "pricePerKwh": 18400, "connectors": [ {"type":"CHAdeMO","status":"Available"} ] }
+      { "code": "DC-P1", "power": 300, "pricePerKwh": 5000, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Occupied" } ] },
+      { "code": "DC-P2", "power": 300, "pricePerKwh": 5000, "connectors": [ { "type": "CCS", "status": "Occupied" }, { "type": "CHAdeMO", "status": "Available" } ] },
+      { "code": "AC-P3", "power": 20, "pricePerKwh": 2700, "connectors": [ { "type": "Type2", "status": "Available" }, { "type": "AC", "status": "Available" } ] },
+      { "code": "AC-P4", "power": 10, "pricePerKwh": 2100, "connectors": [ { "type": "AC", "status": "Available" }, { "type": "Type2", "status": "Available" } ] },
+      { "code": "DC-P5", "power": 90, "pricePerKwh": 4200, "connectors": [ { "type": "CHAdeMO", "status": "Available" } ] }
     ]
   }
 ]
