@@ -43,6 +43,20 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findByStatusIn(List<String> statuses);
 
-    List<Reservation> findByStationId(Long stationId);
+    @Query("""
+    SELECT r FROM Reservation r
+    WHERE r.vehicle.id = :vehicleId
+      AND r.status IN ('PENDING', 'SCHEDULED', 'VERIFYING', 'VERIFIED', 'PLUGGED', 'CHARGING')
+      AND (
+            (r.startTime <= :endTime AND r.endTime >= :startTime)
+          )
+""")
+    List<Reservation> findVehicleOverlappingReservations(
+            Long vehicleId,
+            LocalDateTime startTime,
+            LocalDateTime endTime
+    );
+
+    long countByUserIdAndStatusAndExpiredAtBetween(Long userId, String status, LocalDateTime start, LocalDateTime end);
 }
 

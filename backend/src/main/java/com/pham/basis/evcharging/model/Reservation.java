@@ -59,4 +59,7 @@ public class Reservation {
     @JoinColumn(name = "connector_id", nullable = false)
     private Connector connector;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id", nullable = false)
+    private Vehicle vehicle;
 }

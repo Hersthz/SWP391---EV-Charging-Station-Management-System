@@ -50,7 +50,13 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         Reservation reservation = reservationRepo.findById(request.getReservationId())
                 .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
 
+        // Kiểm tra vehicle đúng với reservation
+        if (!reservation.getVehicle().getId().equals(vehicle.getId())) {
+            throw new IllegalArgumentException("The selected vehicle does not match the reservation");
+        }
+
         validatePaymentMethod(request.getPaymentMethod(), driver, request.getTargetSoc(), vehicle, pillar);
+
         reservationRepo.updateStatusById(request.getReservationId(),"CHARGING");
         ChargingSession session = ChargingSession.builder()
                 .reservation(reservation)
@@ -77,7 +83,16 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                 .orElseThrow(() -> new IllegalArgumentException("Session not found"));
 
         if (!"ACTIVE".equals(session.getStatus()))
-            throw new IllegalArgumentException("Session is not active");
+            throw new AppException.BadRequestException("Session is not active");
+
+        // kiem tra vẫn còn trong reservation
+        Reservation reservation = session.getReservation();
+        if (reservation != null && reservation.getEndTime() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isAfter(reservation.getEndTime())) {
+                throw new AppException.BadRequestException("Stop charging because your reservation has end");
+            }
+        }
 
         BigDecimal energyDelta = newEnergyCount.subtract(session.getEnergyCount());
         if (energyDelta.compareTo(BigDecimal.ZERO) > 0) {
@@ -228,7 +243,6 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                     .pillarId(saved.getPillar().getId())
                     .connectorId(saved.getConnector().getId())
                     .status(saved.getStatus())
-                    .holdFee(saved.getHoldFee())
                     .createdAt(saved.getCreatedAt())
                     .endTime(saved.getEndTime())
                     .startTime(saved.getStartTime())
@@ -260,7 +274,6 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                     .pillarId(saved.getPillar().getId())
                     .connectorId(saved.getConnector().getId())
                     .status(saved.getStatus())
-                    .holdFee(saved.getHoldFee())
                     .createdAt(saved.getCreatedAt())
                     .endTime(saved.getEndTime())
                     .startTime(saved.getStartTime())
