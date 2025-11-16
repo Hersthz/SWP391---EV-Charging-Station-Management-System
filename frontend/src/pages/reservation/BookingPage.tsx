@@ -1098,6 +1098,12 @@ export default function BookingPage() {
   const renderSummaryStep = () => {
     const holdToShow = serverHoldFee ?? estimatedHold;
     const vehicleChosen = vehicles.find((v) => v.id === selectedVehicleId);
+    const vehicleLabel = vehicleChosen
+      ? vehicleChosen.name ||
+        [vehicleChosen.brand, vehicleChosen.model].filter(Boolean).join(" ") ||
+        `Vehicle #${vehicleChosen.id}`
+      : "—";
+
     return (
       <motion.div
         key="summary"
@@ -1117,62 +1123,63 @@ export default function BookingPage() {
           >
             <Receipt className="w-8 h-8 text-white" />
           </motion.div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 mb-2 tracking-tight">Booking Summary</h2>
-          <p className="text-zinc-600">Check times, select and pay for your reservation</p>
+          <h2 className="text-3xl font-extrabold text-zinc-900 mb-2 tracking-tight">
+            Booking Summary
+          </h2>
+          <p className="text-zinc-600">
+            Check times, select and pay for your reservation
+          </p>
         </div>
 
         {renderInsufficientBanner()}
 
         <Card className="rounded-2xl border border-zinc-200/70 bg-white shadow-xl shadow-zinc-900/10">
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className="space-y-4">
-                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-cyan-50 border border-emerald-200/60">
-                  <MapPin className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm text-zinc-600">Station</div>
-                    <div className="font-bold text-lg text-zinc-900">{station!.name}</div>
-                    <div className="text-xs text-zinc-500">{station!.address}</div>
-                  </div>
+          <CardContent className="p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Station */}
+              <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-cyan-50 border border-emerald-200/60">
+                <MapPin className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0" />
+                <div>
+                  <div className="text-sm text-zinc-600">Station</div>
+                  <div className="font-bold text-lg text-zinc-900">{station!.name}</div>
+                  <div className="text-xs text-zinc-500">{station!.address}</div>
                 </div>
+              </div>
 
-                {/* Vehicle summary */}
-                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-emerald-100/40 to-emerald-50 border border-emerald-200/60">
-                  <Car className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm text-zinc-600">Vehicle</div>
-                    <div className="font-bold text-lg text-zinc-900">
-                      {vehicleChosen
-                        ? vehicleChosen.name ||
-                          [vehicleChosen.brand, vehicleChosen.model].filter(Boolean).join(" ") ||
-                          `Vehicle #${vehicleChosen.id}`
-                        : "—"}
-                    </div>
+              {/* Timeslot */}
+              <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-sky-50 to-sky-100/40 border border-sky-200/60">
+                <Clock className="w-5 h-5 text-sky-600 mr-3 flex-shrink-0" />
+                <div>
+                  <div className="text-sm text-zinc-600">Timeslot</div>
+                  <div className="font-bold text-lg text-zinc-900">
+                    {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} (
+                    {durationMinutes}’)
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-sky-50 to-sky-100/40 border border-sky-200/60">
-                  <Clock className="w-5 h-5 text-sky-600 mr-3 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm text-zinc-600">Timeslot</div>
-                    <div className="font-bold text-lg text-zinc-900">
-                      {bookingDate || "—"} • {startTime || "--:--"} → {endTime || "--:--"} ({durationMinutes}’)
-                    </div>
+              {/* Pillar */}
+              <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/40 border border-amber-200/60">
+                <Zap className="w-5 h-5 text-amber-600 mr-3 flex-shrink-0" />
+                <div>
+                  <div className="text-sm text-zinc-600">Pillar</div>
+                  <div className="font-bold text-lg text-zinc-900">
+                    {selectedPillarCode || "—"}
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/40 border border-amber-200/60">
-                  <Zap className="w-5 h-5 text-amber-600 mr-3 flex-shrink-0" />
-                  <div>
-                    <div className="text-sm text-zinc-600">Pillar</div>
-                    <div className="font-bold text-lg text-zinc-900">{selectedPillarCode}</div>
-                  </div>
+              {/* Vehicle */}
+              <div className="flex items-center p-4 rounded-xl bg-gradient-to-r from-emerald-100/40 to-emerald-50 border border-emerald-200/60">
+                <Car className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0" />
+                <div>
+                  <div className="text-sm text-zinc-600">Vehicle</div>
+                  <div className="font-bold text-lg text-zinc-900">{vehicleLabel}</div>
                 </div>
               </div>
             </div>
 
+            {/* Hold fee */}
             <div className="border-t border-zinc-200/60 pt-6">
               <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 via-white to-cyan-50 border border-emerald-100">
                 <div className="flex justify-between items-center mb-2">

@@ -64,6 +64,29 @@ type TxItem = {
   ref?: string | number;
 };
 
+type ChargingSessionLite = {
+  id: number;
+  stationId?: number | null;
+  pillarId?: number | null;
+};
+
+type ReservationResponseBE = {
+  reservationId: number;
+  stationId: number;
+  stationName: string;
+  pillarId: number;
+  pillarCode?: string;
+  connectorId: number;
+  connectorType?: string;
+  status: string;
+  holdFee?: number;
+  startTime: string;
+  endTime?: string;
+  createdAt?: string;
+  expiredAt?: string;
+  payment?: { paid?: boolean; depositTransactionId?: string };
+};
+
 /* ================= Helpers ================= */
 const txIcon = (type: string) => {
   switch (type) {
@@ -158,22 +181,104 @@ export default function WalletPaymentPage() {
   }, []);
 
   /* ============== Load user's transactions ============== */
-  const loadTransactions = useCallback(async (userId: number) => {
+    const loadTransactions = useCallback(async (userId: number) => {
     setLoadingTx(true);
     try {
-      const { data } = await api.get<PageResp<PaymentTx>>("/api/payment/getPaymentU", {
-        params: { userId: userId, page: 0, pageSize: 50 },
+      // Lấy payments + reservations + sessions song song
+      const [payRes, resvRes, sessRes] = await Promise.all([
+        api.get<PageResp<PaymentTx>>("/api/payment/getPaymentU", {
+          params: { userId, page: 0, pageSize: 50 },
+        }),
+        api
+          .get<ReservationResponseBE[]>(`/user/${userId}/reservations`)
+          .catch(() => ({ data: [] as ReservationResponseBE[] })),
+        api
+          .get<ApiResponse<PageResp<ChargingSessionLite>>>(`/session/user/${userId}?page=0&size=100`)
+          .catch(() => ({ data: {} as any })),
+      ]);
+
+      const payments = payRes.data;
+
+      // ---- Build mapping station ----
+      const reservations = Array.isArray(resvRes.data) ? resvRes.data : [];
+      const stationByReservationId = new Map<number, string>();
+      const stationByPillarId = new Map<number, string>();
+
+      reservations.forEach((r) => {
+        if (typeof r.reservationId === "number") {
+          stationByReservationId.set(r.reservationId, r.stationName);
+        }
+        if (typeof r.pillarId === "number") {
+          stationByPillarId.set(r.pillarId, r.stationName);
+        }
       });
 
-      const items: TxItem[] = (data?.content ?? []).map((t) => ({
-        id: t.id,
-        type: txType(t),
-        amount: Number(t.amount ?? 0),
-        description: t.orderInfo ?? (t.type === "WALLET" ? "Top-up" : "Payment"),
-        date: t.createdAt ? new Date(t.createdAt).toLocaleString() : "",
-        status: (t.status === "SUCCESS" ? "COMPLETED" : (t.status?.toUpperCase?.() ?? "PENDING")) as TxItem["status"],
-        ref: t.referenceId,
-      }));
+      let sessions: ChargingSessionLite[] = [];
+      try {
+        const raw = (sessRes.data as any)?.data?.content ?? (sessRes.data as any)?.content ?? [];
+        if (Array.isArray(raw)) sessions = raw;
+      } catch {
+        sessions = [];
+      }
+
+      const stationBySessionId = new Map<number, string>();
+      sessions.forEach((s) => {
+        if (typeof s.id !== "number") return;
+        const stationName =
+          (typeof s.pillarId === "number" && stationByPillarId.get(s.pillarId)) ||
+          (typeof s.stationId === "number" ? `Station #${s.stationId}` : undefined);
+        if (stationName) {
+          stationBySessionId.set(s.id, stationName);
+        }
+      });
+
+      // ---- Map PaymentTx -> TxItem với description mới ----
+      const items: TxItem[] = (payments?.content ?? []).map((t) => {
+        const rawType = (t.type || "").toString().toUpperCase();
+        const refNum = Number(t.referenceId ?? NaN);
+
+        const isWalletTopup = rawType === "WALLET";
+        const isDeposit =
+          rawType.includes("DEPOSIT") ||
+          /deposit for reservation/i.test(t.orderInfo || "");
+        const isCharging =
+          rawType.includes("CHARGING") ||
+          /charging session/i.test(t.orderInfo || "");
+
+        let description =
+          t.orderInfo ?? (isWalletTopup ? "Top-up" : "Payment");
+
+        // Deposit → dùng reservationId để lấy stationName
+        if (isDeposit && Number.isFinite(refNum)) {
+          const stationName = stationByReservationId.get(refNum);
+          if (stationName) {
+            description = `Deposit for reservation at ${stationName}`;
+          }
+        }
+
+        // Charging → dùng sessionId (hoặc fallback reservationId) để lấy stationName
+        if (isCharging && Number.isFinite(refNum)) {
+          const stationName =
+            stationBySessionId.get(refNum) ||
+            stationByReservationId.get(refNum);
+          if (stationName) {
+            description = `Charging session at ${stationName}`;
+          }
+        }
+
+        return {
+          id: t.id,
+          type: txType(t),
+          amount: Number(t.amount ?? 0),
+          description,
+          date: t.createdAt ? new Date(t.createdAt).toLocaleString() : "",
+          status: (t.status === "SUCCESS"
+            ? "COMPLETED"
+            : (t.status?.toUpperCase?.() ?? "PENDING")) as TxItem["status"],
+          ref: t.referenceId,
+        };
+      });
+
       setTransactions(items);
     } catch {
       setTransactions([]);
@@ -181,6 +286,7 @@ export default function WalletPaymentPage() {
       setLoadingTx(false);
     }
   }, []);
+
 
   /* ============== Init ============== */
   useEffect(() => {
