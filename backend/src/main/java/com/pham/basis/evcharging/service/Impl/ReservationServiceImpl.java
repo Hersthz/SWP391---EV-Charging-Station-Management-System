@@ -184,9 +184,13 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private ReservationResponse toResponse(Reservation saved) {
+        // Null-guard cho vehicle
+        Vehicle vehicle = saved.getVehicle();
+        Long vehicleId = (vehicle != null) ? vehicle.getId() : null;
+
         return ReservationResponse.builder()
                 .reservationId(saved.getId())
-                .vehicleId(saved.getVehicle().getId())
+                .vehicleId(vehicleId)
                 .stationId(saved.getStation().getId())
                 .stationName(saved.getStation().getName())
                 .pillarId(saved.getPillar().getId())
