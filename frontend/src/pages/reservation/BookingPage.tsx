@@ -64,6 +64,8 @@ type PillarDto = {
   code?: string;
   name?: string;
   connectors?: ConnectorDto[];
+  power?: number; 
+  pricePerKwh?: number;
 };
 type StationDetail = {
   id: number | string;
@@ -274,6 +276,8 @@ export default function BookingPage() {
             id: p.id ?? p.pillarId,
             code: p.code ?? p.name ?? `P${idx + 1}`,
             name: p.name ?? p.code ?? `P${idx + 1}`,
+            power: p.power, 
+            pricePerKwh: p.pricePerKwh ?? p.price_per_kwh,
             connectors: (p.connectors ?? p.connectorDtos ?? p.sockets ?? []).map((c: any) => ({
               id: c.id ?? c.connectorId ?? c.type ?? c.connectorType ?? c.name,
               type: c.type ?? c.connectorType ?? c.name,
@@ -376,6 +380,8 @@ export default function BookingPage() {
     availableCount: number;
     totalCount: number;
     defaultConnector?: { id: string | number; name: string } | null;
+    power?: number;
+    price?: number;
   };
 
   const pillarsUI: PillarUI[] = useMemo(() => {
@@ -402,6 +408,8 @@ export default function BookingPage() {
         availableCount,
         totalCount,
         defaultConnector: firstAvail ? { id: firstAvail.id, name: firstAvail.name } : null,
+        power: p.power,
+        price: p.pricePerKwh,
       };
     });
   }, [stationDetail]);
@@ -591,7 +599,7 @@ export default function BookingPage() {
         selectedVehicleId ?? Number(localStorage.getItem("vehicle_id"));
 
       const socNow = Number(localStorage.getItem("soc_now") ?? "50");
-      const socTarget = Number(localStorage.getItem("soc_target") ?? "80");
+      const socTarget = Number(localStorage.getItem("soc_target") ?? "100");
 
       if (!vehicleId || Number.isNaN(socNow) || Number.isNaN(socTarget)) return null;
       return { vehicleId, socNow, socTarget };
@@ -977,6 +985,25 @@ export default function BookingPage() {
                   >
                     <CardContent className="p-5">
                       <div className="font-semibold text-lg text-zinc-800">{p.name}</div>
+
+                      {/* === Power & Price === */}
+                      <div className="flex items-center justify-center gap-2 mt-2 mb-3">
+                        {/* Hiển thị Power (KW) */}
+                        {p.power ? (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-1 px-2 py-0.5 h-6">
+                            <Zap className="w-3 h-3 fill-orange-700" />
+                            {p.power} kW
+                          </Badge>
+                        ) : null}
+
+                        {/* Hiển thị Price */}
+                        {p.price ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 px-2 py-0.5 h-6">
+                            <span className="text-xs font-bold">₫</span>
+                            {new Intl.NumberFormat('vi-VN').format(p.price)}/kWh
+                          </Badge>
+                        ) : null}
+                      </div>
 
                       <div className="flex flex-wrap gap-1.5 justify-center mt-2 min-h-[22px]">
                         {p.connectorChips.length ? (

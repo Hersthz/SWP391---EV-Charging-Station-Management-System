@@ -1,4 +1,3 @@
-// src/pages/admin/AdminStations.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
@@ -8,9 +7,8 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-// ⬇️ BỎ Progress vì không còn dùng
-// import { Progress } from "../../components/ui/progress";
 import { Separator } from "../../components/ui/separator";
+import { Input } from "../../components/ui/input";
 import { useToast } from "../../hooks/use-toast";
 import {
   Activity,
@@ -24,6 +22,7 @@ import {
   Wifi,
   WifiOff,
   Wrench,
+  Search,
 } from "lucide-react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import * as L from "leaflet";
@@ -89,9 +88,7 @@ type StationVM = {
   lat: number;
   lng: number;
   status: string;
-  // ⬇️ THÊM: chỉ cần tổng số pillars để hiển thị
   pillars: number;
-  // các field còn lại giữ để dùng ở chỗ khác
   available: number;
   total: number;
   minPrice?: number;
@@ -270,7 +267,8 @@ const AdminStations = () => {
 
   const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
-
+  const [searchTerm, setSearchTerm] = useState("");
+  
   // ====== refs for scroll container height ======
   const bodyRef = useRef<HTMLTableSectionElement | null>(null);
   const [scrollH, setScrollH] = useState<number>(460);
@@ -328,13 +326,26 @@ const AdminStations = () => {
     loadIncidents();
   }, [page]);
 
-  // Derived
+  // Filter
   const filteredStations = useMemo(() => {
-    if (statusFilter === "all") return stations;
-    if (statusFilter === "available") return stations.filter((s) => U(s.status).includes("AVAILABLE"));
-    if (statusFilter === "offline") return stations.filter((s) => U(s.status).includes("OFFLINE"));
-    return stations.filter((s) => U(s.status).includes("MAINT"));
-  }, [stations, statusFilter]);
+    const text = searchTerm.trim().toLowerCase();
+
+    let byStatus: StationVM[];
+    if (statusFilter === "all") byStatus = stations;
+    else if (statusFilter === "available")
+      byStatus = stations.filter((s) => U(s.status).includes("AVAILABLE"));
+    else if (statusFilter === "offline")
+      byStatus = stations.filter((s) => U(s.status).includes("OFFLINE"));
+    else
+      byStatus = stations.filter((s) => U(s.status).includes("MAINT"));
+
+    if (!text) return byStatus;
+
+    return byStatus.filter((s) => {
+      const hay = `${s.name} ${s.address}`.toLowerCase();
+      return hay.includes(text);
+    });
+  }, [stations, statusFilter, searchTerm]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -463,11 +474,58 @@ const AdminStations = () => {
         {/* ==================== STATION TABLE ==================== */}
         <motion.div variants={cardVariants} initial="hidden" animate="visible">
           <Card className="mb-8 bg-white/80 backdrop-blur-xl border border-white/50 shadow-2xl shadow-slate-900/15">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold flex items-center text-slate-900">
-                <Power className="w-5 h-5 mr-3 text-emerald-600" />
-                Live Station Network ({filteredStations.length} stations)
-              </CardTitle>
+            <CardHeader className="pb-4 space-y-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <CardTitle className="text-xl font-bold flex items-center text-slate-900">
+                  <Power className="w-5 h-5 mr-3 text-emerald-600" />
+                  Live Station Network ({filteredStations.length} stations)
+                </CardTitle>
+
+                {/* thanh search + quick filter */}
+                <motion.div
+                  className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: EASE_BEZIER }}
+                >
+                  <div className="relative w-full md:w-64">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search by name or address..."
+                      className="h-9 rounded-full bg-slate-50/80 pl-9 pr-3 text-sm border-slate-200 focus-visible:ring-0 focus-visible:border-emerald-500 transition"
+                    />
+                  </div>
+
+                  <div className="inline-flex items-center rounded-full bg-slate-100/80 p-0.5 text-xs">
+                    {(
+                      [
+                        ["all", "All"],
+                        ["available", "Available"],
+                        ["offline", "Offline"],
+                        ["maintenance", "Maintenance"],
+                      ] as [StationStatus, string][]
+                    ).map(([key, label]) => {
+                      const active = statusFilter === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setStatusFilter(key)}
+                          className={`px-3 py-1 rounded-full font-medium transition-all ${
+                            active
+                              ? "bg-white shadow-sm shadow-emerald-500/30 text-emerald-700 border border-emerald-400/70"
+                              : "text-slate-600 hover:bg-white/80"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">

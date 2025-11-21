@@ -43,6 +43,14 @@ const DashboardHeader = () => {
     [fullName]
   );
 
+  type NotificationResponse = {
+    notificationId: number;
+    type: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+  };
+
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -75,6 +83,36 @@ const DashboardHeader = () => {
       ignore = true;
     };
   }, []);
+
+  // tự động lấy số thông báo chưa đọc khi header mount
+  useEffect(() => {
+    if (!userId || !Number.isFinite(userId)) return;
+
+    let cancelled = false;
+
+    const fetchUnread = async () => {
+      try {
+        const { data } = await api.get<NotificationResponse[]>(
+          `/notifications/${userId}`,
+          { withCredentials: true }
+        );
+        if (!Array.isArray(data) || cancelled) return;
+        const count = data.filter((n) => !n.isRead).length;
+        setUnreadCount(count);
+      } catch {
+  
+      }
+    };
+
+    fetchUnread();
+
+    // tự refresh định kỳ 
+    const id = window.setInterval(fetchUnread, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [userId]);
 
   const handleLogout = async () => {
     try {

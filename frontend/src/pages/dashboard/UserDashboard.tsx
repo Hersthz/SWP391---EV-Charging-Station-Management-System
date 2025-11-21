@@ -14,6 +14,10 @@ const UserDashboard = () => {
   const location = useLocation(); 
   const [loading, setLoading] = useState(true);
 
+  if (sessionStorage.getItem("IS_CHARGING") === "true") {
+    return null; 
+  }
+  
   interface UserResponse {
     id: number;
     username: string;
@@ -22,6 +26,15 @@ const UserDashboard = () => {
   }
 
   useEffect(() => {
+    sessionStorage.removeItem("IS_CHARGING");
+    Object.keys(localStorage).forEach((key) => {
+      if (
+        key.startsWith("reservation_cache_") ||
+        key.startsWith("soc")
+      ) {
+        localStorage.removeItem(key);
+      }
+    });
     const checkAuth = async () => {
       try {
         const response = await api.get<UserResponse>("/auth/me", { withCredentials: true });
@@ -41,7 +54,13 @@ const UserDashboard = () => {
         if (username) localStorage.setItem("currentUser", String(username));
         if (role) localStorage.setItem("role", String(role));
         if (fullName) localStorage.setItem("fullName", String(fullName));
-      } catch {
+      } catch (error) {
+        const isCharging = sessionStorage.getItem("IS_CHARGING") === "true";
+        if (isCharging) {
+           console.warn("UserDashboard checkAuth failed, but Charging Mode is active. Redirect blocked.");
+           return; // Dừng ngay, không được clear localStorage hay navigate
+        }
+
         localStorage.clear();
         navigate("/login");
       } finally {

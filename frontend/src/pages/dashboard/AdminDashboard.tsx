@@ -1,3 +1,4 @@
+// src/pages/admin/AdminDashboard.tsx
 import { useState, useEffect, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import {
@@ -7,6 +8,8 @@ import {
   ArrowRight,
   Shield,
   Zap,
+  ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { motion, type Variants } from "framer-motion";
@@ -122,6 +125,7 @@ const AdminDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* 1. Stations */}
                 <ActionCard
                   title="Manage Stations"
                   description="View live status, utilization, and errors."
@@ -129,6 +133,7 @@ const AdminDashboard = () => {
                   color="blue"
                   href="/admin/stations"
                 />
+                {/* 2. Users */}
                 <ActionCard
                   title="Manage Users"
                   description="Edit roles, suspend, or add new users."
@@ -136,19 +141,37 @@ const AdminDashboard = () => {
                   color="emerald"
                   href="/admin/users"
                 />
-                <ActionCard
-                  title="View Reports"
-                  description="Analyze revenue, sessions, and growth."
-                  icon={<BarChart3 className="w-6 h-6 text-purple-600" />}
-                  color="purple"
-                  href="/admin/reports"
-                />
+                {/* 3. Staff */}
                 <ActionCard
                   title="Manage Staff"
                   description="Add new staff or manage permissions."
                   icon={<Shield className="w-6 h-6 text-red-600" />}
                   color="red"
                   href="/admin/staff"
+                />
+                {/* 4. KYC */}
+                <ActionCard
+                  title="KYC Verification"
+                  description="Review and approve driver identity checks."
+                  icon={<ShieldCheck className="w-6 h-6 text-emerald-600" />}
+                  color="emerald"
+                  href="/admin/kyc"
+                />
+                {/* 5. Vouchers */}
+                <ActionCard
+                  title="Voucher Management"
+                  description="Create, update, and track voucher campaigns."
+                  icon={<CreditCard className="w-6 h-6 text-purple-600" />}
+                  color="purple"
+                  href="/admin/voucher"
+                />
+                {/* 6. Reports */}
+                <ActionCard
+                  title="View Reports"
+                  description="Analyze revenue, sessions, and growth."
+                  icon={<BarChart3 className="w-6 h-6 text-blue-600" />}
+                  color="blue"
+                  href="/admin/reports"
                 />
               </CardContent>
             </Card>
