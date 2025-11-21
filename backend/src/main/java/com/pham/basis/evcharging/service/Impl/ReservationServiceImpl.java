@@ -33,6 +33,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final VehicleRepository vehicleRepository;
     private final WalletRepository walletRepository;
     private final NotificationService notificationService;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
     private static final long GRACE_MINUTES = 15;
     private static final BigDecimal HOLD_FEE_PER_MINUTE = BigDecimal.valueOf(300);
@@ -123,11 +124,16 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation reservation = reservationRepository.findByIdAndUser(id, user)
                 .orElseThrow(() -> new AppException.BadRequestException("Reservation not found"));
 
+        // Không cho hủy nếu đã hủy trước đó
+        if ("CANCELLED".equals(reservation.getStatus())) {
+            throw new AppException.BadRequestException("Reservation already cancelled");
+        }
+
         if (!reservation.getStatus().equals("SCHEDULED")) {
             throw new AppException.BadRequestException("Reservation cannot be cancelled");
         }
 
-        // Giới hạn số lần cancel trong ngày
+        // Giới hạn số lần hủy
         LocalDate today = LocalDate.now();
         long cancelCountToday = reservationRepository.countByUserIdAndStatusAndExpiredAtBetween(
                 user.getId(),
@@ -135,40 +141,49 @@ public class ReservationServiceImpl implements ReservationService {
                 today.atStartOfDay(),
                 today.plusDays(1).atStartOfDay()
         );
-
         if (cancelCountToday >= 3) {
             throw new AppException.BadRequestException("You have reached the maximum of 3 cancellations today");
         }
 
         LocalDateTime now = LocalDateTime.now();
-        Duration diff = Duration.between(reservation.getCreatedAt(), now);
-        long minutes = diff.toMinutes();
+        long minutes = Duration.between(reservation.getCreatedAt(), now).toMinutes();
 
-        BigDecimal refundAmount = BigDecimal.ZERO;
-        BigDecimal systemEarn = BigDecimal.ZERO;
         BigDecimal paid = reservation.getHoldFee();
+        BigDecimal refundAmount;
+        BigDecimal systemEarn;
 
         if (minutes <= 10) {
-            refundAmount = paid;                  // 100%
+            refundAmount = paid;
             systemEarn = BigDecimal.ZERO;
         } else if (minutes <= 60) {
-            refundAmount = paid.multiply(BigDecimal.valueOf(0.5)); // 50%
+            refundAmount = paid.multiply(BigDecimal.valueOf(0.5));
             systemEarn = paid.subtract(refundAmount);
         } else {
-            refundAmount = BigDecimal.ZERO;                  // 0%
+            refundAmount = BigDecimal.ZERO;
             systemEarn = paid;
         }
 
-        // Handle refund (service call)
+        // Refund vào wallet nếu cần
         if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
             walletRepository.addBalance(user.getId(), refundAmount);
         }
 
+        // --- CẬP NHẬT PAYMENT TRANSACTION ---
+        PaymentTransaction originalTx = paymentTransactionRepository.findByReferenceIdAndTypeAndStatus(reservation.getId(), "RESERVATION", "SUCCESS")
+                .orElse(null);
+
+        if (originalTx != null) {
+            originalTx.setAmount(systemEarn);
+            paymentTransactionRepository.save(originalTx);
+        }
+
+        // --- CẬP NHẬT RESERVATION ---
         reservation.setStatus("CANCELLED");
         reservation.setHoldFee(systemEarn);
         reservation.setExpiredAt(now);
         reservationRepository.save(reservation);
     }
+
 
     @Override
     public List<ReservationResponse> getReservationByStation(Long stationId) {
@@ -293,7 +308,7 @@ public class ReservationServiceImpl implements ReservationService {
         List<Reservation> toExpire = reservationRepository.findByStatusInAndStartTimeBefore(middleStates, expireBefore);
         toExpire.forEach(r -> {
             r.setStatus("EXPIRED");
-            r.setExpiredAt(now); // hoặc canceledAt nếu bạn thêm trường riêng
+            r.setExpiredAt(now);
             reservationRepository.save(r);
 
             if (r.getConnector() != null) {
@@ -340,6 +355,36 @@ public class ReservationServiceImpl implements ReservationService {
                     r.setNotifiedBeforeStart(true);
                     reservationRepository.save(r);
                 });
+        paymentTransactionRepository.findByStatus("PENDING").forEach(p -> {
+            LocalDateTime createdAt = p.getCreatedAt();
+            if (createdAt == null) return;
+
+            if (createdAt.isBefore(now.minusMinutes(60)) && createdAt.isAfter(now.minusMinutes(61))) {
+                notificationService.createNotification(
+                        p.getUser().getId(),
+                        "PAYMENT_PENDING_REMINDER",
+                        "Your payment has been pending for more than 60 minutes. Please complete it within 24 hours."
+                );
+            }
+
+            if (createdAt.isBefore(now.minusHours(24))) {
+                User user = p.getUser();
+                if (user != null && Boolean.TRUE.equals(user.getStatus())) {
+                    user.setStatus(false);
+                    userRepository.save(user);
+
+                    notificationService.createNotification(
+                            user.getId(),
+                            "ACCOUNT_LOCKED",
+                            "Your account has been locked because a payment was pending for over 24 hours."
+                    );
+                }
+
+                p.setStatus("CANCELLED");
+                paymentTransactionRepository.save(p);
+            }
+        });
+
     }
 
 

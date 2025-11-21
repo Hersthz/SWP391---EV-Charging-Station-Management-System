@@ -48,6 +48,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User createUser(UserCreationRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new AppException.BadRequestException("Username already exists");
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException.BadRequestException("Email already exists");
+        }
         User user = new User();
         user.setFullName(request.getFull_name());
         user.setUsername(request.getUsername());
@@ -55,11 +61,12 @@ public class UserServiceImpl implements UserService {
         user.setEmail(request.getEmail());
         user.setIsVerified(false);
         user.setCreatedAt(LocalDateTime.now());
-        Role defaultRole = roleRepository.getReferenceById(1);
         user.setStatus(true);
+        Role defaultRole = roleRepository.getReferenceById(1);
         user.setRole(defaultRole);
         return userRepository.save(user);
     }
+
 
     @Override
     public User save(User user) {
@@ -208,24 +215,18 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public SetUserRoleResponse setRoleForUser(String userName, String targetRoleName, boolean keepUserBaseRole) {
+
         User user = userRepository.findUserByUsername(userName)
                 .orElseThrow(() -> new AppException.NotFoundException("User not found"));
 
-        Role targetRole = roleRepository.findByName(targetRoleName);
-        if (targetRole == null) {
-            throw new IllegalArgumentException("Role not found: " + targetRoleName);
-        }
+        Role targetRole = roleRepository.findByName(targetRoleName)
+                .orElseThrow(() -> new AppException.NotFoundException("Role not found: " + targetRoleName));
 
-        Set<Role> newRoles = new HashSet<>();
-        newRoles.add(targetRole);
+        user.setRole(targetRole);
 
-        if (keepUserBaseRole) {
-            Role baseUser = roleRepository.findByName("ROLE_USER");
-            if (baseUser != null) {
-                newRoles.add(baseUser);
-            }
-        }
-        return new SetUserRoleResponse(userName,targetRoleName,keepUserBaseRole);
+        userRepository.save(user);
+
+        return new SetUserRoleResponse(userName, targetRoleName, false);
     }
 
     @Override

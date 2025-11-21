@@ -48,7 +48,7 @@ const readInitFromSS = () => {
   try { return JSON.parse(sessionStorage.getItem(SS_KEY) || "{}"); } catch { return {}; }
 };
 const writeInitToSS = (v: any) => {
-  try { sessionStorage.setItem(SS_KEY, JSON.stringify(v)); } catch {}
+  try { sessionStorage.setItem(SS_KEY, JSON.stringify(v)); } catch { }
 };
 
 export default function ReservationDeposit() {
@@ -62,13 +62,13 @@ export default function ReservationDeposit() {
 
     const fromQuery: Partial<InitParams> = {
       reservationId: sp.get("reservationId") ? Number(sp.get("reservationId")) : state.reservationId,
-      amount:        sp.get("amount")        ? Number(sp.get("amount"))        : state.amount,
-      stationName:   sp.get("stationName") ?? state.stationName,
-      portLabel:     sp.get("portLabel") ?? state.portLabel,
-      connectorLabel:sp.get("connectorLabel") ?? state.connectorLabel,
-      startTime:     sp.get("startTime") ?? state.startTime,
-      endTime:       sp.get("endTime") ?? state.endTime,
-      description:   sp.get("description") ?? state.description ?? "Reservation deposit",
+      amount: sp.get("amount") ? Number(sp.get("amount")) : state.amount,
+      stationName: sp.get("stationName") ?? state.stationName,
+      portLabel: sp.get("portLabel") ?? state.portLabel,
+      connectorLabel: sp.get("connectorLabel") ?? state.connectorLabel,
+      startTime: sp.get("startTime") ?? state.startTime,
+      endTime: sp.get("endTime") ?? state.endTime,
+      description: sp.get("description") ?? state.description ?? "Reservation deposit",
     };
 
     const fromSS = readInitFromSS();
@@ -261,7 +261,7 @@ export default function ReservationDeposit() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex items-center gap-2 text-sm">
                 <ShieldCheck className="w-4 h-4" />
-                <span>The slot is held for 15 minutes from payment creation.</span>
+                <span>The slot is held for 5 minutes from payment creation.</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Timer className="w-4 h-4" />
