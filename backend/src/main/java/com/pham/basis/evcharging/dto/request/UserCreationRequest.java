@@ -12,7 +12,12 @@ public class UserCreationRequest {
 
     @NotBlank(message = "Username is required")
     @Size(min = 4, max = 20, message = "Username must be 4-20 characters")
+    @Pattern(
+            regexp = "^(?=.{4,20}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$",
+            message = "Username can only contain letters, numbers, dots, underscores and cannot start/end with special characters"
+    )
     private String username;
+
 
     @NotBlank(message = "Email is required")
     @Email(message = "Email format is invalid")

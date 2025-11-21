@@ -111,6 +111,12 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
                 double newSoc = Math.min(1.0, initialSoc + (session.getEnergyCount().doubleValue() / batteryCapacity));
                 vehicle.setCurrentSoc(newSoc);
                 vehicleRepo.save(vehicle);
+                if (newSoc >= 1.0) {
+                    session.setStatus("COMPLETED");
+                    session.setEndTime(LocalDateTime.now());
+                    session.setUpdatedAt(LocalDateTime.now());
+                    reservation.setStatus("COMPLETED");
+                }
             }
         }
         return sessionRepo.save(session);
@@ -128,6 +134,18 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         session.setEndTime(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());
         sessionRepo.save(session);
+
+        Reservation reservation = session.getReservation();
+        if (reservation != null) {
+            LocalDateTime now = LocalDateTime.now();
+            reservation.setEndTime(now);
+
+            // Expired time
+            LocalDateTime expiredTime = now.plusMinutes(10);
+            reservation.setExpiredAt(expiredTime);
+
+            reservationRepo.save(reservation);
+        }
 
         Vehicle vehicle = session.getVehicle();
         Double batteryCapacity = vehicle.getBatteryCapacityKwh();

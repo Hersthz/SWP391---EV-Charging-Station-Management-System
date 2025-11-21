@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  User,  Shield, Key, Car, Plus, Edit, Trash2,
+  User, Shield, Key, Car, Plus, Edit, Trash2,
   Battery, Zap, Save, ArrowLeft, Camera, PlugZap, IdCard
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -27,48 +27,48 @@ const EV_CATALOG: CatalogMake[] = [
   {
     make: "Tesla",
     models: [
-      { model: "Model 3 Long Range", acMaxKw: 11, dcMaxKw: 250 }, 
-      { model: "Model Y Long Range", acMaxKw: 11, dcMaxKw: 250 }, 
+      { model: "Model 3 Long Range", acMaxKw: 11, dcMaxKw: 250 },
+      { model: "Model Y Long Range", acMaxKw: 11, dcMaxKw: 250 },
     ],
   },
   {
     make: "Hyundai",
     models: [
-      { model: "IONIQ 5", acMaxKw: 11, dcMaxKw: 233 }, 
+      { model: "IONIQ 5", acMaxKw: 11, dcMaxKw: 233 },
       { model: "Kona Electric", acMaxKw: 11, dcMaxKw: 100 },
     ],
   },
   {
     make: "Kia",
     models: [
-      { model: "EV6", acMaxKw: 11, dcMaxKw: 239 }, 
+      { model: "EV6", acMaxKw: 11, dcMaxKw: 239 },
       { model: "Niro EV", acMaxKw: 11, dcMaxKw: 85 },
     ],
   },
   {
     make: "Volkswagen",
     models: [
-      { model: "ID.4 Pro", acMaxKw: 11, dcMaxKw: 135 }, 
+      { model: "ID.4 Pro", acMaxKw: 11, dcMaxKw: 135 },
       { model: "ID.3 Pro", acMaxKw: 11, dcMaxKw: 120 },
     ],
   },
   {
     make: "Nissan",
     models: [
-      { model: "Leaf", acMaxKw: 6.6, dcMaxKw: 50 }, 
+      { model: "Leaf", acMaxKw: 6.6, dcMaxKw: 50 },
       { model: "Ariya 87kWh", acMaxKw: 7.4, dcMaxKw: 130 },
     ],
   },
   {
     make: "Porsche",
     models: [
-      { model: "Taycan", acMaxKw: 11, dcMaxKw: 270 }, 
+      { model: "Taycan", acMaxKw: 11, dcMaxKw: 270 },
     ],
   },
   {
     make: "BMW",
     models: [
-      { model: "i4 eDrive40", acMaxKw: 11, dcMaxKw: 205 }, 
+      { model: "i4 eDrive40", acMaxKw: 11, dcMaxKw: 205 },
       { model: "iX3", acMaxKw: 11, dcMaxKw: 150 },
     ],
   },
@@ -82,14 +82,14 @@ const EV_CATALOG: CatalogMake[] = [
   {
     make: "MG",
     models: [
-      { model: "MG4", acMaxKw: 7, dcMaxKw: 117 }, 
+      { model: "MG4", acMaxKw: 7, dcMaxKw: 117 },
       { model: "ZS EV", acMaxKw: 7, dcMaxKw: 76 },
     ],
   },
   {
     make: "VinFast",
     models: [
-      { model: "VF 8", acMaxKw: 11, dcMaxKw: 160 }, 
+      { model: "VF 8", acMaxKw: 11, dcMaxKw: 160 },
       { model: "VF e34", acMaxKw: 7.4, dcMaxKw: 60 },
     ],
   },
@@ -499,14 +499,14 @@ const Profile = () => {
         prev.map((x) =>
           x.id === editing.id
             ? {
-                ...x,
-                make: updated.make,
-                model: updated.model,
-                socNowPct: toPercent(updated.currentSoc),
-                batteryCapacityKwh: toNumberOrUndef(updated.batteryCapacityKwh),
-                acMaxKw: toNumberOrUndef(updated.acMaxKw ?? updated.ac_max_kw),
-                dcMaxKw: toNumberOrUndef(updated.dcMaxKw ?? updated.dc_max_kw),
-              }
+              ...x,
+              make: updated.make,
+              model: updated.model,
+              socNowPct: toPercent(updated.currentSoc),
+              batteryCapacityKwh: toNumberOrUndef(updated.batteryCapacityKwh),
+              acMaxKw: toNumberOrUndef(updated.acMaxKw ?? updated.ac_max_kw),
+              dcMaxKw: toNumberOrUndef(updated.dcMaxKw ?? updated.dc_max_kw),
+            }
             : x
         )
       );
@@ -656,6 +656,7 @@ const Profile = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={!isEditingProfile}
                         className={!isEditingProfile ? "bg-slate-50" : ""}
+                        readOnly
                       />
                     </div>
                     <div className="space-y-2">
@@ -663,7 +664,11 @@ const Profile = () => {
                       <Input
                         id="phone"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, ""); // bỏ hết ký tự không phải số
+                          setPhone(v);
+                        }}
+                        inputMode="numeric"
                         disabled={!isEditingProfile}
                         className={!isEditingProfile ? "bg-slate-50" : ""}
                       />

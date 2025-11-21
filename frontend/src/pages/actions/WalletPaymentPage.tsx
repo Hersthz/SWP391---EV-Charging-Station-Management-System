@@ -181,7 +181,7 @@ export default function WalletPaymentPage() {
   }, []);
 
   /* ============== Load user's transactions ============== */
-    const loadTransactions = useCallback(async (userId: number) => {
+  const loadTransactions = useCallback(async (userId: number) => {
     setLoadingTx(true);
     try {
       // Lấy payments + reservations + sessions song song
@@ -427,7 +427,7 @@ export default function WalletPaymentPage() {
           <p className="text-slate-600 text-lg">Manage your balance, transactions and payment methods</p>
         </div>
 
-                {/* Overview */}
+        {/* Overview */}
         <motion.div
           className="grid grid-cols-1 gap-6"
           variants={kpiContainerVariants}
@@ -758,7 +758,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-semibold text-slate-800">Free cancellation</p>
                 <p className="text-slate-600">
-                  Cancel ≥ 15 minutes before your slot for a full deposit release (subject to backend policy).
+                  Cancel ≥ 10 minutes before your slot for a full deposit release (subject to backend policy).
                 </p>
               </div>
             </div>
@@ -767,7 +767,7 @@ export default function WalletPaymentPage() {
               <div>
                 <p className="font-semibold text-slate-800">No-show & late cancellation</p>
                 <p className="text-slate-600">
-                  Cancelling &lt; 15 minutes before start time or not showing up may forfeit your deposit
+                  Cancelling &lt; 10 minutes before start time or not showing up may forfeit your deposit
                 </p>
               </div>
             </div>

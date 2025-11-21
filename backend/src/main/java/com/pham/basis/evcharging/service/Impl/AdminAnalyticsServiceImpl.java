@@ -30,6 +30,9 @@
         private final ChargingSessionRepository  chargingSessionRepository;
         private final PaymentTransactionRepository paymentTransactionRepository;
 
+        private static final int MONTH_RANGE = 6;
+        private static final int HOURS_IN_DAY = 24;
+
         @Override
         public AdminAnalyticsResponse getAdminAnalytics(Long userId){
             //load
@@ -50,7 +53,7 @@
             BigDecimal totalRevenue = paymentTransactionRepository.sumAll();
 
             YearMonth currentMonth = YearMonth.now();
-            List<AdminAnalyticsResponse.MonthlyRevenue> monthlyRevenue = IntStream.range(0, 6)
+            List<AdminAnalyticsResponse.MonthlyRevenue> monthlyRevenue = IntStream.range(0, MONTH_RANGE)
                     .mapToObj(i-> {YearMonth ym = currentMonth.minusMonths(i);
                         BigDecimal revenue = paymentTransactionRepository.sumRevenueByMonth(ym.getYear(), ym.getMonthValue());
                         return AdminAnalyticsResponse.MonthlyRevenue.builder()
@@ -81,7 +84,7 @@
                     .filter(s -> s.getStartTime() != null)
                     .collect(Collectors.groupingBy(s -> s.getStartTime().getHour()));
 
-            List<AdminAnalyticsResponse.PeakHour> peakHour = IntStream.range(0, 24)
+            List<AdminAnalyticsResponse.PeakHour> peakHour = IntStream.range(0, HOURS_IN_DAY)
                     .mapToObj(hour -> {
                         int count = sessionsByHour.getOrDefault(hour, List.of()).size();
                         return AdminAnalyticsResponse.PeakHour.builder()

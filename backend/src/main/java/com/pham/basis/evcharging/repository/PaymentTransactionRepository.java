@@ -79,7 +79,6 @@ WHERE pt.status = 'SUCCESS'
     FROM PaymentTransaction pt
     JOIN ChargingSession cs ON pt.referenceId = cs.id
     WHERE cs.station.id = :stationId
-      AND pt.type = 'CHARGING-SESSION'
       AND pt.status = 'SUCCESS'
       AND NOT (pt.method = 'VNPAY' AND pt.type = 'WALLET')
     """)
@@ -90,4 +89,8 @@ WHERE pt.status = 'SUCCESS'
 
     @Query("SELECT p FROM PaymentTransaction p JOIN ChargingSession s ON p.referenceId = s.id WHERE s.station.id = :stationId AND p.type = 'CHARGING-SESSION'")
     List<PaymentTransaction> findSessionPaymentsByStation(@Param("stationId") Long stationId);
+
+    Optional<PaymentTransaction> findByReferenceIdAndTypeAndStatus(Long referenceId, String type, String status);
+
+    List<PaymentTransaction> findByStatus(String status);
 }
