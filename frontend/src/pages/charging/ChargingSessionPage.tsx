@@ -1,4 +1,3 @@
-// src/pages/ChargingSessionPage.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -107,11 +106,19 @@ const ChargingSessionPage = () => {
   const [busy, setBusy] = useState(false);
 
   // Snapshot từ server / localStorage
-  const [snap, setSnap] = useState<SessionSnapshot | null>(null);
+  const [snap, setSnap] = useState<SessionSnapshot | null>(() => {
+    if (!sessionIdParam) return null;
+    const saved = localStorage.getItem(`session_last_${sessionIdParam}`);
+    return saved ? JSON.parse(saved) : null;
+  });
 
   // local tick
   const currentEnergyRef = useRef<number>(0);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isTickPending = useRef(false);
+  if (currentEnergyRef.current === 0 && snap?.energyCount) {
+      currentEnergyRef.current = snap.energyCount;
+  }
 
   // Reservation info
   const [resv, setResv] = useState<ReservationBrief | null>(null);
@@ -168,15 +175,44 @@ const ChargingSessionPage = () => {
     [computedSocFrac]
   );
 
+  useEffect(() => {
+    // Chỉ giữ lại IS_CHARGING cho phiên hiện tại
+    const currentSessionId = searchParams.get("sessionId");
+    
+    // Quét sạch localStorage liên quan đến các session cũ KHÁC session hiện tại
+    if (currentSessionId) {
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith("session_meta_") && !key.includes(currentSessionId)) {
+                localStorage.removeItem(key);
+            }
+            if (key.startsWith("session_last_") && !key.includes(currentSessionId)) {
+                localStorage.removeItem(key);
+            }
+        });
+    }
+    // Bật chế độ bảo vệ ngay khi vào trang
+    sessionStorage.setItem("IS_CHARGING", "true");
+
+    // Chặn user lỡ tay F5 hoặc tắt tab
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault(); 
+      return ""; 
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   // ====== Fetch reservation ======
   useEffect(() => {
     let cancelled = false;
     const loadReservation = async () => {
       if (!reservationIdParam) return;
       try {
-        const me = await api.get("/auth/me", { withCredentials: true });
-        const userId =
-          typeof me.data?.user_id === "number" ? me.data.user_id : typeof me.data?.id === "number" ? me.data.id : undefined;
+        const userId = localStorage.getItem("userId"); // Lấy thẳng từ LS 
+        if (!userId) throw new Error("No user ID");
 
         if (userId) {
           const { data } = await api.get(`/user/${userId}/reservations`, { withCredentials: true });
@@ -270,12 +306,16 @@ const ChargingSessionPage = () => {
   /** === Start/Stop tick helpers === */
   const startTick = () => {
     if (!sessionIdParam || tickTimer.current) return;
-
-    // BẮT ĐẦU từ energy hiện có (được hydrate từ session_last_{id} nếu có)
-    currentEnergyRef.current = Number(snap?.energyCount ?? 0);
+    const savedSnap = JSON.parse(localStorage.getItem(`session_last_${sessionIdParam}`) || "null");
+    const lastEnergy = Number(savedSnap?.energyCount ?? snap?.energyCount ?? 0);
+    
+    // Khôi phục con số đếm từ giá trị lưu gần nhất
+    currentEnergyRef.current = lastEnergy;
 
     tickTimer.current = setInterval(async () => {
+      if (isTickPending.current) return;
       currentEnergyRef.current = Number((currentEnergyRef.current + KWH_PER_SEC).toFixed(2));
+      isTickPending.current = true;
       try {
         const { data } = await api.patch(`/session/${sessionIdParam}/update`, null, {
           params: { energyCount: currentEnergyRef.current },
@@ -433,8 +473,11 @@ const ChargingSessionPage = () => {
           clearInterval(tickTimer.current);
           tickTimer.current = null;
         }
-      } catch {
-        // ignore burst errors
+      } catch (e: any) {
+        console.warn("Tick update failed temporarily", e);
+      } finally {
+        // Mở khóa để nhịp sau được chạy
+        isTickPending.current = false;
       }
     }, TICK_MS);
   };
@@ -454,8 +497,13 @@ const ChargingSessionPage = () => {
       return;
     }
     startTick();
-    return () => stopTick();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      stopTick(); 
+      
+      // Reset cờ khóa. 
+      // lần sau vào startTick sẽ thấy cờ này vẫn true -> không chạy được nữa.
+      isTickPending.current = false; 
+    };
   }, [sessionIdParam]);
 
   // Nếu thiếu sessionId nhưng có reservationId → thử khôi phục từ localStorage
@@ -491,8 +539,8 @@ const ChargingSessionPage = () => {
 
   async function fetchVehicleOfSession(vehicleId: number): Promise<VehicleBrief | null> {
     try {
-      const me = await api.get("/auth/me", { withCredentials: true });
-      const userId = me.data?.user_id ?? me.data?.id;
+      const userId = localStorage.getItem("userId");
+      if(!userId) return null;
       const r2 = await api.get(`/vehicle/${userId}`, { withCredentials: true });
       const list = r2.data?.data ?? r2.data?.content ?? r2.data ?? [];
       const found = Array.isArray(list) ? list.find((x: any) => Number(x?.id ?? x?.vehicleId) === Number(vehicleId)) : null;
@@ -673,6 +721,7 @@ const ChargingSessionPage = () => {
       };
       localStorage.setItem(`session_last_${sessionIdParam}`, JSON.stringify(finalSnap));
 
+      sessionStorage.removeItem("IS_CHARGING"); // Gỡ bỏ bảo vệ để cho phép chuyển trang
       navigate(
         `/charging/receipt?sessionId=${encodeURIComponent(sessionIdParam)}&reservationId=${
           reservationIdParam || ""
@@ -703,23 +752,24 @@ const ChargingSessionPage = () => {
     if (!Number.isFinite(endMs)) return;
 
     const now = Date.now();
+
+    // Hàm xử lý an toàn khi hết giờ
+    const safeHandleEnd = () => {
+        if (!autoStoppingRef.current) {
+            autoStoppingRef.current = true;
+            stopTick();
+            // Gọi hàm xử lý, nhưng bọc try catch để không crash app
+            handleReservationEndReached().catch(err => console.error("Auto stop error", err));
+        }
+    };
+
     if (now >= endMs) {
-      if (!autoStoppingRef.current) {
-        autoStoppingRef.current = true;
-        stopTick();
-        handleReservationEndReached();
-      }
+      safeHandleEnd();
       return;
     }
 
     const delay = Math.min(2147483647, endMs - now); // clamp để tránh overflow
-    resvEndTimer.current = window.setTimeout(() => {
-      if (!autoStoppingRef.current) {
-        autoStoppingRef.current = true;
-        stopTick();
-        handleReservationEndReached();
-      }
-    }, delay);
+    resvEndTimer.current = window.setTimeout(safeHandleEnd, delay);
 
     return () => {
       if (resvEndTimer.current) {
@@ -727,7 +777,6 @@ const ChargingSessionPage = () => {
         resvEndTimer.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resv?.endTime, sessionIdParam, isCompleted]);
 
   /** ===== Render ===== */

@@ -1,4 +1,3 @@
-// src/pages/KycPage.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -207,10 +206,10 @@ export default function KycPage() {
   const Header = (
     <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
       <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-        <Link to="/dashboard" className="inline-flex">
+        <Link to="/profile" className="inline-flex">
           <Button variant="ghost" size="sm" className="hover:bg-sky-50">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
+            Back to Profile
           </Button>
         </Link>
 

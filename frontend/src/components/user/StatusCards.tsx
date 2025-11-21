@@ -1722,7 +1722,7 @@ const StatusCards = () => {
                     <DialogDescription className="text-slate-600">
                       {kycAtOpen === "APPROVED"
                         ? "Choose a payment flow below. Channel is auto-selected and secured."
-                        : "KYC chưa duyệt: chỉ khả dụng hình thức Prepaid."}
+                        : "KYC not approved: only Prepaid available."}
                     </DialogDescription>
                   </DialogHeader>
                 </div>

@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogClose } from "../../components/ui/dialog";
 import { useDebounce } from "use-debounce";
 
 // Leaflet
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import * as L from "leaflet";
 import "leaflet-defaulticon-compatibility";
@@ -194,6 +194,40 @@ const userIcon = new L.Icon({
   iconSize: [32, 32],
   iconAnchor: [16, 32],
 });
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+const toDeg = (rad: number) => (rad * 180) / Math.PI;
+
+const computeBearing = (
+  from: [number, number],
+  to: [number, number]
+): number => {
+  const [lat1, lon1] = from.map(toRad) as [number, number];
+  const [lat2, lon2] = to.map(toRad) as [number, number];
+  const dLon = lon2 - lon1;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  const brng = toDeg(Math.atan2(y, x));
+  return (brng + 360) % 360;
+};
+
+const createDirectionIcon = (angle: number) =>
+  new L.DivIcon({
+    className: "",
+    html: `<div style="
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 16px solid #ef4444;
+      transform: rotate(${angle}deg);
+      transform-origin: 50% 50%;
+    "></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
 
 const Stars = ({ value }: { value: number }) => (
   <div className="flex items-center gap-0.5">
@@ -383,6 +417,14 @@ const StationMap = () => {
 
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
 
+  const directionAngle =
+    userPosition && selectedStation
+      ? computeBearing(userPosition, [
+          selectedStation.latitude,
+          selectedStation.longitude,
+        ])
+      : null;
+
   // applied filters
   const [appliedFilters, setAppliedFilters] =
     useState<Filters>(defaultFilters);
@@ -525,7 +567,7 @@ const StationMap = () => {
 
   // open detail dialog: call detail endpoint and map to Station
   const openStationDialog = async (station: Station) => {
-    setSelectedStation(null);
+    setSelectedStation(station);
     setDetailOpen(true);
     setReviewsLoading(true);
     try {
@@ -1142,6 +1184,22 @@ const StationMap = () => {
             )}
           </button>
 
+          {userPosition && (
+            <button
+              onClick={() => {
+                if (mapRef.current) {
+                  mapRef.current.setView(userPosition, 15, {
+                    animate: true,
+                  } as any);
+                }
+              }}
+              className="absolute left-4 top-16 z-[500] rounded-full bg-white/95 p-2 shadow-md ring-1 ring-zinc-200 hover:bg-white"
+              aria-label="Center on my location"
+            >
+              <MapPin className="h-5 w-5 text-emerald-600" />
+            </button>
+          )}
+
           {/* Map */}
           <MapContainer
             center={[10.8618942110713, 106.79798794919327]}
@@ -1156,10 +1214,32 @@ const StationMap = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {userPosition && (
-              <Marker position={userPosition} icon={userIcon}>
+              <Marker
+                position={userPosition}
+                icon={
+                  directionAngle != null
+                    ? createDirectionIcon(directionAngle)
+                    : userIcon
+                }
+              >
                 <Popup>📍 You are here</Popup>
               </Marker>
             )}
+
+            {userPosition && selectedStation && directionAngle != null && (
+              <Polyline
+                positions={[
+                  userPosition,
+                  [selectedStation.latitude, selectedStation.longitude],
+                ]}
+                pathOptions={{
+                  color: "#ef4444",
+                  weight: 2,
+                  dashArray: "4 4",
+                }}
+              />
+            )}
+            
             {stations.map((s) => (
               <Marker
                 key={s.id}

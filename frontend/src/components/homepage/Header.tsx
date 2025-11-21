@@ -14,7 +14,7 @@ export default function Header() {
   const links = useMemo(
     () => [
       { id: "features", label: "Features", href: "#features", icon: <Gauge className="w-4 h-4" /> },
-      { id: "map",      label: "Map",      href: "#map",      icon: <Map className="w-4 h-4" /> },
+      { id: "image",      label: "Image",      href: "#image",      icon: <Map className="w-4 h-4" /> },
       { id: "about",    label: "About",    href: "#about",    icon: <Info className="w-4 h-4" /> },
     ],
     []

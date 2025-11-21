@@ -2,7 +2,7 @@ import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import Index from "./pages/HomePage";
 import Login from "./pages/Login";
 import UserDashboard from "./pages/dashboard/UserDashboard";
@@ -39,8 +39,42 @@ import AdminKyc from "./components/admin/AdminKyc";
 import CashPayment from "./pages/payment/CashPayment";
 import SessionVoucher from "./pages/charging/SessionVoucher";
 import ResetPassword from "./pages/ResetPassword";
+import { useLayoutEffect } from "react";
 
 const queryClient = new QueryClient();
+
+const ChargingGuard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useLayoutEffect(() => {
+    const isCharging = sessionStorage.getItem("IS_CHARGING") === "true";
+    
+    // Các đường dẫn được phép đi khi đang sạc 
+    const allowedPaths = ["/charging", "/charging/receipt", "/session/payment"]; 
+    const isAllowed = allowedPaths.some(path => location.pathname.startsWith(path));
+
+    if (isCharging && !isAllowed) {
+      console.warn("🚨 ChargingGuard: Phát hiện tẩu thoát trái phép! Đang bắt quay lại chuồng...");
+      
+      // Bắt quay lại trang sạc ngay lập tức
+      // Dùng replace: true để xóa lịch sử 'đi lạc'
+      // Lấy lại sessionId từ localStorage để quay lại đúng phiên
+      const lastSessionKey = Object.keys(localStorage).find(k => k.startsWith("session_meta_"));
+      let query = "";
+      if (lastSessionKey) {
+         const meta = JSON.parse(localStorage.getItem(lastSessionKey) || "{}");
+         if (meta.reservationId && meta.vehicleId) {
+             const sessionId = lastSessionKey.replace("session_meta_", "");
+             query = `?sessionId=${sessionId}&reservationId=${meta.reservationId}&vehicleId=${meta.vehicleId}`;
+         }
+      }
+
+      navigate(`/charging${query}`, { replace: true });
+    }
+  }, [location, navigate]);
+  return null; 
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -48,6 +82,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ChargingGuard />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />

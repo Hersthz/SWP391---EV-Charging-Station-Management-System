@@ -1,4 +1,3 @@
-// src/pages/admin/AdminReports.tsx
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/axios";
@@ -25,6 +24,7 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
+  TicketPercent,
 } from "lucide-react";
 import {
   Bar,
@@ -56,10 +56,26 @@ type AdminAnalyticsResponse = {
 
 type ApiResponse<T> = { code?: string; message?: string; data?: T };
 
+/* ========== Voucher stats ========== */
+type VoucherStat = {
+  id: number;
+  status: string;
+  endDate?: string | null;
+};
+
+const mapVoucherStat = (x: any): VoucherStat => ({
+  id: x?.id ?? x?.voucherId ?? x?.voucherID ?? x?.VoucherId ?? 0,
+  status: x?.status ?? "ACTIVE",
+  endDate: x?.endDate ?? x?.end_date ?? null,
+});
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 /* ================== Helpers ================== */
 const fmtVND = (n: any) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 })
-    .format(Number(n || 0));
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(
+    Number(n || 0)
+  );
 
 const fmtKwh = (n?: number) => `${Number(n || 0).toFixed(1)} kWh`;
 
@@ -130,16 +146,16 @@ const AdminReports = () => {
   const [adminId, setAdminId] = useState<number | null>(null);
   const [data, setData] = useState<AdminAnalyticsResponse | null>(null);
 
-  const subscriptionData = [
-    { name: "Basic Monthly", value: 29, color: "#0ea5e9" }, // sky-500
-    { name: "Premium Monthly", value: 20, color: "#10b981" }, // emerald-500
-    { name: "Pay-per-use", value: 49, color: "#ef4444" }, // red-500
-    { name: "Enterprise Annual", value: 2, color: "#f59e0b" }, // amber-500
-  ];
+  const [voucherStats, setVoucherStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    expired: 0,
+  });
 
   const handleLogout = () => navigate("/");
 
-  /* ============= Load admin + analytics ============= */
+  /* ============= Load admin + analytics + voucher stats ============= */
   useEffect(() => {
     let mounted = true;
 
@@ -160,13 +176,52 @@ const AdminReports = () => {
         if (!mounted) return;
         setAdminId(uid);
 
-        const res = await api.get(
-          "/admin/analytics",
-          { params: { adminId: uid }, withCredentials: true }
-        );
+        const res = await api.get("/admin/analytics", {
+          params: { adminId: uid },
+          withCredentials: true,
+        });
         const payload = (res as any)?.data;
         if (!mounted) return;
-        setData((payload && payload.data) ? payload.data : payload);
+        setData(payload && payload.data ? payload.data : payload);
+
+        // ==== Voucher stats ====
+        const voucherRes = await api.get<ApiResponse<any[]>>("/api/vouchers", {
+          withCredentials: true,
+        });
+
+        if (!mounted) return;
+
+        const raw = Array.isArray(voucherRes.data?.data)
+          ? voucherRes.data!.data!
+          : Array.isArray(voucherRes.data as any)
+          ? (voucherRes.data as any)
+          : [];
+
+        const vouchers: VoucherStat[] = raw.map(mapVoucherStat);
+        const today = todayISO();
+
+        let active = 0;
+        let inactive = 0;
+        let expired = 0;
+
+        vouchers.forEach((v) => {
+          const s = String(v.status).toUpperCase();
+          const isExpired = s === "EXPIRED" || (!!v.endDate && String(v.endDate) < today);
+          if (isExpired) {
+            expired++;
+          } else if (s === "ACTIVE") {
+            active++;
+          } else {
+            inactive++;
+          }
+        });
+
+        setVoucherStats({
+          total: vouchers.length,
+          active,
+          inactive,
+          expired,
+        });
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.response?.data?.message || e?.message || "Failed to load analytics.");
@@ -208,6 +263,16 @@ const AdminReports = () => {
       .map((h) => ({ hour: `${String(h.hour).padStart(2, "0")}:00`, sessions: h.sessionCount }));
   }, [data]);
 
+  const voucherChartData = useMemo(() => {
+    const { active, inactive, expired } = voucherStats;
+    const items = [
+      { name: "Active", value: active, color: "#10b981" },
+      { name: "Inactive", value: inactive, color: "#0f766e" },
+      { name: "Expired", value: expired, color: "#f97316" },
+    ];
+    return items.filter((x) => x.value > 0);
+  }, [voucherStats]);
+
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
@@ -217,12 +282,14 @@ const AdminReports = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center">
                     <Zap className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-xl font-bold text-foreground">ChargeHub</span>
+                  </div>
+                  <span className="text-xl font-bold text-foreground">ChargeHub</span>
                 </div>
-                <Badge className="bg-destructive/10 text-destructive border-destructive/20">Admin Portal</Badge>
+                <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+                  Admin Portal
+                </Badge>
               </div>
             </div>
 
@@ -243,62 +310,61 @@ const AdminReports = () => {
         {/* Sidebar */}
         <aside className="w-64 bg-white h-screen sticky top-16 overflow-y-auto border-r border-gray-200 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">
           <nav className="p-4 space-y-2">
-            <Link 
-              to="/admin" 
+            <Link
+              to="/admin"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <BarChart3 className="w-4 h-4" />
               <span>Dashboard</span>
             </Link>
-            
-            <Link 
-              to="/admin/stations" 
+
+            <Link
+              to="/admin/stations"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <MapPin className="w-4 h-4" />
               <span>Stations</span>
             </Link>
-            
-            <Link 
-              to="/admin/users" 
+
+            <Link
+              to="/admin/users"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Users className="w-4 h-4" />
               <span>Users</span>
             </Link>
-            
-            <Link 
-              to="/admin/staff" 
+
+            <Link
+              to="/admin/staff"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Users className="w-4 h-4" />
               <span>Staff</span>
             </Link>
 
-            <Link 
-              to="/admin/kyc" 
+            <Link
+              to="/admin/kyc"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>KYC</span>
             </Link>
 
-            <Link 
-              to="/admin/voucher" 
+            <Link
+              to="/admin/voucher"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <CreditCard className="w-4 h-4" />
               <span>Voucher</span>
             </Link>
-            
-            <Link 
-              to="/admin/reports" 
+
+            <Link
+              to="/admin/reports"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-primary/10 text-primary border border-primary/20"
             >
               <Database className="w-4 h-4" />
               <span className="font-medium">Reports</span>
             </Link>
-            
           </nav>
         </aside>
 
@@ -334,7 +400,7 @@ const AdminReports = () => {
                   </SelectContent>
                 </Select>
 
-                <Button variant="outline" className="h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
+                <Button className="h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100" variant="outline">
                   <Filter className="w-4 h-4 mr-2" />
                   Advanced Filters
                 </Button>
@@ -399,7 +465,13 @@ const AdminReports = () => {
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={revenueData} margin={{ top: 10, right: 0, left: 20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                            <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <XAxis
+                              dataKey="name"
+                              stroke="#64748b"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
                             <YAxis
                               stroke="#64748b"
                               fontSize={12}
@@ -407,15 +479,14 @@ const AdminReports = () => {
                               axisLine={false}
                               tickFormatter={(v) => `${Number(v) / 1000}k`}
                             />
-                            <Tooltip
-                              content={<CustomTooltip />}
-                              cursor={{ fill: 'rgba(241, 245, 249, 0.7)' }}
-                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(241, 245, 249, 0.7)" }} />
                             <Bar dataKey="revenue" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">No revenue data.</div>
+                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">
+                          No revenue data.
+                        </div>
                       )}
                     </div>
                   </CardContent>
@@ -443,7 +514,13 @@ const AdminReports = () => {
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                            <XAxis dataKey="hour" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <XAxis
+                              dataKey="hour"
+                              stroke="#64748b"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
                             <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltipArea />} />
                             <Area
@@ -458,7 +535,9 @@ const AdminReports = () => {
                           </AreaChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">No hourly data.</div>
+                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">
+                          No hourly data.
+                        </div>
                       )}
                     </div>
                   </CardContent>
@@ -504,8 +583,13 @@ const AdminReports = () => {
                               <div className="text-xs text-slate-500">{fmtKwh(st.energy)}</div>
                             </div>
                             <div className="flex items-center space-x-2 w-28">
-                              <Progress value={st.utilization} className="w-full h-2 bg-slate-200 [&>div]:bg-blue-500" />
-                              <span className="text-sm text-slate-600 font-medium w-8">{st.utilization}%</span>
+                              <Progress
+                                value={st.utilization}
+                                className="w-full h-2 bg-slate-200 [&>div]:bg-blue-500"
+                              />
+                              <span className="text-sm text-slate-600 font-medium w-8">
+                                {st.utilization}%
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -515,47 +599,63 @@ const AdminReports = () => {
                 </Card>
               </motion.div>
 
-              {/* Subscription Distribution (mock) */}
+              {/* Voucher statistics */}
               <motion.div className="lg:col-span-2" variants={kpiCardVariants} initial="hidden" animate="visible">
                 <Card className="shadow-2xl shadow-slate-900/10 border-0 rounded-2xl">
                   <CardHeader>
                     <CardTitle className="text-xl font-bold flex items-center text-slate-900">
-                      <CreditCard className="w-5 h-5 mr-2 text-blue-600" />
-                      Subscription Distribution
+                      <TicketPercent className="w-5 h-5 mr-2 text-blue-600" />
+                      Voucher Statistics
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-64 flex items-center justify-center -mt-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={subscriptionData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={110}
-                            paddingAngle={3}
-                            dataKey="value"
-                            labelLine={false}
-                            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                          >
-                            {subscriptionData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} className="focus:outline-none" />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4">
-                      {subscriptionData.map((item, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-sm font-medium text-slate-700">
-                            {item.name}: <span className="font-bold">{item.value}%</span>
-                          </span>
+                      {voucherStats.total > 0 && voucherChartData.length ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={voucherChartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={70}
+                              outerRadius={110}
+                              paddingAngle={3}
+                              dataKey="value"
+                              labelLine={false}
+                              label={({ name, value }) => `${name}: ${value}`}
+                            >
+                              {voucherChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} className="focus:outline-none" />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value: any, name: any) => [value, name]} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="p-6 text-sm text-slate-500 h-full flex items-center justify-center">
+                          {loading ? "Loading voucher statistics…" : "No voucher data."}
                         </div>
-                      ))}
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-4 text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-slate-500">Active</span>
+                        <span className="font-semibold text-emerald-600">
+                          {voucherStats.active}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-slate-500">Inactive</span>
+                        <span className="font-semibold text-slate-700">
+                          {voucherStats.inactive}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-slate-500">Expired</span>
+                        <span className="font-semibold text-amber-600">
+                          {voucherStats.expired}
+                        </span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -579,9 +679,24 @@ type StatCardProps = {
 const StatCard = ({ title, value, subtitle, icon, color }: StatCardProps) => {
   const colors = {
     blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-l-blue-500", shadow: "shadow-blue-500/10" },
-    green: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-l-emerald-500", shadow: "shadow-emerald-500/10" },
-    yellow: { bg: "bg-yellow-50", text: "text-yellow-600", border: "border-l-yellow-500", shadow: "shadow-yellow-500/10" },
-    purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-l-purple-500", shadow: "shadow-purple-500/10" },
+    green: {
+      bg: "bg-emerald-50",
+      text: "text-emerald-600",
+      border: "border-l-emerald-500",
+      shadow: "shadow-emerald-500/10",
+    },
+    yellow: {
+      bg: "bg-yellow-50",
+      text: "text-yellow-600",
+      border: "border-l-yellow-500",
+      shadow: "shadow-yellow-500/10",
+    },
+    purple: {
+      bg: "bg-purple-50",
+      text: "text-purple-600",
+      border: "border-l-purple-500",
+      shadow: "shadow-purple-500/10",
+    },
   };
   const c = colors[color];
 
@@ -594,7 +709,9 @@ const StatCard = ({ title, value, subtitle, icon, color }: StatCardProps) => {
               <p className="text-sm font-medium text-slate-500">{title}</p>
               <p className={`text-4xl font-extrabold ${c.text}`}>{value}</p>
             </div>
-            <div className={`w-16 h-16 bg-gradient-to-br from-white ${c.bg} rounded-2xl flex items-center justify-center ${c.text} flex-shrink-0`}>
+            <div
+              className={`w-16 h-16 bg-gradient-to-br from-white ${c.bg} rounded-2xl flex items-center justify-center ${c.text} flex-shrink-0`}
+            >
               {icon}
             </div>
           </div>

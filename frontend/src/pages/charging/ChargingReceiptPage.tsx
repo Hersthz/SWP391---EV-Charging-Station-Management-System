@@ -392,7 +392,14 @@ const ChargingReceiptPage = () => {
           )}
 
           {!mustPay && (
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                // Xóa cờ sạc để ChargingGuard cho phép đi qua
+                sessionStorage.removeItem("IS_CHARGING");
+                navigate("/dashboard");
+              }}
+            >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Button>
