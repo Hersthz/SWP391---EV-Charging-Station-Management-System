@@ -128,6 +128,16 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         ChargingSession session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found"));
 
+        // nếu đã completed thì trả về thông tin hiện tại, không ném lỗi
+        if ("COMPLETED".equals(session.getStatus())) {
+            return ChargingStopResponse.builder()
+                    .sessionId(session.getId())
+                    .totalAmount(session.getChargedAmount())
+                    .paymentMethod(session.getPaymentMethod())
+                    .requiresPayment(!"WALLET".equals(session.getPaymentMethod()))
+                    .build();
+        }
+        
         if (!"ACTIVE".equals(session.getStatus()))
             throw new IllegalArgumentException("Session is not active");
 

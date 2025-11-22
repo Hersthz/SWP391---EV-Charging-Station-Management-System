@@ -951,7 +951,7 @@ const StatusCards = () => {
       }
     } catch {}
     return null;
-  }
+  } 
 
   async function fetchEstimateFor(
     r?: ReservationItem,
@@ -1143,27 +1143,7 @@ const StatusCards = () => {
             </Button>
           )}
 
-          {scheduled &&
-            (isArrivableNow(r.startTime) ? (
-              <Button
-                size="sm"
-                className={[
-                  "relative overflow-hidden rounded-full px-4 h-9",
-                  UI.SCHEDULED.btn,
-                  UI.SCHEDULED.btnGlow,
-                ].join(" ")}
-                onClick={() => openQrFor(r)}
-                title="Generate QR to check-in"
-              >
-                <span className="relative z-10 flex items-center">
-                  <QrCode className="w-4 h-4 mr-1" /> Arrived
-                </span>
-                <span
-                  aria-hidden
-                  className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-900 group-hover:translate-x-full"
-                />
-              </Button>
-            ) : (
+          {scheduled && (
               <Button
                 size="sm"
                 variant="outline"
@@ -1172,7 +1152,8 @@ const StatusCards = () => {
               >
                 <Clock className="w-4 h-4 mr-1" /> Not yet
               </Button>
-            ))}
+            )
+          }
 
           {/* Cancel for SCHEDULED */}
           {r.status === "SCHEDULED" && (

@@ -26,7 +26,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    @Value("${jwt.access-expiry-seconds:900}")
+    @Value("${jwt.access-expiry-seconds:7200}")
     private long accessExpiry;
 
     @Value("${jwt.refresh-expiry-seconds:172800}")

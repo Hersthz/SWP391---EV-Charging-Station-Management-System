@@ -168,7 +168,7 @@ public class ReservationServiceImpl implements ReservationService {
             walletRepository.addBalance(user.getId(), refundAmount);
         }
 
-        // --- CẬP NHẬT PAYMENT TRANSACTION ---
+        //
         PaymentTransaction originalTx = paymentTransactionRepository.findByReferenceIdAndTypeAndStatus(reservation.getId(), "RESERVATION", "SUCCESS")
                 .orElse(null);
 
@@ -177,7 +177,7 @@ public class ReservationServiceImpl implements ReservationService {
             paymentTransactionRepository.save(originalTx);
         }
 
-        // --- CẬP NHẬT RESERVATION ---
+        //
         reservation.setStatus("CANCELLED");
         reservation.setHoldFee(systemEarn);
         reservation.setExpiredAt(now);
