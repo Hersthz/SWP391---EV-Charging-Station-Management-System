@@ -12,8 +12,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface ChargingStationService {
-    Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
     ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude);
+    Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request);
     Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2);
     ChargingStationDetailResponse addStation(StationRequest request, MultipartFile file);
     ChargingStationDetailResponse addPillarsWithConnectors(Long stationId, List<StationRequest.PillarRequest> pillarRequests);

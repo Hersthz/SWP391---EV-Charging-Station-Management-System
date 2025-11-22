@@ -39,7 +39,22 @@ public class ChargingStationServiceImpl implements ChargingStationService {
     private final StationMapper stationMapper;
     private final CloudinaryService cloudinaryService;
 
+    @Override
+    @Transactional(readOnly = true)
+    public ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude) {
 
+        ChargingStation station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Station not found with id: " + stationId
+                ));
+
+        Double distance = (latitude != null && longitude != null)
+                ? calculateDistance(latitude, longitude, station.getLatitude(), station.getLongitude())
+                : null;
+
+        station.setDistance(distance);
+        return stationMapper.toDetailResponse(station, distance);
+    }
     @Override
     @Transactional(readOnly = true)
     public Page<ChargingStationSummaryResponse> getNearbyStations(StationFilterRequest request) {
@@ -71,23 +86,6 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         );
 
         return page.map(stationMapper::toSummaryResponse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ChargingStationDetailResponse getStationDetail(Long stationId, Double latitude, Double longitude) {
-
-        ChargingStation station = stationRepository.findById(stationId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Station not found with id: " + stationId
-                ));
-
-        Double distance = (latitude != null && longitude != null)
-                ? calculateDistance(latitude, longitude, station.getLatitude(), station.getLongitude())
-                : null;
-
-        station.setDistance(distance);
-        return stationMapper.toDetailResponse(station, distance);
     }
 
     @Override
@@ -229,22 +227,6 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         }
     }
 
-    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
-
-        final int R = 6371;
-        double latDist = Math.toRadians(lat2 - lat1);
-        double lonDist = Math.toRadians(lon2 - lon1);
-
-        double a = Math.sin(latDist / 2) * Math.sin(latDist / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDist / 2) * Math.sin(lonDist / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return Math.round(R * c * 100.0) / 100.0;
-    }
-
-    //
     public Page<ChargingStation> filterStations(
             Double latitude, Double longitude, Double radiusKm,
             String search,
@@ -332,5 +314,23 @@ public class ChargingStationServiceImpl implements ChargingStationService {
 
         return new PageImpl<>(pageContent, pageable, total);
     }
+
+    public Double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+
+        final int R = 6371;
+        double latDist = Math.toRadians(lat2 - lat1);
+        double lonDist = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(latDist / 2) * Math.sin(latDist / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDist / 2) * Math.sin(lonDist / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return Math.round(R * c * 100.0) / 100.0;
+    }
+
+    //
+
 }
 

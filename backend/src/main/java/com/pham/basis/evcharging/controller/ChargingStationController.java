@@ -29,15 +29,7 @@ public class ChargingStationController {
     private final ChargingStationService stationService;
     private final ChargingStationService chargingStationService;
 
-    @GetMapping("/nearby")
-    public ResponseEntity<Page<ChargingStationSummaryResponse>> getNearbyStations(
-           @Valid @ModelAttribute StationFilterRequest request) {
 
-        log.info("Searching nearby stations with filters: {}", request);
-
-        Page<ChargingStationSummaryResponse> stations = stationService.getNearbyStations(request);
-        return ResponseEntity.ok(stations);
-    }
 
     @GetMapping("/{stationId}")
     public ResponseEntity<ChargingStationDetailResponse> getStationDetail(
@@ -48,6 +40,16 @@ public class ChargingStationController {
         log.info("Getting station detail for ID: {}", stationId);
         ChargingStationDetailResponse response = stationService.getStationDetail(stationId, latitude, longitude);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/nearby")
+    public ResponseEntity<Page<ChargingStationSummaryResponse>> getNearbyStations(
+            @Valid @ModelAttribute StationFilterRequest request) {
+
+        log.info("Searching nearby stations with filters: {}", request);
+
+        Page<ChargingStationSummaryResponse> stations = stationService.getNearbyStations(request);
+        return ResponseEntity.ok(stations);
     }
 
     @PostMapping(
