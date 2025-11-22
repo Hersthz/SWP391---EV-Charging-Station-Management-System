@@ -1,5 +1,5 @@
 // src/pages/admin/AdminAddStation.tsx
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -8,7 +8,7 @@ import {
   MapPin,
   Crosshair,
   Building2,
-  Copy,               
+  Copy,
 } from "lucide-react";
 import api from "../../api/axios";
 import { Button } from "../../components/ui/button";
@@ -22,7 +22,13 @@ import {
 import { Badge } from "../../components/ui/badge";
 
 // Map
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMapEvents,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
 
 // Fix default marker icons for Leaflet in bundlers
@@ -44,7 +50,7 @@ interface PillarInput {
   power: number;
   pricePerKwh: number;
   connectors: ConnectorInput[];
-  powerType: "AC" | "DC"; 
+  powerType: "AC" | "DC";
 }
 interface StationInput {
   stationName: string;
@@ -52,8 +58,7 @@ interface StationInput {
   latitude: number;
   longitude: number;
   pillars: PillarInput[];
-  imageUrl?: string; // public image URL
-  imageBase64?: string; // base64 when a local file is uploaded
+  imageUrl?: string;
 }
 
 // Connector options theo AC / DC
@@ -93,7 +98,6 @@ function LocationPicker({
   lng: number;
   onChange: (lat: number, lng: number) => void;
 }) {
-  // click on map to update
   useMapEvents({
     click(e) {
       onChange(e.latlng.lat, e.latlng.lng);
@@ -102,8 +106,19 @@ function LocationPicker({
   return null;
 }
 
+// Bind Leaflet map instance vào ref
+function MapInstanceBinder({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    onReady(map);
+  }, [map, onReady]);
+  return null;
+}
+
 const AdminAddStation = () => {
   const navigate = useNavigate();
+  const mapRef = useRef<L.Map | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -118,6 +133,7 @@ const AdminAddStation = () => {
 
   // image preview source
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   // ===== Pillars =====
   const addPillar = () => {
@@ -154,7 +170,7 @@ const AdminAddStation = () => {
 
       const cloned: PillarInput = {
         ...target,
-        connectors: target.connectors.map((c) => ({ ...c })), // deep-ish clone
+        connectors: target.connectors.map((c) => ({ ...c })),
       };
 
       const newPillars = [...prev.pillars];
@@ -177,7 +193,6 @@ const AdminAddStation = () => {
         i === index ? { ...p, [field]: value } : p
       );
 
-      // Nếu đổi loại AC/DC thì clear connectors và recalc code
       if (field === "powerType") {
         newPillars = newPillars.map((p, i) =>
           i === index ? { ...p, connectors: [] } : p
@@ -240,24 +255,27 @@ const AdminAddStation = () => {
 
   // ===== Image handlers =====
   const handleImageUrlChange = (val: string) => {
-    setStationData((prev) => ({ ...prev, imageUrl: val, imageBase64: undefined }));
+    setStationData((prev) => ({ ...prev, imageUrl: val }));
+    setImageFile(null);
     setPreviewSrc(val || null);
   };
 
   const handleFileChange = (file?: File | null) => {
     if (!file) {
-      setStationData((prev) => ({ ...prev, imageBase64: undefined }));
+      setImageFile(null);
+      setPreviewSrc(null);
       return;
     }
+
+    setImageFile(file);
+    setStationData((prev) => ({
+      ...prev,
+      imageUrl: undefined,
+    }));
+
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = String(reader.result);
-      setStationData((prev) => ({
-        ...prev,
-        imageBase64: base64,
-        imageUrl: undefined,
-      }));
-      setPreviewSrc(base64);
+      setPreviewSrc(String(reader.result));
     };
     reader.readAsDataURL(file);
   };
@@ -268,7 +286,6 @@ const AdminAddStation = () => {
     setLoading(true);
     setError(null);
 
-    // basic validations
     if (!stationData.stationName.trim()) {
       setError("Station name is required.");
       setLoading(false);
@@ -279,7 +296,10 @@ const AdminAddStation = () => {
       setLoading(false);
       return;
     }
-    if (!isValidNumber(stationData.latitude) || !isValidNumber(stationData.longitude)) {
+    if (
+      !isValidNumber(stationData.latitude) ||
+      !isValidNumber(stationData.longitude)
+    ) {
       setError("Latitude/Longitude is invalid.");
       setLoading(false);
       return;
@@ -295,7 +315,6 @@ const AdminAddStation = () => {
         ...stationData,
         latitude: Number(stationData.latitude),
         longitude: Number(stationData.longitude),
-        // Không gửi powerType lên BE
         pillars: stationData.pillars.map(
           ({ code, power, pricePerKwh, connectors }) => ({
             code,
@@ -304,14 +323,29 @@ const AdminAddStation = () => {
             connectors,
           })
         ) as any,
-        imageUrl: stationData.imageUrl?.trim() || undefined,
-        imageBase64: stationData.imageBase64 || undefined,
       };
 
-      const res = await api.post("/charging-stations/addStation", payload);
-      console.log("Station created:", res.data);
-      setSuccess(true);
+      if (imageFile) {
+        const formData = new FormData();
 
+        formData.append(
+          "request",
+          new Blob([JSON.stringify(payload)], {
+            type: "application/json",
+          })
+        );
+        formData.append("image", imageFile);
+
+        await api.post("/charging-stations/addStation", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      } else {
+        await api.post("/charging-stations/addStation", payload);
+      }
+
+      setSuccess(true);
       setTimeout(() => navigate("/admin/stations"), 1500);
     } catch (err: any) {
       console.error("Create station error:", err);
@@ -333,11 +367,18 @@ const AdminAddStation = () => {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+
         setStationData((prev) => ({
           ...prev,
-          latitude: Number(pos.coords.latitude.toFixed(6)),
-          longitude: Number(pos.coords.longitude.toFixed(6)),
+          latitude: lat,
+          longitude: lng,
         }));
+
+        if (mapRef.current) {
+          mapRef.current.setView([lat, lng], 16);
+        }
       },
       (err) => {
         setError(err.message || "Unable to get current location.");
@@ -421,7 +462,10 @@ const AdminAddStation = () => {
                     type="text"
                     value={stationData.stationName}
                     onChange={(e) =>
-                      setStationData({ ...stationData, stationName: e.target.value })
+                      setStationData({
+                        ...stationData,
+                        stationName: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                     placeholder="e.g., Downtown Charging Hub"
@@ -474,6 +518,11 @@ const AdminAddStation = () => {
                         attribution="&copy; OpenStreetMap contributors"
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       />
+                      <MapInstanceBinder
+                        onReady={(m) => {
+                          mapRef.current = m;
+                        }}
+                      />
                       <LocationPicker
                         lat={stationData.latitude}
                         lng={stationData.longitude}
@@ -486,7 +535,10 @@ const AdminAddStation = () => {
                         }
                       />
                       <Marker
-                        position={[stationData.latitude, stationData.longitude]}
+                        position={[
+                          stationData.latitude,
+                          stationData.longitude,
+                        ]}
                         draggable
                         eventHandlers={{
                           dragend: (e: any) => {

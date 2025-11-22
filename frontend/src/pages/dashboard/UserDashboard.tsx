@@ -27,14 +27,6 @@ const UserDashboard = () => {
 
   useEffect(() => {
     sessionStorage.removeItem("IS_CHARGING");
-    Object.keys(localStorage).forEach((key) => {
-      if (
-        key.startsWith("reservation_cache_") ||
-        key.startsWith("soc")
-      ) {
-        localStorage.removeItem(key);
-      }
-    });
     const checkAuth = async () => {
       try {
         const response = await api.get<UserResponse>("/auth/me", { withCredentials: true });

@@ -339,7 +339,7 @@ const AdminReports = () => {
               className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Users className="w-4 h-4" />
-              <span>Staff</span>
+              <span>Staff & Admin</span>
             </Link>
 
             <Link
@@ -376,40 +376,7 @@ const AdminReports = () => {
               <div>
                 <h1 className="text-4xl font-extrabold text-slate-900 tracking-tighter">Reports</h1>
                 {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
-              </div>
-              <div className="flex items-center gap-3 bg-white shadow-lg shadow-slate-900/10 rounded-full p-2.5">
-                <Select defaultValue="last-6-months">
-                  <SelectTrigger className="w-48 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
-                    <SelectValue placeholder="Last 6 Months" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white/90 backdrop-blur-md">
-                    <SelectItem value="last-6-months">Last 6 Months</SelectItem>
-                    <SelectItem value="last-month">Last Month</SelectItem>
-                    <SelectItem value="last-year">Last Year</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select defaultValue="revenue">
-                  <SelectTrigger className="w-36 bg-transparent h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100">
-                    <SelectValue placeholder="Revenue" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white/90 backdrop-blur-md">
-                    <SelectItem value="revenue">Revenue</SelectItem>
-                    <SelectItem value="sessions">Sessions</SelectItem>
-                    <SelectItem value="users">Users</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button className="h-11 rounded-full shadow-none border-0 text-slate-700 font-medium hover:bg-slate-100" variant="outline">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Advanced Filters
-                </Button>
-
-                <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-cyan-500/30 hover:brightness-110 h-11 rounded-full px-6">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Report
-                </Button>
-              </div>
+              </div>          
             </div>
 
             {/* KPI Cards */}

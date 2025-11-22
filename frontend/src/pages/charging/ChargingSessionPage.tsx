@@ -179,17 +179,6 @@ const ChargingSessionPage = () => {
     // Chỉ giữ lại IS_CHARGING cho phiên hiện tại
     const currentSessionId = searchParams.get("sessionId");
     
-    // Quét sạch localStorage liên quan đến các session cũ KHÁC session hiện tại
-    if (currentSessionId) {
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith("session_meta_") && !key.includes(currentSessionId)) {
-                localStorage.removeItem(key);
-            }
-            if (key.startsWith("session_last_") && !key.includes(currentSessionId)) {
-                localStorage.removeItem(key);
-            }
-        });
-    }
     // Bật chế độ bảo vệ ngay khi vào trang
     sessionStorage.setItem("IS_CHARGING", "true");
 

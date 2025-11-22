@@ -365,27 +365,6 @@ const AdminStations = () => {
   // Header actions
   const actions = (
     <>
-      <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StationStatus)}>
-        <SelectTrigger className="w-40 bg-white/70 border-slate-300 text-slate-900 ring-offset-background">
-          <SelectValue placeholder="All Status" />
-        </SelectTrigger>
-        <SelectContent className="bg-white/90 backdrop-blur-md border-slate-200 text-slate-900">
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="available">Available</SelectItem>
-          <SelectItem value="offline">Offline</SelectItem>
-          <SelectItem value="maintenance">Maintenance</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Button
-        variant="outline"
-        className="bg-white/70 border-slate-300 hover:bg-white text-slate-700"
-        onClick={loadStations}
-      >
-        <RefreshCw className="w-4 h-4 mr-2" />
-        Refresh Status
-      </Button>
-
       <Button
         onClick={() => navigate("/admin/add-station")}
         className="bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:brightness-110"
