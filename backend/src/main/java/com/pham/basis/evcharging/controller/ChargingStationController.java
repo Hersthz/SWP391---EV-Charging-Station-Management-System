@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -49,13 +50,16 @@ public class ChargingStationController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/addStation")
+    @PostMapping(
+            value = "/addStation",
+            consumes = { MediaType.MULTIPART_FORM_DATA_VALUE }
+    )
     public ResponseEntity<ChargingStationDetailResponse> addStation(
-            @Valid @RequestBody StationRequest request,
-            @RequestPart(value = "image", required = false) MultipartFile file
-            ) {
+            @RequestPart("request") @Valid StationRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image
+    ) {
         log.info("Adding station");
-        return ResponseEntity.ok(stationService.addStation(request, file));
+        return ResponseEntity.ok(stationService.addStation(request, image));
     }
 
     @PostMapping("/{stationId}/pillars")

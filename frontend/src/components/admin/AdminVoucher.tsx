@@ -197,10 +197,6 @@ const AdminVoucher = () => {
       toast({ title: "Missing code", description: "Code is required.", variant: "destructive" });
       return;
     }
-    if (payload.discountAmount < 0 || payload.discountAmount > 100) {
-      toast({ title: "Invalid discount", description: "Discount must be between 0 and 100.", variant: "destructive" });
-      return;
-    }
 
     setSavingEdit(true);
     try {

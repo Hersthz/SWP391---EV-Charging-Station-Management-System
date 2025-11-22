@@ -115,7 +115,7 @@ export default function AdminStaffPage() {
     email: "",
     phone: "",
     password: "",
-    roleUi: "Staff" as "Staff" ,
+    roleUi: "Staff" as "Staff",
     stationId: "" as number | "",
   });
 
@@ -202,10 +202,10 @@ export default function AdminStaffPage() {
     if (editOpen) loadStationsOnce();
   }, [editOpen]);
 
-  /* ===== Derived list with search + role filter ===== */
+  /* ===== Derived list with search + role filter + sort ===== */
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return staff.filter((u) => {
+    const base = staff.filter((u) => {
       const ui = backendToUi[u.roleName] || u.roleName;
       const matchText =
         !term ||
@@ -218,6 +218,14 @@ export default function AdminStaffPage() {
         (roleFilter === "admin" && ui === "Admin");
       return matchText && (ui === "Staff" || ui === "Admin") && matchRole;
     });
+
+    // Staff trước, Admin sau; trong cùng nhóm sort theo tên
+    return base.sort((a, b) => {
+      const ra = backendToUi[a.roleName] === "Admin" ? 1 : 0;
+      const rb = backendToUi[b.roleName] === "Admin" ? 1 : 0;
+      if (ra !== rb) return ra - rb;
+      return (a.fullName || "").localeCompare(b.fullName || "");
+    });
   }, [staff, search, roleFilter]);
 
   /* ===== Actions ===== */
@@ -227,7 +235,7 @@ export default function AdminStaffPage() {
     const prev = u.status;
     setStaff((list) => list.map((x) => (x.id === u.id ? { ...x, status: !x.status } : x)));
     try {
-      await api.put(`/user/block/${u.id}`); // principal xác thực phía BE
+      await api.put(`/user/block/${u.id}`);
       toast({ title: prev ? "Suspended" : "Activated" });
     } catch (e: any) {
       setStaff((list) => list.map((x) => (x.id === u.id ? { ...x, status: prev } : x)));
@@ -455,7 +463,7 @@ export default function AdminStaffPage() {
   );
 
   return (
-    <AdminLayout title="Staff" actions={header}>
+    <AdminLayout title="Staff & Admin" actions={header}>
       <Card className="border-0 shadow-xl">
         <CardContent className="p-0">
           {loading ? (
@@ -523,125 +531,129 @@ export default function AdminStaffPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Dialog
-                              open={editOpen && selected?.id === s.id}
-                              onOpenChange={(open) => {
-                                setEditOpen(open);
-                                if (open) {
-                                  setSelected(s);
-                                  setEditRoleUi(roleUi);
-                                  const first = (assigns[s.id] || [])[0];
-                                  setEditStationId(first?.id ?? "");
-                                } else {
-                                  setSelected(null);
-                                  setEditStationId("");
-                                }
-                              }}
-                            >
-                              <DialogTrigger asChild>
-                                <Button size="sm" variant="ghost" className="text-blue-600">
-                                  <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-[520px] bg-white">
-                                <DialogHeader>
-                                  <DialogTitle>Edit Staff</DialogTitle>
-                                </DialogHeader>
-                                {selected && (
-                                  <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <Label>Full name</Label>
-                                        <Input disabled value={selected.fullName} />
-                                      </div>
-                                      <div>
-                                        <Label>Username</Label>
-                                        <Input disabled value={selected.username} />
-                                      </div>
-                                      <div>
-                                        <Label>Email</Label>
-                                        <Input disabled value={selected.email || ""} />
-                                      </div>
-                                      <div>
-                                        <Label>Phone</Label>
-                                        <Input disabled value={selected.phone || ""} />
-                                      </div>
-                                    </div>
-
-                                    {/* Station reassignment */}
-                                    <div className="space-y-2">
-                                      <Label className="flex items-center gap-2">
-                                        <Building2 className="w-4 h-4" /> Station
-                                      </Label>
-                                      <Select
-                                        value={String(editStationId || "")}
-                                        onValueChange={(v) => setEditStationId(Number(v))}
-                                      >
-                                        <SelectTrigger className="bg-white">
-                                          <SelectValue placeholder="Select a station" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white max-h-72 overflow-y-auto">
-                                          {stations.length ? (
-                                            stations.map((st) => (
-                                              <SelectItem key={st.id} value={String(st.id)}>
-                                                #{st.id} • {st.name}
-                                              </SelectItem>
-                                            ))
-                                          ) : (
-                                            <div className="p-3 text-sm text-slate-500">No stations found.</div>
-                                          )}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
-                                )}
-
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    onClick={async () => {
-                                      if (!selected) return;
-                                      try {
-                                        // cập nhật role nếu đổi
-                                        const newRoleChanged =
-                                          (backendToUi[selected.roleName] || "Staff") !== editRoleUi;
-                                        if (newRoleChanged) await saveRole(selected, editRoleUi);
-
-                                        // gán station nếu chọn
-                                        if (editStationId) {
-                                          await assignStation(selected.id, Number(editStationId));
-                                        }
-                                        toast({ title: "Updated" });
-                                        setEditOpen(false);
-                                      } catch (e: any) {
-                                        toast({
-                                          title: "Update failed",
-                                          description: e?.response?.data?.message,
-                                          variant: "destructive",
-                                        });
-                                      }
-                                    }}
-                                    className="bg-sky-500 text-white"
-                                  >
-                                    Save
+                          {roleUi === "Admin" ? (
+                            <span className="text-sm text-slate-400">—</span>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Dialog
+                                open={editOpen && selected?.id === s.id}
+                                onOpenChange={(open) => {
+                                  setEditOpen(open);
+                                  if (open) {
+                                    setSelected(s);
+                                    setEditRoleUi(roleUi);
+                                    const first = (assigns[s.id] || [])[0];
+                                    setEditStationId(first?.id ?? "");
+                                  } else {
+                                    setSelected(null);
+                                    setEditStationId("");
+                                  }
+                                }}
+                              >
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-blue-600">
+                                    <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
                                   </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[520px] bg-white">
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Staff</DialogTitle>
+                                  </DialogHeader>
+                                  {selected && (
+                                    <div className="space-y-4">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <Label>Full name</Label>
+                                          <Input disabled value={selected.fullName} />
+                                        </div>
+                                        <div>
+                                          <Label>Username</Label>
+                                          <Input disabled value={selected.username} />
+                                        </div>
+                                        <div>
+                                          <Label>Email</Label>
+                                          <Input disabled value={selected.email || ""} />
+                                        </div>
+                                        <div>
+                                          <Label>Phone</Label>
+                                          <Input disabled value={selected.phone || ""} />
+                                        </div>
+                                      </div>
 
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={!!loadingMap[s.id]}
-                              className={s.status ? "text-red-600" : "text-emerald-600"}
-                              onClick={() => toggleBlock(s)}
-                            >
-                              {loadingMap[s.id] ? (
-                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                              ) : null}
-                              {s.status ? "Suspend" : "Activate"}
-                            </Button>
-                          </div>
+                                      {/* Station reassignment */}
+                                      <div className="space-y-2">
+                                        <Label className="flex items-center gap-2">
+                                          <Building2 className="w-4 h-4" /> Station
+                                        </Label>
+                                        <Select
+                                          value={String(editStationId || "")}
+                                          onValueChange={(v) => setEditStationId(Number(v))}
+                                        >
+                                          <SelectTrigger className="bg-white">
+                                            <SelectValue placeholder="Select a station" />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white max-h-72 overflow-y-auto">
+                                            {stations.length ? (
+                                              stations.map((st) => (
+                                                <SelectItem key={st.id} value={String(st.id)}>
+                                                  #{st.id} • {st.name}
+                                                </SelectItem>
+                                              ))
+                                            ) : (
+                                              <div className="p-3 text-sm text-slate-500">
+                                                No stations found.
+                                              </div>
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      onClick={async () => {
+                                        if (!selected) return;
+                                        try {
+                                          const newRoleChanged =
+                                            (backendToUi[selected.roleName] || "Staff") !== editRoleUi;
+                                          if (newRoleChanged) await saveRole(selected, editRoleUi);
+
+                                          if (editStationId) {
+                                            await assignStation(selected.id, Number(editStationId));
+                                          }
+                                          toast({ title: "Updated" });
+                                          setEditOpen(false);
+                                        } catch (e: any) {
+                                          toast({
+                                            title: "Update failed",
+                                            description: e?.response?.data?.message,
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }}
+                                      className="bg-sky-500 text-white"
+                                    >
+                                      Save
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={!!loadingMap[s.id]}
+                                className={s.status ? "text-red-600" : "text-emerald-600"}
+                                onClick={() => toggleBlock(s)}
+                              >
+                                {loadingMap[s.id] ? (
+                                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                ) : null}
+                                {s.status ? "Suspend" : "Activate"}
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

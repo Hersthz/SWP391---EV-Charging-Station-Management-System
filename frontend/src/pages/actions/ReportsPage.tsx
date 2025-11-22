@@ -256,6 +256,18 @@ const fmtDurationRange = (start?: string | null, end?: string | null) => {
   const s = sec % 60;
   return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
 };
+
+const durationMmSs = (start?: string | null, end?: string | null) => {
+  if (!start) return "—";
+  const startMs = new Date(start).getTime();
+  if (Number.isNaN(startMs)) return "—";
+  const endMs = end ? new Date(end).getTime() : Date.now();
+  const diffSec = Math.max(0, Math.floor((endMs - startMs) / 1000));
+  const mins = Math.floor(diffSec / 60);
+  const secs = diffSec % 60;
+  return `${mins}m ${secs}s`;
+};
+
 const safeReadJSON = (raw: string | null) => {
   if (!raw) return null;
   try {
@@ -574,7 +586,7 @@ const ReportsPage = () => {
           station,
           port: portText,
           connector: connectorText,
-          duration: mins ? humanDuration(mins) : "—",
+          duration: durationMmSs(s.startTime, isCompleted ? s.endTime : undefined),
           energy: typeof s.energyCount === "number" ? `${s.energyCount.toFixed(1)} kWh` : "—",
           cost: fmtMoney(typeof s.chargedAmount === "number" ? s.chargedAmount : 0),
           status: isCompleted ? "Completed" : s.status || "ACTIVE",
@@ -722,20 +734,13 @@ const ReportsPage = () => {
     const moneyFmt = (val: number) =>
       currency === "VND"
         ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(val || 0)
-        : `$${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        : `$${(val || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`;
 
     const moneyText = moneyFmt(detail.totalCost || 0);
     const rateText = moneyFmt(detail.ratePerKwh || 0);
-
-    const avgPowerKw = (() => {
-      if (!detail.startTime || !detail.endTime) return "—";
-      const hours = Math.max(
-        0.001,
-        (new Date(detail.endTime).getTime() - new Date(detail.startTime).getTime()) / 3_600_000
-      );
-      const kw = (num(detail.energyKwh) / hours) || 0;
-      return `${kw.toFixed(1)} kW`;
-    })();
 
     const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
       <div className="flex items-start justify-between gap-3 py-2 border-b last:border-b-0 border-slate-100">
@@ -765,14 +770,16 @@ const ReportsPage = () => {
                   {(detail.status || "—").toString().toUpperCase()}
                 </Badge>
               </div>
-              <Button variant="outline" size="sm" onClick={closeDetail}>Close</Button>
+              <Button variant="outline" size="sm" onClick={closeDetail}>
+                Close
+              </Button>
             </div>
           </div>
 
           {/* Body scrollable */}
           <div className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
-            {/* KPIs */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* KPIs: 3 ô đều nhau */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-xl border-2 border-amber-100 p-3 text-center">
                 <DollarSign className="w-4 h-4 mx-auto mb-1" />
                 <div className="text-2xl font-extrabold">{moneyText}</div>
@@ -780,66 +787,108 @@ const ReportsPage = () => {
               </div>
               <div className="rounded-xl border-2 border-emerald-100 p-3 text-center">
                 <Battery className="w-4 h-4 mx-auto mb-1" />
-                <div className="text-2xl font-extrabold">{(detail.energyKwh ?? 0).toFixed(1)} kWh</div>
+                <div className="text-2xl font-extrabold">
+                  {(detail.energyKwh ?? 0).toFixed(1)} kWh
+                </div>
                 <div className="text-xs text-emerald-700/80 mt-1">Energy Delivered</div>
               </div>
               <div className="rounded-xl border-2 border-sky-100 p-3 text-center">
                 <Clock className="w-4 h-4 mx-auto mb-1" />
-                <div className="text-2xl font-extrabold">{fmtDurationRange(detail.startTime, detail.endTime)}</div>
+                <div className="text-2xl font-extrabold">
+                  {fmtDurationRange(detail.startTime, detail.endTime)}
+                </div>
                 <div className="text-xs text-sky-700/80 mt-1">Session Duration</div>
-              </div>
-              <div className="rounded-xl border-2 border-violet-100 p-3 text-center">
-                <Target className="w-4 h-4 mx-auto mb-1" />
-                <div className="text-2xl font-extrabold">{avgPowerKw}</div>
-                <div className="text-xs text-violet-700/80 mt-1">Average Power</div>
               </div>
             </div>
 
             {/* Details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-xl border p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Session Info</div>
-                <Row label="Session ID" value={<div className="inline-flex items-center gap-1"><IdCard className="w-3 h-3" />#{detail.id}</div>} />
+                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                  Session Info
+                </div>
+                <Row
+                  label="Session ID"
+                  value={
+                    <div className="inline-flex items-center gap-1">
+                      <IdCard className="w-3 h-3" />#{detail.id}
+                    </div>
+                  }
+                />
                 <Row label="Status" value={(detail.status || "—").toString()} />
                 <Row label="Currency" value={currency} />
                 <Row label="Payment Method" value={detail.paymentMethod || "—"} />
               </div>
 
               <div className="rounded-xl border p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Location</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                  Location
+                </div>
                 <Row label="Station" value={detail.stationName || "—"} />
                 <Row label="# Port" value={detail.portLabel || "—"} />
                 {!!detail.connector && <Row label="Connector" value={detail.connector} />}
               </div>
 
               <div className="rounded-xl border p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Timing</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                  Timing
+                </div>
                 <Row label="Start Time" value={fmtDateTime(detail.startTime)} />
                 <Row label="End Time" value={fmtDateTime(detail.endTime)} />
-                <Row label="Duration" value={fmtDurationRange(detail.startTime, detail.endTime)} />
+                <Row
+                  label="Duration"
+                  value={fmtDurationRange(detail.startTime, detail.endTime)}
+                />
               </div>
 
               <div className="rounded-xl border p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Energy & Cost</div>
-                <Row label="Energy (kWh)" value={`${(detail.energyKwh ?? 0).toFixed(3)}`} />
-                <Row label="Average Power" value={avgPowerKw} />
+                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                  Energy & Cost
+                </div>
+                <Row
+                  label="Energy (kWh)"
+                  value={`${(detail.energyKwh ?? 0).toFixed(3)}`}
+                />
                 <Row label="Rate / kWh" value={rateText} />
                 <Row label="Total Cost" value={moneyText} />
               </div>
 
               <div className="rounded-xl border p-4 sm:col-span-2">
-                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Vehicle</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                  Vehicle
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <Row label="Vehicle ID" value={detail.vehicleId ? `#${detail.vehicleId}` : "—"} />
-                  <Row label="Brand / Model" value={detail.vehicle ? `${detail.vehicle.brand ?? "—"} ${detail.vehicle.model ?? ""}`.trim() || "—" : "—"} />
-                  <Row label="Battery capacity" value={Number.isFinite(detail.vehicle?.capacityKwh ?? NaN) ? `${detail.vehicle?.capacityKwh} kWh` : "—"} />
+                  <Row
+                    label="Vehicle ID"
+                    value={detail.vehicleId ? `#${detail.vehicleId}` : "—"}
+                  />
+                  <Row
+                    label="Brand / Model"
+                    value={
+                      detail.vehicle
+                        ? `${detail.vehicle.brand ?? "—"} ${
+                            detail.vehicle.model ?? ""
+                          }`.trim() || "—"
+                        : "—"
+                    }
+                  />
+                  <Row
+                    label="Battery capacity"
+                    value={
+                      Number.isFinite(detail.vehicle?.capacityKwh ?? NaN)
+                        ? `${detail.vehicle?.capacityKwh} kWh`
+                        : "—"
+                    }
+                  />
                 </div>
               </div>
             </div>
 
             {/* Footer */}
             <div className="flex justify-end">
-              <Button variant="outline" onClick={closeDetail}>Close</Button>
+              <Button variant="outline" onClick={closeDetail}>
+                Close
+              </Button>
             </div>
           </div>
         </div>
@@ -1221,14 +1270,6 @@ const ReportsPage = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between text-slate-900 text-xl font-bold">
                       <span>Session history</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-white/70 border-slate-300 hover:bg-slate-100 hover:text-slate-900"
-                      >
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filter
-                      </Button>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

@@ -216,7 +216,6 @@ const DashboardHeader = () => {
                     </span>
                   </>
                 )}
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
               </button>
             </DropdownMenuTrigger>
 

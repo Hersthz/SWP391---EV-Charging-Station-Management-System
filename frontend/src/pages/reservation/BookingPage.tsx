@@ -773,172 +773,7 @@ export default function BookingPage() {
             </div>
           )}
         </div>
-        {/* === END Vehicle selection === */}
-
-        {/* Reservation Time */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 tracking-tight">
-              <CalendarIcon className="w-5 h-5 text-sky-600" /> Reservation Time
-            </h3>
-          </div>
-
-          <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* DATE (giữ nguyên – tự mờ quá khứ) */}
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-zinc-700">Date</div>
-                  <input
-                    type="date"
-                    value={bookingDate}
-                    min={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setBookingDate(val);
-
-                      const minStart = minStartForDate(val);
-                      if (startTime) setStartTime((prev) => clampHM(prev, minStart));
-
-                      const minEnd = minEndForDate(val, startTime ? clampHM(startTime, minStart) : undefined);
-                      if (endTime) setEndTime((prev) => clampHM(prev, minEnd));
-
-                      if (!startTime) {
-                        const s = minStart;
-                        setStartTime(s);
-                        setEndTime(addMinutes(s, 30));
-                      } else if (!endTime || hmToMinutes(endTime) <= hmToMinutes(startTime)) {
-                        setEndTime(addMinutes(startTime, 15));
-                      }
-                    }}
-                    className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus-visible:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-
-                {/* START TIME (Select có disable -> mờ) */}
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-zinc-700">Start time</div>
-                  <Select
-                    value={startTime || undefined}
-                    onValueChange={(raw) => {
-                      const v = clampHM(raw, _minStart);
-                      setStartTime(v);
-                      if (!endTime || hmToMinutes(endTime) <= hmToMinutes(v)) {
-                        setEndTime(addMinutes(v, 15));
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-11 px-3">
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAY_TIMES.map((t) => {
-                        const disabled = hmToMinutes(t) < hmToMinutes(_minStart);
-                        return (
-                          <SelectItem key={`s-${t}`} value={t} disabled={disabled}>
-                            {t}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* END TIME (Select có disable -> mờ) */}
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-zinc-700">End time</div>
-                  <Select
-                    value={endTime || undefined}
-                    onValueChange={(raw) => {
-                      const v = clampHM(raw, _minEnd);
-                      if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
-                        setEndTime(addMinutes(startTime, 15));
-                      } else {
-                        setEndTime(v);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-11 px-3">
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAY_TIMES.map((t) => {
-                        const minForEnd = startTime ? startTime : _minEnd;
-                        const disabled = hmToMinutes(t) <= hmToMinutes(minForEnd);
-                        return (
-                          <SelectItem key={`e-${t}`} value={t} disabled={disabled}>
-                            {t}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Duration */}
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-2 text-sm text-zinc-600">
-                  <Clock className="w-4 h-4 text-sky-600" />
-                  <span>Duration</span>
-                </div>
-                <Badge variant="secondary" className="rounded-full bg-sky-500/10 text-sky-700 text-base font-semibold px-4 py-1">
-                  {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
-                </Badge>
-              </div>
-
-              {/* Estimated charge */}
-              <div className="mt-2 flex items-center justify-between">
-                <div className="text-sm text-zinc-600">Estimated charge</div>
-                <div className="text-sm">
-                  {!selectedPillarId || !selectedConnectorIdNum ? (
-                    <span className="text-zinc-400">Select pillar & connector to estimate</span>
-                  ) : estimating ? (
-                    <span className="text-emerald-700">Estimating…</span>
-                  ) : estimate?.estimatedMinutes != null ? (
-                    <span className="font-medium text-zinc-900">{`~ ${estimate.estimatedMinutes} min`}</span>
-                  ) : (
-                    <span className="text-zinc-400">—</span>
-                  )}
-                </div>
-              </div>
-
-              {/* info: kWh + cost + advice */}
-              {estimate && !estimating && (
-                <div className="mt-1 text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
-                  <span>
-                    Energy ~ <b className="text-zinc-800">{estimate.energyKwh.toFixed(1)} kWh</b>
-                  </span>
-                  <span>•</span>
-                  <span>
-                    Est. cost ~ <b className="text-emerald-700">{formatVND(estimate.estimatedCost)}</b>
-                  </span>
-                </div>
-              )}
-              {estimate?.advice && (
-                <div className="mt-2 text-sm text-amber-800 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2.5">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  {estimate.advice}
-                </div>
-              )}
-
-              <div className="mt-3 bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
-                <div className="text-sm text-zinc-700">
-                  <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
-                  <span className="font-semibold">{durationMinutes || 0} minutes</span>
-                </div>
-                <div className="text-xl font-extrabold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-                  {formatVND(estimatedHold || 0)}
-                </div>
-              </div>
-
-              {durationMinutes <= 0 && bookingDate && startTime && endTime && (
-                <div className="text-xs text-red-600 mt-1 font-medium">* The end time must be after the start time.</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
+        
         {/* PILLARS */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -1086,6 +921,170 @@ export default function BookingPage() {
             </div>
           )}
         </div>
+
+        {/* Reservation Time */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 tracking-tight">
+              <CalendarIcon className="w-5 h-5 text-sky-600" /> Reservation Time
+            </h3>
+          </div>
+
+          <Card className="rounded-2xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-900/5">
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* DATE */}
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-zinc-700">Date</div>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setBookingDate(val);
+
+                      const minStart = minStartForDate(val);
+                      if (startTime) setStartTime((prev) => clampHM(prev, minStart));
+
+                      const minEnd = minEndForDate(val, startTime ? clampHM(startTime, minStart) : undefined);
+                      if (endTime) setEndTime((prev) => clampHM(prev, minEnd));
+
+                      if (!startTime) {
+                        const s = minStart;
+                        setStartTime(s);
+                        setEndTime(addMinutes(s, 30));
+                      } else if (!endTime || hmToMinutes(endTime) <= hmToMinutes(startTime)) {
+                        setEndTime(addMinutes(startTime, 15));
+                      }
+                    }}
+                    className="w-full h-11 px-3 border border-zinc-300 bg-white rounded-lg focus-visible:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+
+                {/* START TIME */}
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-zinc-700">Start time</div>
+                  <Select
+                    value={startTime || undefined}
+                    onValueChange={(raw) => {
+                      const v = clampHM(raw, _minStart);
+                      setStartTime(v);
+                      if (!endTime || hmToMinutes(endTime) <= hmToMinutes(v)) {
+                        setEndTime(addMinutes(v, 15));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11 px-3">
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_TIMES.map((t) => {
+                        const disabled = hmToMinutes(t) < hmToMinutes(_minStart);
+                        return (
+                          <SelectItem key={`s-${t}`} value={t} disabled={disabled}>
+                            {t}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* END TIME */}
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-zinc-700">End time</div>
+                  <Select
+                    value={endTime || undefined}
+                    onValueChange={(raw) => {
+                      const v = clampHM(raw, _minEnd);
+                      if (startTime && hmToMinutes(v) <= hmToMinutes(startTime)) {
+                        setEndTime(addMinutes(startTime, 15));
+                      } else {
+                        setEndTime(v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11 px-3">
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_TIMES.map((t) => {
+                        const minForEnd = startTime ? startTime : _minEnd;
+                        const disabled = hmToMinutes(t) <= hmToMinutes(minForEnd);
+                        return (
+                          <SelectItem key={`e-${t}`} value={t} disabled={disabled}>
+                            {t}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <Clock className="w-4 h-4 text-sky-600" />
+                  <span>Duration</span>
+                </div>
+                <Badge variant="secondary" className="rounded-full bg-sky-500/10 text-sky-700 text-base font-semibold px-4 py-1">
+                  {durationMinutes > 0 ? `${durationMinutes} minutes` : "—"}
+                </Badge>
+              </div>
+
+              {/* Estimated charge */}
+              <div className="mt-2 flex items-center justify-between">
+                <div className="text-sm text-zinc-600">Estimated charge</div>
+                <div className="text-sm">
+                  {!selectedPillarId || !selectedConnectorIdNum ? (
+                    <span className="text-zinc-400">Select pillar & connector to estimate</span>
+                  ) : estimating ? (
+                    <span className="text-emerald-700">Estimating…</span>
+                  ) : estimate?.estimatedMinutes != null ? (
+                    <span className="font-medium text-zinc-900">{`~ ${estimate.estimatedMinutes} min`}</span>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </div>
+              </div>
+
+              {/* info: kWh + cost + advice */}
+              {estimate && !estimating && (
+                <div className="mt-1 text-xs text-zinc-600 flex items-center gap-2 flex-wrap">
+                  <span>
+                    Energy ~ <b className="text-zinc-800">{estimate.energyKwh.toFixed(1)} kWh</b>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Est. cost ~ <b className="text-emerald-700">{formatVND(estimate.estimatedCost)}</b>
+                  </span>
+                </div>
+              )}
+              {estimate?.advice && (
+                <div className="mt-2 text-sm text-amber-800 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  {estimate.advice}
+                </div>
+              )}
+
+              <div className="mt-3 bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
+                <div className="text-sm text-zinc-700">
+                  <span className="font-semibold">{formatVND(HOLD_RATE_PER_MIN)}</span>/minute ×{" "}
+                  <span className="font-semibold">{durationMinutes || 0} minutes</span>
+                </div>
+                <div className="text-xl font-extrabold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+                  {formatVND(estimatedHold || 0)}
+                </div>
+              </div>
+
+              {durationMinutes <= 0 && bookingDate && startTime && endTime && (
+                <div className="text-xs text-red-600 mt-1 font-medium">* The end time must be after the start time.</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </motion.div>
     );
   };
@@ -1101,7 +1100,7 @@ export default function BookingPage() {
               Need to top up <b>{formatVND(insufficient.recommended_topup)}</b> to reserve.
             </div>
             <div className="text-zinc-700">
-              Phí giữ chỗ: <b>{formatVND(insufficient.holdFee)}</b>
+              Hold Fee: <b>{formatVND(insufficient.holdFee)}</b>
             </div>
             {insufficient.estimated_final_cost ? (
               <div className="text-zinc-600">
@@ -1115,7 +1114,7 @@ export default function BookingPage() {
               className="h-9 bg-white border-red-300 text-red-700 hover:bg-red-50 transition-colors"
               onClick={() => toast({ title: "Chưa nối top-up API", description: "Gọi /wallet/topup ở đây." })}
             >
-              Nạp {formatVND(insufficient.recommended_topup)}
+              Top up {formatVND(insufficient.recommended_topup)}
             </Button>
           </div>
         </CardContent>

@@ -1,8 +1,6 @@
-// src/pages/ChargingReceiptPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  BadgeCheck,
   Battery,
   Calendar,
   Car,
@@ -66,7 +64,6 @@ const fmtMoneyCurrency = (n?: number, currency?: string) => {
       minimumFractionDigits: cur === "VND" ? 0 : 2,
     }).format(Number(n));
   } catch {
-    // fallback $
     return `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 };
@@ -109,11 +106,9 @@ const ChargingReceiptPage = () => {
         return;
       }
 
-      // 1) Đọc dữ liệu đã lưu
       const stop = JSON.parse(localStorage.getItem(`session_stop_${sessionIdParam}`) || "null");
       const last = JSON.parse(localStorage.getItem(`session_last_${sessionIdParam}`) || "null");
 
-      // 2) Reservation brief
       let brief = reservationIdParam
         ? JSON.parse(localStorage.getItem(`reservation_cache_${reservationIdParam}`) || "null")
         : null;
@@ -138,7 +133,6 @@ const ChargingReceiptPage = () => {
         }
         if (!cancelled) setResv(brief || null);
 
-        // 3) Vehicle
         const vid = stop?.vehicleId ?? last?.vehicleId;
         if (userId && vid) {
           const vres = await api.get(`/vehicle/${userId}`, { withCredentials: true });
@@ -154,9 +148,8 @@ const ChargingReceiptPage = () => {
             });
           }
         }
-      } catch { /* ignore */ }
+      } catch {}
 
-      // 4) Ghép dữ liệu hiển thị – Chuẩn hoá các trường quan trọng
       const currency = (stop?.currency ?? last?.currency ?? "VND") as string;
       const amount = Number(
         (stop?.totalAmount ?? stop?.totalCost ?? undefined) ??
@@ -171,7 +164,6 @@ const ChargingReceiptPage = () => {
         ? ratePayload
         : (energyRaw > 0 && amount > 0 ? amount / energyRaw : undefined);
 
-      // nếu energy chưa có mà đã có rate + amount → suy ngược
       const energy = energyRaw > 0 ? energyRaw : (Number.isFinite(rate) && amount > 0 ? amount / Number(rate) : 0);
 
       const startTime = (stop?.startTime ?? last?.startTime) as string | undefined;
@@ -199,7 +191,6 @@ const ChargingReceiptPage = () => {
     return () => { cancelled = true; };
   }, [sessionIdParam, reservationIdParam, toast]);
 
-  // Tính toán trình bày
   const pricePerKwhTxt = useMemo(
     () => fmtMoneyCurrency(snap?.ratePerKwh, snap?.currency),
     [snap?.ratePerKwh, snap?.currency]
@@ -209,7 +200,6 @@ const ChargingReceiptPage = () => {
   const mustPay = (snap?.chargedAmount ?? 0) > 0 &&
                   !["WALLET", "CASH"].includes((snap?.paymentMethod || "").toUpperCase());
 
-  /** Actions */
   const goToPayment = () => {
     if (!snap) return;
     navigate("/session/payment", {
@@ -279,7 +269,7 @@ const ChargingReceiptPage = () => {
         </Card>
 
         {/* Top summary numbers */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
           <Card className="rounded-2xl border-2 border-amber-100">
             <CardContent className="p-5 text-center">
               <DollarSign className="w-5 h-5 text-amber-600 mx-auto mb-2" />
@@ -305,23 +295,10 @@ const ChargingReceiptPage = () => {
           <Card className="rounded-2xl border-2 border-sky-100">
             <CardContent className="p-5 text-center">
               <Clock className="w-5 h-5 text-sky-600 mx-auto mb-2" />
-              <div className="text-3xl font-extrabold text-sky-700">{loading || !snap ? "—" : fmtDuration(snap?.startTime, snap?.endTime)}</div>
+              <div className="text-3xl font-extrabold text-sky-700">
+                {loading || !snap ? "—" : fmtDuration(snap?.startTime, snap?.endTime)}
+              </div>
               <div className="text-xs text-sky-700/80 mt-1">Session Duration</div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border-2 border-violet-100">
-            <CardContent className="p-5 text-center">
-              <BadgeCheck className="w-5 h-5 text-violet-600 mx-auto mb-2" />
-              <div className="text-3xl font-extrabold text-violet-700">{(() => {
-                if (!snap?.startTime || !snap?.endTime) return "—";
-                const t0 = new Date(snap.startTime).getTime();
-                const t1 = new Date(snap.endTime).getTime();
-                const hours = Math.max(0.001, (t1 - t0) / 3_600_000);
-                const kw = (Number(snap.energyCount || 0) / hours) || 0;
-                return `${kw.toFixed(1)} kW`;
-              })()}</div>
-              <div className="text-xs text-violet-700/80 mt-1">Average Power</div>
             </CardContent>
           </Card>
         </div>
