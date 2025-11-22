@@ -35,7 +35,7 @@ public class AuthController {
     private final UserService userService;
     private final JwtUtil jwtUtil;
 
-    @Value("${jwt.access-expiry-seconds:900}")
+    @Value("${jwt.access-expiry-seconds:7200}")
     private long accessExpiry;
 
     @Value("${jwt.refresh-expiry-seconds:172800}")
