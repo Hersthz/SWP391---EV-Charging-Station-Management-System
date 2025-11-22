@@ -70,6 +70,9 @@ const PriorityBadge = ({ p }: { p?: string }) => {
     HIGH: "bg-red-100 text-red-700 border-red-200",
     CRITICAL: "bg-red-200 text-red-800 border-red-300",
   };
+  // Trả về Badge với class tương ứng theo mức ưu tiên.
+  // Nếu không có trong map thì dùng màu xám mặc định.
+  // Nội dung hiển thị là x, nếu x rỗng thì hiển thị "LOW"
   return <Badge className={map[x] || "bg-slate-100 text-slate-700 border-slate-200"}>{x || "LOW"}</Badge>;
 };
 
@@ -82,7 +85,9 @@ const StatusBadge = ({ s }: { s?: string }) => {
   };
   return <Badge className={map[x] || "bg-slate-100 text-slate-700 border-slate-200"}>{x || "OPEN"}</Badge>;
 };
-
+// Trả về component Badge với class tương ứng
+  // Nếu trạng thái không nằm trong map thì dùng set màu xám (mặc định)
+  // Nội dung hiển thị là trạng thái x, nếu x rỗng thì hiển thị "OPEN"
 const fmt = (iso?: string) =>
   iso ? new Date(iso).toLocaleString("vi-VN") : "—";
 
@@ -139,6 +144,7 @@ const StaffIncidents = () => {
     const mapPillars: Record<number, PillarSimple[]> = {};
 
     const normalizeOne = (raw: any) => {
+      // lấy dữ liệu station từ nhiều kiểu cấu trúc khác nhau
       const node = raw?.station ?? raw?.stationDto ?? raw ?? {};
       const id = Number(node.id ?? node.stationId ?? node.station_id);
       if (!id) return;
@@ -151,12 +157,14 @@ const StaffIncidents = () => {
         id: Number(p.id ?? p.pillarId ?? 0),
         name: p.code ?? p.name ?? `P${p.id ?? ""}`,
       }));
+      // lưu station đã chuẩn hóa vào mapStations
       mapStations.set(id, {
         id,
         name: node.name ?? node.stationName ?? `Station ${id}`,
         address: node.address ?? "",
         pillars,
       });
+      // lưu pillars theo stationId
       mapPillars[id] = pillars;
     };
 
@@ -202,6 +210,8 @@ const StaffIncidents = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Tải lại danh sách incidents, hiển thị trạng thái loading, thông báo toast khi thành công,
+// và hiện toast lỗi nếu có trừ trường hợp request bị hủy (ERR_CANCELED)
   const handleRefresh = async () => {
     const controller = new AbortController();
     try {
