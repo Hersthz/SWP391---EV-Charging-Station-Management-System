@@ -40,8 +40,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                                         Authentication authentication) throws IOException {
         OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
         String email = oauthUser.getAttribute("email");
-        String name = oauthUser.getAttribute("name");
-        String url = oauthUser.getAttribute("picture");
 
         User user = userService.findByEmail(email);
 

@@ -32,6 +32,9 @@ public class UserAnalyticsServiceImpl implements UserAnalyticsService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final UserRepository userRepository;
 
+    private static final int MONTH_RANGE = 6;
+    private static final int HOURS_IN_DAY = 24;
+
     @Override
     public UserAnalyticsResponse getUserAnalytics(Long userId) {
         User user = userRepository.findById(userId)
@@ -85,7 +88,7 @@ public class UserAnalyticsServiceImpl implements UserAnalyticsService {
                 .percentChangeCost(percentChangeCost)
                 .build();
         //
-        List<UserAnalyticsResponse.MonthlyAnalytics> monthlyAnalytics = IntStream.range(0, 6)
+        List<UserAnalyticsResponse.MonthlyAnalytics> monthlyAnalytics = IntStream.range(0, MONTH_RANGE)
                 .mapToObj(i-> {
                     YearMonth yearMonth = currentMonth.minusMonths(i);
                     return UserAnalyticsResponse.MonthlyAnalytics.builder()
@@ -188,7 +191,7 @@ public class UserAnalyticsServiceImpl implements UserAnalyticsService {
         Map<Integer, List<ChargingSession>> sessionsByHour = groupSessionsByHour(sessions);
 
         // Duyệt qua tất cả 24 giờ để đảm bảo không bỏ trống giờ nào
-        return IntStream.range(0, 24)
+        return IntStream.range(0, HOURS_IN_DAY)
                 .mapToObj(hour -> {
                     List<ChargingSession> hourSessions = sessionsByHour.getOrDefault(hour, List.of());
 

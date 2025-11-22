@@ -345,7 +345,10 @@ public class ReservationServiceImpl implements ReservationService {
         //Gửi 1 notification trước start 5 phút
         reservationRepository.findByStatus("SCHEDULED").stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getNotifiedBeforeStart()))
-                .filter(r -> r.getStartTime().isAfter(now) && r.getStartTime().isBefore(now.plusMinutes(5)))
+                .filter(r -> {
+                    LocalDateTime reminderTime = r.getStartTime().minusMinutes(5);
+                    return !now.isBefore(reminderTime) && now.isBefore(r.getStartTime());
+                })
                 .forEach(r -> {
                     notificationService.createNotification(
                             r.getUser().getId(),
