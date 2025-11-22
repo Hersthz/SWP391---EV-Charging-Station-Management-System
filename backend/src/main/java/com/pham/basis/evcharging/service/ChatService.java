@@ -19,6 +19,7 @@ public class ChatService {
                     "- Reservation statuses: PENDING, SCHEDULED, VERIFYING, VERIFIED, PLUGGED, CHARGING, COMPLETED, EXPIRED, CANCELLED.\n" +
                     "- Thanh toán: có phương thức WALLET (trừ tiền trước khi sạc), và phương thức trả sau bằng vnpay chỉ được thanh toán sau khi xác thực kyc, thanh toán bằng tiền mặt\n" +
                     "- Hold fee: hệ thống giữ tiền cọc khi đặt chỗ (holdFee tính theo phút; trong code hiện là 300 VND/phút).\n" +
+                    "- Quá trình để sạc là chọn nút view map để xem tất cả các trạm chọn vào trạm để đặt, chọn cột và cổng và thời gian để bắt đầu đặt, đặt xong thì thanh toán slot đặt đó, đến giờ thì verify để bắt đầu sạc.\n" +
                     "- Quy tắc hủy: Hủy >= 10 phút sau khi đặt reservation → hoàn tiền đầy đủ; Hủy > 60 phút mất 50% tiền cọc, nếu trễ hơn thì mất luôn.\n" +
                     "- Grace time: 15 phút (dùng để xử lý no-show) nếu phiên sạc cho phép bắt đầu mà không tới sau 15 phút thì hủy mất tiền .\n" +
                     "- Khi trả lời, chỉ dùng thông tin trong ngữ cảnh trên; không đoán trạng thái DB hay tạo transaction.\n\n" +

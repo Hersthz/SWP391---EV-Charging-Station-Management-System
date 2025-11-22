@@ -176,9 +176,6 @@ const ChargingSessionPage = () => {
   );
 
   useEffect(() => {
-    // Chỉ giữ lại IS_CHARGING cho phiên hiện tại
-    const currentSessionId = searchParams.get("sessionId");
-    
     // Bật chế độ bảo vệ ngay khi vào trang
     sessionStorage.setItem("IS_CHARGING", "true");
 
@@ -237,7 +234,7 @@ const ChargingSessionPage = () => {
         return;
       }
       try {
-        // 0) cố gắng HYDRATE từ session_last_{id}
+        // 0) đọc snapshot cũ từ session_last_{id}
         const lastRaw = localStorage.getItem(`session_last_${sessionIdParam}`);
         const lastSnap: SessionSnapshot | null = lastRaw ? JSON.parse(lastRaw) : null;
 
@@ -508,7 +505,6 @@ const ChargingSessionPage = () => {
         );
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionIdParam, reservationIdParam]);
 
   // ====== helpers ======

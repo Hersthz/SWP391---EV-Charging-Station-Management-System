@@ -30,6 +30,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
     private final ChargingSessionRepository sessionRepo;
     private final ChargerPillarRepository pillarRepo;
+    private final ConnectorRepository connectorRepo;
     private final UserRepository userRepo;
     private final ReservationRepository reservationRepo;
     private final VehicleRepository vehicleRepo;
@@ -127,6 +128,16 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         ChargingSession session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found"));
 
+        // nếu đã completed thì trả về thông tin hiện tại, không ném lỗi
+        if ("COMPLETED".equals(session.getStatus())) {
+            return ChargingStopResponse.builder()
+                    .sessionId(session.getId())
+                    .totalAmount(session.getChargedAmount())
+                    .paymentMethod(session.getPaymentMethod())
+                    .requiresPayment(!"WALLET".equals(session.getPaymentMethod()))
+                    .build();
+        }
+        
         if (!"ACTIVE".equals(session.getStatus()))
             throw new IllegalArgumentException("Session is not active");
 
@@ -136,7 +147,11 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
         sessionRepo.save(session);
 
         Reservation reservation = session.getReservation();
-        if (reservation != null) {
+        if (reservation != null && reservation.getConnector() != null) {
+            reservation.getConnector().setStatus("AVAILABLE");
+            connectorRepo.save(reservation.getConnector());
+
+            reservation.setStatus("COMPLETED");
             LocalDateTime now = LocalDateTime.now();
             reservation.setEndTime(now);
 
@@ -248,31 +263,7 @@ public class ChargingSessionServiceImpl implements ChargingSessionService {
 
         //
         LocalDateTime expectedEnd = LocalDateTime.now().plusMinutes(minutesNeeded);
-        LocalDateTime desiredEndWithGrace = expectedEnd.plusMinutes(15);
-        // update if not over reservation time
-        if (!expectedEnd.isAfter(reservation.getEndTime())) {
-            reservation.setEndTime(expectedEnd);
-            reservation.setExpiredAt(desiredEndWithGrace);
-            Reservation saved = reservationRepo.save(reservation);
-            ReservationResponse reservationResponse = ReservationResponse.builder()
-                    .reservationId(saved.getId())
-                    .stationId(saved.getStation().getId())
-                    .stationName(saved.getStation().getName())
-                    .pillarId(saved.getPillar().getId())
-                    .connectorId(saved.getConnector().getId())
-                    .status(saved.getStatus())
-                    .createdAt(saved.getCreatedAt())
-                    .endTime(saved.getEndTime())
-                    .startTime(saved.getStartTime())
-                    .expiredAt(saved.getExpiredAt())
-                    .build();
-            return AdjustTargetSocResponse.builder()
-                    .updated(true)
-                    .reservationResponse(reservationResponse)
-                    .estimatedAmount(estimateAmount)
-                    .message("Updated within current reservation")
-                    .build();
-        }
+        LocalDateTime desiredEndWithGrace = expectedEnd.plusMinutes(10);
 
         // check overlaps
         List<Reservation> overlaps = reservationRepo.findOverlappingReservations(

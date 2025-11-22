@@ -653,10 +653,9 @@ const Profile = () => {
                         id="email"
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={!isEditingProfile}
-                        className={!isEditingProfile ? "bg-slate-50" : ""}
+                        disabled
                         readOnly
+                        className="bg-slate-50 cursor-not-allowed"
                       />
                     </div>
                     <div className="space-y-2">

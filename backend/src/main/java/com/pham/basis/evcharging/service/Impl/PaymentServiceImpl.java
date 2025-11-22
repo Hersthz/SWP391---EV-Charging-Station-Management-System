@@ -86,7 +86,7 @@ public class PaymentServiceImpl implements PaymentService {
             // Generate unique transaction reference
             String txnRef = generateUniqueTxnRef();
 
-            // XỬ LÝ THEO PHƯƠNG THỨC THANH TOÁN
+            //
             if (METHOD_WALLET.equals(req.getMethod())) {
                 return processWalletPayment(req, userId, amountInVND, txnRef);
             } else if (METHOD_VNPAY.equals(req.getMethod())) {
@@ -150,7 +150,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         txRepo.save(tx);
 
-        // Xử lý business logic ngay lập tức
+        //
         handlePaymentSuccess(tx);
         return buildPaymentResponse(tx, null); // Không có URL cho wallet
     }
@@ -161,7 +161,7 @@ public class PaymentServiceImpl implements PaymentService {
         tx.setStatus("PENDING");
         txRepo.save(tx);
 
-        // Gửi thông báo cho nhân viên trạm sạc
+        //
         notificationService.createNotification(
                 userId,
                 "CASH_PAYMENT",

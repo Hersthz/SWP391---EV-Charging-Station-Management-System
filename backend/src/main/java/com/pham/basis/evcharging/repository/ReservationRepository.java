@@ -22,7 +22,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("SELECT r FROM Reservation r WHERE " +
             "r.connector.id = :connectorId AND " +
-            "r.status IN ('PENDING', 'SCHEDULED') AND " +
+            "r.status IN ('PENDING', 'SCHEDULED', 'VERIFYING', 'VERIFIED', 'PLUGGED', 'CHARGING') AND " +
             "(:startTime < r.endTime AND :endTime > r.startTime)")
     List<Reservation> findOverlappingReservations(
             @Param("connectorId") Long connectorId,
