@@ -196,17 +196,7 @@ public class ChargingStationServiceImpl implements ChargingStationService {
     }
 
     //-------------helper-------
-    private void validatePillarRequest(StationRequest.PillarRequest pillarReq) {
-        if (pillarReq.getCode() == null || pillarReq.getCode().trim().isEmpty()) {
-            throw new ValidationException("Pillar code is required");
-        }
-        if (pillarReq.getPower() == null || pillarReq.getPower().doubleValue() <= 0) {
-            throw new ValidationException("Pillar power must be positive");
-        }
-        if (pillarReq.getPricePerKwh() == null || pillarReq.getPricePerKwh().doubleValue() < 0) {
-            throw new ValidationException("Price per kWh cannot be negative");
-        }
-    }
+
 
     private void validateConnectorRequest(StationRequest.ConnectorRequest connReq) {
         if (connReq.getConnectorType() == null || connReq.getConnectorType().trim().isEmpty()) {
@@ -331,6 +321,17 @@ public class ChargingStationServiceImpl implements ChargingStationService {
         List<ChargingStation> pageContent = start <= end ? filtered.subList(start, end) : Collections.emptyList();
 
         return new PageImpl<>(pageContent, pageable, total);
+    }
+    private void validatePillarRequest(StationRequest.PillarRequest pillarReq) {
+        if (pillarReq.getCode() == null || pillarReq.getCode().trim().isEmpty()) {
+            throw new ValidationException("Pillar code is required");
+        }
+        if (pillarReq.getPower() == null || pillarReq.getPower().doubleValue() <= 0) {
+            throw new ValidationException("Pillar power must be positive");
+        }
+        if (pillarReq.getPricePerKwh() == null || pillarReq.getPricePerKwh().doubleValue() < 0) {
+            throw new ValidationException("Price per kWh cannot be negative");
+        }
     }
 }
 
