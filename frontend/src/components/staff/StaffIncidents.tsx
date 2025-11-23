@@ -86,6 +86,7 @@ const StatusBadge = ({ s }: { s?: string }) => {
   return <Badge className={map[x] || "bg-slate-100 text-slate-700 border-slate-200"}>{x || "OPEN"}</Badge>;
 };
 // Trả về component Badge với class tương ứng
+
 // Nếu trạng thái không nằm trong map thì dùng set màu xám (mặc định)
 // Nội dung hiển thị là trạng thái x, nếu x rỗng thì hiển thị "OPEN"
 const fmt = (iso?: string) =>
