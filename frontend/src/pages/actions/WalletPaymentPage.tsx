@@ -698,7 +698,6 @@ export default function WalletPaymentPage() {
                               <CreditCard className="w-8 h-8 text-white" />
                             </div>
                             <h3 className="mt-4 text-lg font-semibold text-slate-900">VNPAY</h3>
-                            <p className="text-sm text-slate-600">Linked to phone ***1234</p>
                           </div>
                           <Button variant="ghost" className="mt-4 text-slate-600 hover:bg-slate-100 hover:text-slate-900">
                             Manage
