@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -65,18 +66,35 @@ public class StationReviewServiceImpl implements StationReviewService {
     }
 
     @Override
+    @Transactional
     public void deleteReview(Long reviewId, Long userId) {
+        var review = stationReviewRepository.findById(reviewId)
+                .orElseThrow(() -> new AppException.NotFoundException("Review not found"));
+        if (!review.getUser().getId().equals(userId)) {
+            throw new AppException.BadRequestException("You are not allowed to delete this review");
+        }
 
+        stationReviewRepository.delete(review);
     }
 
     @Override
     public StationReviewResponse getReview(Long reviewId) {
-        return null;
+        var review = stationReviewRepository.findById(reviewId)
+                .orElseThrow(() -> new AppException.NotFoundException("Review not found"));
+
+        return StationReviewMapper.toResponse(review);
     }
 
     @Override
-    public Page<StationReviewResponse> getReviewsByStation(Long stationId, Pageable pageable) {
-        return null;
+    public List<StationReviewResponse> getReviewsByStation(Long stationId) {
+        var station = chargingStationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException.NotFoundException("Station not found"));
+
+        List<StationReview> reviews = stationReviewRepository.findByChargingStation_Id(stationId);
+
+        return reviews.stream()
+                .map(StationReviewMapper::toResponse)
+                .toList();
     }
 
 

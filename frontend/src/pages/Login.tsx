@@ -496,7 +496,7 @@ const Login = () => {
         </motion.div>
       </div>
 
-      {/* Forgot Password Modal (simple, no external deps) */}
+      {/* Forgot Password Modal */}
       {forgotOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setForgotOpen(false)} />

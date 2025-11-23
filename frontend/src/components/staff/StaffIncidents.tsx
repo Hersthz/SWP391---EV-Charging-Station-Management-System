@@ -86,8 +86,9 @@ const StatusBadge = ({ s }: { s?: string }) => {
   return <Badge className={map[x] || "bg-slate-100 text-slate-700 border-slate-200"}>{x || "OPEN"}</Badge>;
 };
 // Trả về component Badge với class tương ứng
-  // Nếu trạng thái không nằm trong map thì dùng set màu xám (mặc định)
-  // Nội dung hiển thị là trạng thái x, nếu x rỗng thì hiển thị "OPEN"
+
+// Nếu trạng thái không nằm trong map thì dùng set màu xám (mặc định)
+// Nội dung hiển thị là trạng thái x, nếu x rỗng thì hiển thị "OPEN"
 const fmt = (iso?: string) =>
   iso ? new Date(iso).toLocaleString("vi-VN") : "—";
 
@@ -211,7 +212,7 @@ const StaffIncidents = () => {
   }, []);
 
   // Tải lại danh sách incidents, hiển thị trạng thái loading, thông báo toast khi thành công,
-// và hiện toast lỗi nếu có trừ trường hợp request bị hủy (ERR_CANCELED)
+  // và hiện toast lỗi nếu có trừ trường hợp request bị hủy (ERR_CANCELED)
   const handleRefresh = async () => {
     const controller = new AbortController();
     try {

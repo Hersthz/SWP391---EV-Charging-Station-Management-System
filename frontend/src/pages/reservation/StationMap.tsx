@@ -77,12 +77,37 @@ interface Filters {
   page: number;
   size: number;
 }
+
 type Review = {
   id: string;
+  userId: number;
   userName: string;
   rating: number;
   comment: string;
   createdAt: string;
+};
+
+interface StationReviewDto {
+  id: number;
+  stationId: number;
+  userId: number;
+  userName: string;     
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+interface ApiResponse<T> {
+  code: string;
+  message: string;
+  data: T;
+}
+
+
+type StationReviewApiResponse = {
+  code: string;
+  message: string;
+  data: StationReviewDto[];
 };
 
 /* ===== Backend response types ===== */
@@ -570,8 +595,10 @@ const StationMap = () => {
     setSelectedStation(station);
     setDetailOpen(true);
     setReviewsLoading(true);
+
     try {
-      const { data } = await api.get<ChargingStationDetailResponse>(
+      // detail trạm 
+      const detailRes = await api.get<ChargingStationDetailResponse>(
         `/charging-stations/${station.id}`,
         {
           params: {
@@ -580,34 +607,27 @@ const StationMap = () => {
           },
         }
       );
-      const mapped = mapDetailToStation(data);
+      const mapped = mapDetailToStation(detailRes.data);
       setSelectedStation(mapped);
-      const revs = (data.reviews ?? []).map((r) => ({
-        id: r.id,
-        userName: r.userName,
+
+      // lấy review theo stationId
+      const reviewsRes = await api.get<ApiResponse<StationReviewDto[]>>(
+        `/reviews/station/${station.id}`
+      );
+
+      const list = (reviewsRes.data.data ?? []).map((r) => ({
+        id: String(r.id),
+        userId: r.userId,
+        userName: r.userName ?? `User #${r.userId}`,
         rating: r.rating,
         comment: r.comment,
         createdAt: r.createdAt,
       }));
-      setReviews(revs);
+
+      setReviews(list);
     } catch (e) {
-      console.error("Fetch reviews/detail error:", e);
-      const mockDetail = MOCK_STATIONS.find((m) => m.id === station.id);
-      if (mockDetail) {
-        setSelectedStation(mockDetail);
-        setReviews([
-          {
-            id: "r1",
-            userName: "Minh Tran",
-            rating: 5,
-            comment: "Sạc nhanh, chỗ đậu dễ!",
-            createdAt: "2025-09-21T10:45:00Z",
-          },
-        ]);
-      } else {
-        setSelectedStation(station);
-        setReviews([]);
-      }
+      console.error("Fetch detail/reviews error:", e);
+      setReviews([]);
     } finally {
       setReviewsLoading(false);
     }
