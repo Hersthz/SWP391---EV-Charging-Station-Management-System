@@ -116,7 +116,7 @@ const DashboardHeader = () => {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout", {}, { _skipAuthRefresh: true });
+      await api.post("/auth/logout", {}, { _skipAuthRefresh: true } as any);
       localStorage.clear();
       toast.success("Signed out successfully!");
       navigate("/");

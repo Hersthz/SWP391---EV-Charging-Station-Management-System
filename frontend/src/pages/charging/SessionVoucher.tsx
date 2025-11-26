@@ -60,16 +60,18 @@ export default function SessionVoucher() {
           Array.isArray(data?.content) ? data.content :
           Array.isArray(data) ? data : [];
 
-        const mapped: UserVoucher[] = arr.map((x: any, idx: number) => {
+        const mapped: UserVoucher[] = arr
+          .filter((x: any) => !x?.used) // Chỉ lấy voucher chưa dùng
+          .map((x: any, idx: number) => {
           // cố gắng tìm id từ các khả năng khác nhau
           const rawId =
-            x?.userVoucherId ?? x?.id ?? x?.user_voucher_id ?? x?.userVoucherID ?? null;
+            x?.id ?? x?.userVoucherId ?? x?.user_voucher_id ?? x?.userVoucherID ?? null;
           const safeId = Number.isFinite(Number(rawId)) ? Number(rawId) : idx + 1;
 
           return {
             userVoucherId: safeId,
             code: String(x?.code ?? x?.voucher?.code ?? x?.voucherCode ?? "").toUpperCase(),
-            name: String(x?.name ?? x?.voucher?.name ?? "Voucher"),
+            name: String(x?.description ?? x?.voucher?.description ?? x?.name ?? "Voucher"),
             discountType: String(x?.discountType ?? x?.type ?? "AMOUNT").toUpperCase() as any,
             // backend của bạn đang dùng discountAmount
             discountValue: Number(x?.discountAmount ?? x?.voucher?.discountAmount ?? x?.value ?? x?.amount ?? 0),
