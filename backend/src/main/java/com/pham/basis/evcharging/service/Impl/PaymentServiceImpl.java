@@ -9,9 +9,12 @@ import com.pham.basis.evcharging.exception.AppException;
 import com.pham.basis.evcharging.mapper.PaymentTransactionMapper;
 import com.pham.basis.evcharging.model.*;
 import com.pham.basis.evcharging.repository.*;
+import com.pham.basis.evcharging.dto.request.VoucherApplyRequest;
+import com.pham.basis.evcharging.dto.response.VoucherApplyResponse;
 import com.pham.basis.evcharging.service.LoyaltyPointService;
 import com.pham.basis.evcharging.service.NotificationService;
 import com.pham.basis.evcharging.service.PaymentService;
+import com.pham.basis.evcharging.service.VoucherService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -46,6 +49,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final ChargingStationRepository  chargingStationRepo;
     private final NotificationService notificationService;
     private final LoyaltyPointService loyaltyPointService;
+    private final VoucherService voucherService;
     private final PaymentTransactionMapper mapper;
 
     private static final int MAX_TXN_REF_GENERATION_ATTEMPTS = 10;
@@ -73,7 +77,36 @@ public class PaymentServiceImpl implements PaymentService {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId);
             }
 
-            BigDecimal amountInVND = req.getAmount().setScale(0, RoundingMode.HALF_UP);
+            BigDecimal originalAmount = req.getAmount().setScale(0, RoundingMode.HALF_UP);
+            BigDecimal amountInVND = originalAmount;
+            BigDecimal discountAmount = BigDecimal.ZERO;
+            
+            // Áp dụng voucher nếu có
+            if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
+                try {
+                    VoucherApplyRequest voucherReq = VoucherApplyRequest.builder()
+                            .userId(userId)
+                            .code(req.getVoucherCode())
+                            .totalAmount(originalAmount.doubleValue())
+                            .build();
+                    
+                    VoucherApplyResponse voucherRes = voucherService.applyVoucher(voucherReq);
+                    
+                    // Kiểm tra voucher có áp dụng thành công không
+                    if (voucherRes.getMessage().contains("successfully")) {
+                        amountInVND = BigDecimal.valueOf(voucherRes.getFinalPrice()).setScale(0, RoundingMode.HALF_UP);
+                        discountAmount = originalAmount.subtract(amountInVND);
+                        log.info("Voucher applied - Original: {}, Discount: {}, Final: {}", 
+                                originalAmount, discountAmount, amountInVND);
+                    } else {
+                        log.warn("Voucher application failed: {}", voucherRes.getMessage());
+                        // Tiếp tục với amount gốc nếu voucher không hợp lệ
+                    }
+                } catch (Exception e) {
+                    log.warn("Error applying voucher: {}", e.getMessage());
+                    // Tiếp tục với amount gốc nếu có lỗi
+                }
+            }
 
             // Idempotence check
             Optional<PaymentTransaction> existing = txRepo.findPendingByTypeAndReference(
@@ -83,14 +116,23 @@ public class PaymentServiceImpl implements PaymentService {
                 return mapToResponse(existing.get());
             }
 
+            // Nếu amount sau khi áp voucher <= 0, tự động hoàn thành
             if (amountInVND.compareTo(BigDecimal.ZERO) <= 0) {
-                log.info("Zero-amount payment detected → auto success. User: {}", userId);
+                log.info("Zero-amount payment detected after voucher → auto success. User: {}", userId);
 
                 String txnRef = generateUniqueTxnRef();
 
                 PaymentTransaction tx = createPaymentTransaction(req, userId, BigDecimal.ZERO, txnRef);
                 tx.setStatus("SUCCESS");
                 txRepo.save(tx);
+
+                // Lưu discount amount vào transaction để xử lý sau
+                // (Với WALLET sẽ cộng vào ví, với VNPAY đã trừ rồi nên không cần làm gì)
+                if (METHOD_WALLET.equals(req.getMethod()) && discountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    // Cộng discount vào ví
+                    walletRepo.addBalance(userId, discountAmount);
+                    log.info("Added voucher discount {} to wallet for user {}", discountAmount, userId);
+                }
 
                 // Gọi flow xử lý khi thanh toán thành công
                 handlePaymentSuccess(tx);
@@ -165,6 +207,27 @@ public class PaymentServiceImpl implements PaymentService {
         tx.setStatus("SUCCESS");
 
         txRepo.save(tx);
+
+        // Nếu có voucher, cộng discount vào ví
+        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
+            try {
+                BigDecimal originalAmount = req.getAmount();
+                BigDecimal discountAmount = originalAmount.subtract(amountInVND);
+                
+                if (discountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    walletRepo.addBalance(userId, discountAmount);
+                    log.info("Added voucher discount {} to wallet for user {}", discountAmount, userId);
+                    
+                    notificationService.createNotification(
+                            userId,
+                            "VOUCHER_APPLIED",
+                            "Voucher discount " + discountAmount.toPlainString() + " VND has been added to your wallet"
+                    );
+                }
+            } catch (Exception e) {
+                log.warn("Error adding voucher discount to wallet: {}", e.getMessage());
+            }
+        }
 
         //
         handlePaymentSuccess(tx);
