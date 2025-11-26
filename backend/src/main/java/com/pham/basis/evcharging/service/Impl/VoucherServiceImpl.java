@@ -172,10 +172,15 @@ public class VoucherServiceImpl implements VoucherService {
                 .voucherId(voucher.getId())
                 .code(voucher.getCode())
                 .discountAmount(voucher.getDiscountAmount())
-                .description(voucher.getDescription())
                 .discountType(voucher.getDiscountType())
+                .description(voucher.getDescription())
                 .requiredPoints(voucher.getRequiredPoints())
+                .startDate(voucher.getStartDate())
+                .endDate(voucher.getEndDate())
+                .quantity(voucher.getQuantity())
+                .status(voucher.getStatus())
                 .build();
     }
+
 
 }
