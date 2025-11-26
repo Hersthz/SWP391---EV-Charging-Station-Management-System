@@ -26,5 +26,7 @@ public class PaymentCreateRequest {
     private Long referenceId;
     @NotBlank(message = "method không được để trống")
     private String method;
+    
+    private String voucherCode; // Mã voucher để áp dụng
 
 }

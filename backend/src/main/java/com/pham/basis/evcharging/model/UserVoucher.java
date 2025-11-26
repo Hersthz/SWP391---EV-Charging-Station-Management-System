@@ -23,6 +23,7 @@ public class UserVoucher {
 
     private boolean used = false;
     private LocalDateTime usedAt;
+    private LocalDateTime redeemedAt; // Thời điểm user redeem voucher
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "voucher_id")
