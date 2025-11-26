@@ -68,19 +68,7 @@ public class LoyaltyPointServiceImpl implements LoyaltyPointService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<VoucherResponse> getAvailableVouchers() {
-        return voucherRepository.findAll()
-                .stream()
-                .filter(v -> "ACTIVE".equalsIgnoreCase(v.getStatus()))
-                .map(v -> new VoucherResponse(
-                        v.getId(),
-                        v.getCode(),
-                        v.getDescription(),
-                        v.getDiscountAmount(),
-                        v.getRequiredPoints()))
-                .collect(Collectors.toList());
-    }
+
 
     @Override
     public void redeemVoucher(RedeemVoucherRequest request) {

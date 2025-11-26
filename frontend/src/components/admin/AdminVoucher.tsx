@@ -47,29 +47,38 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 // Chuẩn hoá mọi khả năng key trả về từ BE → về shape Voucher chuẩn (đặc biệt là id)
 const mapVoucher = (x: any): Voucher => ({
-  id: x?.id ?? x?.voucher_id ?? 0,
+  id: x?.voucher_id ?? x?.voucherId ?? x?.id ?? 0,
   code: x?.code ?? "",
   description: x?.description ?? null,
-  discountAmount: x?.discount_amount ?? 0,
-  discountType: x?.discount_type ?? "AMOUNT",
+
+  discountAmount: x?.discountAmount ?? x?.discount_amount ?? 0,
+  discountType: x?.discountType ?? x?.discount_type ?? "AMOUNT",
+  requiredPoints: x?.requiredPoints ?? x?.required_points ?? 0,
   quantity: x?.quantity ?? 0,
-  requiredPoints: x?.required_points ?? 0,
-  startDate: x?.start_date ?? null,
-  endDate: x?.end_date ?? null,
+
+  startDate: x?.startDate ?? x?.start_date ?? null,
+  endDate: x?.endDate ?? x?.end_date ?? null,
+
   status: x?.status ?? "ACTIVE",
 });
 
 const sanitizeForSave = (v: Partial<Voucher>) => ({
   code: (v.code ?? "").trim(),
   description: v.description ?? "",
-  discount_amount: Number(v.discountAmount ?? 0),
-  discount_type: v.discountType ?? "AMOUNT",
+  
+  discountAmount: Number(v.discountAmount ?? 0),
+  discountType: v.discountType ?? "AMOUNT",
+
   quantity: Number(v.quantity ?? 0),
-  required_points: Number(v.requiredPoints ?? 0),
-  start_date: v.startDate || null,
-  end_date: v.endDate || null,
+
+  requiredPoints: Number(v.requiredPoints ?? 0),
+
+  startDate: v.startDate || null,
+  endDate: v.endDate || null,
+
   status: v.status ?? "ACTIVE",
 });
+
 
 /** =============== Component =============== */
 const AdminVoucher = () => {
@@ -335,7 +344,7 @@ const AdminVoucher = () => {
                   </TableRow>
                 )}
 
-                {!loading && filtered.map((v) => {
+                {!loading && filtered.map((v, idx) => {
                   const now = todayISO();
                   const isExpired = String(v.status).toUpperCase() === "EXPIRED" || (!!v.endDate && v.endDate < now);
                   const statusColor =
@@ -346,29 +355,29 @@ const AdminVoucher = () => {
                   const mapped = mapVoucher(v); // đảm bảo chắc chắn có id khi mở Edit
 
                   return (
-                    <TableRow key={v.id} className="border-border/50 hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-semibold">{v.code}</TableCell>
+                    <TableRow key={mapped.id || `voucher-${idx}`} className="border-border/50 hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-semibold">{mapped.code}</TableCell>
 
-                      <TableCell>{v.discountAmount}đ</TableCell>
+                      <TableCell>{mapped.discountAmount}</TableCell>
 
-                      <TableCell>{v.requiredPoints}</TableCell>
+                      <TableCell>{mapped.requiredPoints}</TableCell>
 
                       <TableCell>
-                        <Badge className={`${statusColor} border`}>{String(v.status).toUpperCase()}</Badge>
+                        <Badge className={`${statusColor} border`}>{String(mapped.status).toUpperCase()}</Badge>
                       </TableCell>
 
                       <TableCell className="max-w-[280px]">
-                        <div className="truncate text-sm">{v.description ?? "—"}</div>
+                        <div className="truncate text-sm">{mapped.description ?? "—"}</div>
                       </TableCell>
 
                       {/*Type*/}
                       <TableCell className="font-semibold">
-                        {v.discountType === "PERCENT" ? "Percent (%)" : "Amount (đ)"}
+                        {mapped.discountType === "PERCENT" ? "Percent (%)" : "Amount (đ)"}
                       </TableCell>
 
                       {/*Quantity*/}
                       <TableCell className="font-semibold">
-                        {v.quantity ?? 0}
+                        {mapped.quantity ?? 0}
                       </TableCell>
 
                       <TableCell>
@@ -381,7 +390,7 @@ const AdminVoucher = () => {
                             variant="outline"
                             size="sm"
                             className="text-destructive border-destructive/20 hover:bg-destructive/10"
-                            onClick={() => onDelete(v)}
+                            onClick={() => onDelete(mapped)}
                           >
                             <Trash2 className="w-3 h-3 mr-1" />
                             Delete
