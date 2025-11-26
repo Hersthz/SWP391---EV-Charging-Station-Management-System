@@ -83,6 +83,22 @@ public class PaymentServiceImpl implements PaymentService {
                 return mapToResponse(existing.get());
             }
 
+            if (amountInVND.compareTo(BigDecimal.ZERO) <= 0) {
+                log.info("Zero-amount payment detected → auto success. User: {}", userId);
+
+                String txnRef = generateUniqueTxnRef();
+
+                PaymentTransaction tx = createPaymentTransaction(req, userId, BigDecimal.ZERO, txnRef);
+                tx.setStatus("SUCCESS");
+                txRepo.save(tx);
+
+                // Gọi flow xử lý khi thanh toán thành công
+                handlePaymentSuccess(tx);
+
+                // Trả về không có URL redirect
+                return buildPaymentResponse(tx, null);
+            }
+
             // Generate unique transaction reference
             String txnRef = generateUniqueTxnRef();
 
@@ -638,4 +654,5 @@ public class PaymentServiceImpl implements PaymentService {
 
         handlePaymentSuccess(payment);
     }
+
 }

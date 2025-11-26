@@ -29,7 +29,6 @@ public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepository voucherRepository;
     private final UserVoucherRepository userVoucherRepository;
-    private final UserRepository userRepository;
     // CRUD cho Voucher
 
 
@@ -60,10 +59,12 @@ public class VoucherServiceImpl implements VoucherService {
         Voucher voucher = new Voucher(
                 req.getCode(),
                 req.getDiscountAmount(),
+                req.getDiscountType(),
                 req.getRequiredPoints(),
                 req.getDescription(),
                 req.getStartDate(),
                 req.getEndDate(),
+                req.getQuantity(),
                 req.getStatus()
         );
         return mapToResponse(voucherRepository.save(voucher));
@@ -76,10 +77,12 @@ public class VoucherServiceImpl implements VoucherService {
 
         voucher.setCode(req.getCode());
         voucher.setDiscountAmount(req.getDiscountAmount());
+        voucher.setDiscountType(req.getDiscountType());
         voucher.setRequiredPoints(req.getRequiredPoints());
         voucher.setDescription(req.getDescription());
         voucher.setStartDate(req.getStartDate());
         voucher.setEndDate(req.getEndDate());
+        voucher.setQuantity(req.getQuantity());
         voucher.setStatus(req.getStatus());
 
         return mapToResponse(voucherRepository.save(voucher));
@@ -125,11 +128,16 @@ public class VoucherServiceImpl implements VoucherService {
         // Tính giảm giá
         double discount = 0;
         if (voucher.getDiscountAmount() != null) {
-            discount = voucher.getDiscountAmount();
+            if ("AMOUNT".equalsIgnoreCase(voucher.getDiscountType())) {
+                discount =  voucher.getDiscountAmount();
+            }else if("PERCENT".equalsIgnoreCase(voucher.getDiscountType())) {
+                discount = req.getTotalAmount() * voucher.getDiscountAmount() / 100;
+            }
         }
-
         double finalPrice = Math.max(req.getTotalAmount() - discount, 0);
-
+        if(finalPrice<0) {
+            finalPrice = 0;
+        }
         // Đánh dấu voucher là đã sử dụng
         UserVoucher userVoucher = userVoucherOpt.orElseGet(UserVoucher::new);
         User user = new User();
@@ -165,6 +173,7 @@ public class VoucherServiceImpl implements VoucherService {
                 .code(voucher.getCode())
                 .discountAmount(voucher.getDiscountAmount())
                 .description(voucher.getDescription())
+                .discountType(voucher.getDiscountType())
                 .requiredPoints(voucher.getRequiredPoints())
                 .build();
     }

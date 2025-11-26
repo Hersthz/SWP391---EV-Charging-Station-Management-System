@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/charging-stations/addStation").permitAll()
                         .requestMatchers("/analytics/**").permitAll()
                         .requestMatchers("/user/**").permitAll()
+                        .requestMatchers("/api/vouchers/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

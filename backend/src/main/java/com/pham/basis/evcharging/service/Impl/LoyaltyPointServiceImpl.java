@@ -88,16 +88,22 @@ public class LoyaltyPointServiceImpl implements LoyaltyPointService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Voucher voucher = voucherRepository.findById(request.getVoucherId())
                 .orElseThrow(() -> new RuntimeException("Voucher not found"));
-
+        if(voucher.getQuantity()==0){
+            throw new RuntimeException("Not enough voucher quantity");
+        }
         if (user.getTotalPoints() < voucher.getRequiredPoints())
             throw new RuntimeException("Not enough points to redeem");
 
         user.setTotalPoints(user.getTotalPoints() - voucher.getRequiredPoints());
         userRepository.save(user);
 
+        voucher.setQuantity(voucher.getQuantity() - 1);
+        voucherRepository.save(voucher);
+        
         UserVoucher userVoucher = new UserVoucher();
         userVoucher.setUser(user);
         userVoucher.setVoucher(voucher);
+
         userVoucherRepository.save(userVoucher);
     }
 

@@ -9,4 +9,5 @@ public class VoucherApplyRequest {
     private Long userId;
     private String code;
     private Double totalAmount;
+
 }

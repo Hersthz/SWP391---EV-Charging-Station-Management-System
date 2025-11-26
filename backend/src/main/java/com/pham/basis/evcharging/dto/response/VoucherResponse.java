@@ -8,5 +8,6 @@ public class VoucherResponse {
     private String code;
     private String description;
     private double discountAmount;
+    private String discountType;
     private int requiredPoints;
 }
