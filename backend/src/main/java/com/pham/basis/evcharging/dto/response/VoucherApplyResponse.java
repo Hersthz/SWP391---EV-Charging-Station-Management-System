@@ -8,5 +8,6 @@ import lombok.Data;
 public class VoucherApplyResponse {
     private String message;
     private double discountValue;
+
     private double finalPrice;
 }
