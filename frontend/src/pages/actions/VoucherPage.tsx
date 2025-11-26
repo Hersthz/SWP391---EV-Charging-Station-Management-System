@@ -43,16 +43,20 @@ type Voucher = {
   code: string;
   description?: string;
   discountAmount: number;
+  discountType: "AMOUNT" | "PERCENT";
   requiredPoints: number;
 };
+
 
 type UserVoucher = {
   code: string;
   description?: string;
   discountAmount: number;
+  discountType: "AMOUNT" | "PERCENT";
   redeemedAt?: string | null;
   used: boolean;
 };
+
 
 type PointRow = {
   pointsEarned: number;
@@ -61,8 +65,12 @@ type PointRow = {
 };
 
 /* ============== Helpers ============== */
-const fmtMoneyVND = (n: number) =>
-  n.toLocaleString("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+const fmtMoneyVND = (n: number | null | undefined) =>
+  Number(n || 0).toLocaleString("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  });
 
 const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 
@@ -121,10 +129,10 @@ const VoucherPage = () => {
         const p =
           Number(
             me?.data?.total_points ??
-              me?.data?.totalPoints ??
-              (me as any)?.data?.data?.total_points ??
-              (me as any)?.data?.data?.totalPoints ??
-              0
+            me?.data?.totalPoints ??
+            (me as any)?.data?.data?.total_points ??
+            (me as any)?.data?.data?.totalPoints ??
+            0
           ) || 0;
 
         setPoints(p);
@@ -134,13 +142,31 @@ const VoucherPage = () => {
     })();
   }, []);
 
-  // ====== Load All Vouchers ======
+  // ====== Load All Vouchers (Voucher Center) ======
   useEffect(() => {
     (async () => {
       try {
         setLoadingAll(true);
-        const { data } = await api.get<ApiResp<Voucher[]>>("/api/vouchers", { withCredentials: true });
-        setAllVouchers(data?.data ?? (Array.isArray(data) ? (data as any) : []));
+        // Load tất cả voucher chung từ admin (voucher center)
+        const { data } = await api.get<ApiResp<Voucher[]>>(
+          `/api/vouchers`,
+          { withCredentials: true }
+        );
+        const list = Array.isArray(data?.data) ? data.data
+          : Array.isArray(data) ? data
+            : [];
+
+        // Map từ VoucherResponse sang Voucher type
+        const mapped: Voucher[] = list.map((v: any) => ({
+          voucherId: v?.voucherId ?? v?.voucher_id ?? v?.id ?? 0,
+          code: v?.code ?? "",
+          description: v?.description ?? "",
+          discountAmount: v?.discountAmount ?? v?.discount_amount ?? 0,
+          discountType: v?.discountType ?? v?.discount_type ?? "AMOUNT",
+          requiredPoints: v?.requiredPoints ?? v?.required_points ?? 0,
+        }));
+
+        setAllVouchers(mapped);
       } catch (e: any) {
         toast({
           title: "Không tải được danh sách voucher",
@@ -231,10 +257,30 @@ const VoucherPage = () => {
       // refresh my vouchers
       try {
         const { data } = await api.get<ApiResp<UserVoucher[]>>(
-          `/loyalty-point/my-vouchers/${uid}`,
+          `/api/vouchers/user/${uid}`,
           { withCredentials: true }
         );
         setMyVouchers(data?.data ?? (Array.isArray(data) ? (data as any) : []));
+      } catch { /* ignore */ }
+
+      // refresh all vouchers (voucher center) để cập nhật quantity
+      try {
+        const { data } = await api.get<ApiResp<Voucher[]>>(
+          `/api/vouchers`,
+          { withCredentials: true }
+        );
+        const list = Array.isArray(data?.data) ? data.data
+          : Array.isArray(data) ? data
+            : [];
+        const mapped: Voucher[] = list.map((v: any) => ({
+          voucherId: v?.voucherId ?? v?.voucher_id ?? v?.id ?? 0,
+          code: v?.code ?? "",
+          description: v?.description ?? "",
+          discountAmount: v?.discountAmount ?? v?.discount_amount ?? 0,
+          discountType: v?.discountType ?? v?.discount_type ?? "AMOUNT",
+          requiredPoints: v?.requiredPoints ?? v?.required_points ?? 0,
+        }));
+        setAllVouchers(mapped);
       } catch { /* ignore */ }
 
       // ★ refresh points: ưu tiên đọc lại /auth/me; nếu vẫn không có, sẽ fallback bằng history đã cập nhật
@@ -243,10 +289,10 @@ const VoucherPage = () => {
         const p =
           Number(
             me?.data?.total_points ??
-              me?.data?.totalPoints ??
-              (me as any)?.data?.data?.total_points ??
-              (me as any)?.data?.data?.totalPoints ??
-              0
+            me?.data?.totalPoints ??
+            (me as any)?.data?.data?.total_points ??
+            (me as any)?.data?.data?.totalPoints ??
+            0
           ) || 0;
         setPoints(p);
       } catch { /* ignore */ }
@@ -366,7 +412,11 @@ const VoucherPage = () => {
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-bold">{v.code}</CardTitle>
                             <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20">
-                              -{fmtMoneyVND(Math.max(0, v.discountAmount || 0))}
+                              {v.discountType === "PERCENT"
+                                ? `-${v.discountAmount ?? 0}%`
+                                : `-${fmtMoneyVND(v.discountAmount)}`
+                              }
+
                             </Badge>
                           </div>
                           <p className="text-sm text-slate-600 line-clamp-2">{v.description || "—"}</p>
@@ -399,6 +449,7 @@ const VoucherPage = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-xl font-bold">My Voucher</CardTitle>
               </CardHeader>
+
               <CardContent>
                 {loadingMine ? (
                   <div className="p-4 text-sm text-slate-500 flex items-center">
@@ -409,39 +460,59 @@ const VoucherPage = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {myVouchers.map((uv, idx) => (
-                      <div
+                      <motion.div
                         key={`${uv.code}-${idx}`}
-                        className="rounded-xl border p-4 bg-white/70 flex flex-col gap-3"
+                        variants={cardVariants}
+                        className="rounded-2xl border bg-white/80 backdrop-blur-xl shadow-xl shadow-slate-900/10 p-5 flex flex-col gap-4 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300"
                       >
+                        {/* Header */}
                         <div className="flex items-center justify-between">
-                          <div className="text-lg font-semibold">{uv.code}</div>
+                          <div className="text-xl font-bold text-slate-900 tracking-tight">
+                            {uv.code}
+                          </div>
+
                           {uv.used ? (
-                            <Badge variant="secondary" className="rounded-full flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Used
+                            <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 rounded-full flex items-center gap-1 px-3 py-1">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Used
                             </Badge>
                           ) : (
-                            <Badge className="rounded-full flex items-center gap-1 bg-amber-500/10 text-amber-700 border-amber-200">
-                              <XCircle className="w-4 h-4" /> Not used
+                            <Badge className="bg-amber-500/15 text-amber-700 border-amber-300 rounded-full flex items-center gap-1 px-3 py-1">
+                              <XCircle className="w-4 h-4" />
+                              Not used
                             </Badge>
                           )}
                         </div>
-                        <div className="text-sm text-slate-600">{uv.description || "—"}</div>
-                        <div className="text-sm">
-                          <span className="text-slate-500 mr-1">Discount:</span>
-                          <span className="font-semibold">
-                            {fmtMoneyVND(Math.max(0, uv.discountAmount || 0))}
+
+                        {/* Description */}
+                        <p className="text-sm text-slate-600 min-h-[28px]">
+                          {uv.description || "—"}
+                        </p>
+
+                        {/* Discount block */}
+                        <div className="bg-gradient-to-r from-sky-100 to-emerald-100 p-4 rounded-xl flex items-center justify-between border border-slate-200">
+                          <span className="text-slate-600 text-sm font-medium">Discount</span>
+
+                          <span className="text-xl font-extrabold text-slate-900">
+                            {uv.discountType === "PERCENT"
+                              ? `-${uv.discountAmount}%`
+                              : `-${fmtMoneyVND(uv.discountAmount)}`}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-500">
-                          Redeem at: {fmtDateTime(uv.redeemedAt)}
+
+                        {/* Redeem time */}
+                        <div className="text-xs text-slate-500 flex flex-col gap-1">
+                          <span className="font-medium">Redeemed at:</span>
+                          <span className="text-slate-700">{fmtDateTime(uv.redeemedAt)}</span>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
+
 
           {/* ============ Lịch sử điểm ============ */}
           <TabsContent value="point-history" className="mt-6">
@@ -509,7 +580,11 @@ const VoucherPage = () => {
               {targetVoucher ? (
                 <>
                   You will use <b>{targetVoucher.requiredPoints.toLocaleString("vi-VN")}</b> point to redeem voucher{" "}
-                  <b>{targetVoucher.code}</b> (giảm {fmtMoneyVND(Math.max(0, targetVoucher.discountAmount || 0))}).
+                  <b>{targetVoucher.code}</b> (giảm {targetVoucher.discountType === "PERCENT"
+                    ? `${targetVoucher.discountAmount}%`
+                    : fmtMoneyVND(targetVoucher.discountAmount)
+                  })
+
                 </>
               ) : (
                 "—"

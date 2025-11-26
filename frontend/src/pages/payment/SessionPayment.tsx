@@ -26,7 +26,7 @@ import {
   CardDescription,
 } from "../../components/ui/card";
 
-type Method = "VNPAY";
+type Method = "VNPAY" | "WALLET";
 
 type InitParams = {
   sessionId: number;
@@ -118,6 +118,7 @@ export default function SessionPayment() {
   // ===== UI state =====
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<Method>("VNPAY");
 
   useEffect(() => {
     // persist init
@@ -208,33 +209,57 @@ export default function SessionPayment() {
       // <<< voucher: pay final amount (VND)
       const amountVnd = Math.max(0, Math.round(finalVnd));
       const body: any = {
-        amount: amountVnd,
+        amount: Math.round(init.amount || 0), // Gửi amount gốc, backend sẽ áp voucher
         returnUrl,
         locale: "en",
         description: voucher ? `${init.description} [voucher:${voucher.code}]` : init.description,
         type: "CHARGING-SESSION",
         referenceId: init.sessionId,
-        method: "VNPAY" as Method,
+        method: paymentMethod,
       };
       if (voucher?.code) body.voucherCode = voucher.code;
-      if (voucher?.userVoucherId) body.userVoucherId = voucher.userVoucherId;
 
       const { data } = await api.post("/api/payment/create", body, { withCredentials: true });
       const res: { code?: string; message?: string; data?: PaymentResponse } = data;
 
-      if (res?.code && res.code !== "00") {
+      if (res?.code && res.code !== "00" && res.code !== "200") {
         setErr(res.message || "Cannot create payment for this session.");
         setSubmitting(false);
         return;
       }
 
-      if (res?.data && res.data.paymentUrl) {
-        // Redirect to VNPay gateway
+      // Nếu amount = 0 sau khi áp voucher, hoàn thành luôn
+      if (amountVnd === 0) {
+        // Redirect to success page
+        nav("/session-payment-result", {
+          state: {
+            success: true,
+            txnRef: res?.data?.txnRef || "",
+            amount: 0,
+          },
+        });
+        return;
+      }
+
+      // Với VNPay: redirect to gateway
+      if (paymentMethod === "VNPAY" && res?.data && res.data.paymentUrl) {
         window.location.href = res.data.paymentUrl!;
         return;
       }
 
-      setErr(res?.message || "No VNPay payment URL received.");
+      // Với WALLET: thanh toán thành công ngay
+      if (paymentMethod === "WALLET") {
+        nav("/session-payment-result", {
+          state: {
+            success: true,
+            txnRef: res?.data?.txnRef || "",
+            amount: amountVnd,
+          },
+        });
+        return;
+      }
+
+      setErr(res?.message || "Payment creation failed.");
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || "Failed to create payment.";
       setErr(msg);
@@ -395,22 +420,54 @@ export default function SessionPayment() {
         )}
         {/* >>> voucher */}
 
-        {/* Method: VNPay only */}
+        {/* Method: VNPay or Wallet */}
         <Card className="border-sky-100 shadow-card bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Payment method</CardTitle>
-            <CardDescription>VNPay gateway (redirect)</CardDescription>
+            <CardDescription>Choose your preferred payment method</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl border bg-white/70 p-3">
+            {/* VNPay option */}
+            <div 
+              className={`flex items-center justify-between rounded-xl border p-3 cursor-pointer transition-all ${
+                paymentMethod === "VNPAY" 
+                  ? "bg-sky-50 border-sky-300" 
+                  : "bg-white/70 hover:bg-slate-50"
+              }`}
+              onClick={() => setPaymentMethod("VNPAY")}
+            >
               <div className="inline-flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-primary" />
                 <span className="font-medium">VNPay</span>
+                <span className="text-xs text-slate-500">(Redirect to gateway)</span>
               </div>
-              <Badge variant="outline" className="rounded-full text-xs">
-                selected
-              </Badge>
+              {paymentMethod === "VNPAY" && (
+                <Badge variant="outline" className="rounded-full text-xs bg-sky-100">
+                  selected
+                </Badge>
+              )}
+            </div>
+
+            {/* Wallet option */}
+            <div 
+              className={`flex items-center justify-between rounded-xl border p-3 cursor-pointer transition-all ${
+                paymentMethod === "WALLET" 
+                  ? "bg-emerald-50 border-emerald-300" 
+                  : "bg-white/70 hover:bg-slate-50"
+              }`}
+              onClick={() => setPaymentMethod("WALLET")}
+            >
+              <div className="inline-flex items-center gap-2">
+                <Shield className="w-4 h-4 text-emerald-600" />
+                <span className="font-medium">Wallet</span>
+                <span className="text-xs text-slate-500">(Pay from your balance)</span>
+              </div>
+              {paymentMethod === "WALLET" && (
+                <Badge variant="outline" className="rounded-full text-xs bg-emerald-100">
+                  selected
+                </Badge>
+              )}
             </div>
 
             {err && (
@@ -428,8 +485,12 @@ export default function SessionPayment() {
               {submitting ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Creating payment…
+                  Processing…
                 </span>
+              ) : finalVnd === 0 ? (
+                "Complete Payment (Free)"
+              ) : paymentMethod === "WALLET" ? (
+                "Pay with Wallet"
               ) : (
                 "Pay with VNPay"
               )}
