@@ -27,15 +27,18 @@ import {
 
 /** ================= Types ================= */
 type Voucher = {
-  id: number;
+  id: number;                     // map từ voucher_id
   code: string;
-  discountAmount: number;   
-  requiredPoints: number;
   description?: string | null;
-  startDate?: string | null; // "yyyy-MM-dd"
-  endDate?: string | null;   // "yyyy-MM-dd"
+  discountAmount: number;         // map discount_amount
+  discountType: "AMOUNT" | "PERCENT";  // map discount_type
+  quantity: number;
+  requiredPoints: number;         // map required_points
+  startDate: string | null;       // yyyy-MM-dd
+  endDate: string | null;         // yyyy-MM-dd
   status: "ACTIVE" | "INACTIVE" | "EXPIRED" | string;
 };
+
 type ApiResp<T> = { code: string; message: string; data: T };
 
 /** =============== Helpers =============== */
@@ -44,24 +47,28 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 // Chuẩn hoá mọi khả năng key trả về từ BE → về shape Voucher chuẩn (đặc biệt là id)
 const mapVoucher = (x: any): Voucher => ({
-  id: x?.id ?? x?.voucherId ?? x?.voucherID ?? x?.VoucherId ?? 0,
-  code: x?.code ?? x?.voucherCode ?? "",
-  discountAmount: x?.discountAmount ?? x?.discount ?? 0,
-  requiredPoints: x?.requiredPoints ?? x?.points ?? 0,
+  id: x?.id ?? x?.voucher_id ?? 0,
+  code: x?.code ?? "",
   description: x?.description ?? null,
-  startDate: x?.startDate ?? x?.start_date ?? null,
-  endDate: x?.endDate ?? x?.end_date ?? null,
+  discountAmount: x?.discount_amount ?? 0,
+  discountType: x?.discount_type ?? "AMOUNT",
+  quantity: x?.quantity ?? 0,
+  requiredPoints: x?.required_points ?? 0,
+  startDate: x?.start_date ?? null,
+  endDate: x?.end_date ?? null,
   status: x?.status ?? "ACTIVE",
 });
 
 const sanitizeForSave = (v: Partial<Voucher>) => ({
   code: (v.code ?? "").trim(),
-  discountAmount: Number(v.discountAmount ?? 0),
-  requiredPoints: Number(v.requiredPoints ?? 0),
   description: v.description ?? "",
-  startDate: v.startDate || null,
-  endDate: v.endDate || null,
-  status: (v.status as string) || "ACTIVE",
+  discount_amount: Number(v.discountAmount ?? 0),
+  discount_type: v.discountType ?? "AMOUNT",
+  quantity: Number(v.quantity ?? 0),
+  required_points: Number(v.requiredPoints ?? 0),
+  start_date: v.startDate || null,
+  end_date: v.endDate || null,
+  status: v.status ?? "ACTIVE",
 });
 
 /** =============== Component =============== */
@@ -77,12 +84,14 @@ const AdminVoucher = () => {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Partial<Voucher>>({
     code: "",
+    description: "",
     discountAmount: 0,
+    discountType: "AMOUNT",   // ← NEW
+    quantity: 0,              // ← NEW
     requiredPoints: 0,
     startDate: "",
     endDate: "",
     status: "ACTIVE",
-    description: "",
   });
 
   // Edit dialog state
@@ -123,6 +132,7 @@ const AdminVoucher = () => {
     );
   }, [vouchers, search]);
 
+  /** Summary counts */
   const { total, active, expired } = useMemo(() => {
     const t = vouchers.length;
     let a = 0;
@@ -145,14 +155,24 @@ const AdminVoucher = () => {
       toast({ title: "Missing code", description: "Code is required.", variant: "destructive" });
       return;
     }
-    
+
 
     setCreating(true);
     try {
       await api.post<ApiResp<Voucher>>("/api/vouchers", payload, { withCredentials: true });
       toast({ title: "Created", description: "Voucher created successfully." });
       setOpenCreate(false);
-      setForm({ code: "", discountAmount: 0, requiredPoints: 0, startDate: "", endDate: "", description: "", status: "ACTIVE" });
+      setForm({
+        code: "",
+        description: "",
+        discountAmount: 0,
+        discountType: "AMOUNT",  // NEW
+        quantity: 0,             // NEW
+        requiredPoints: 0,
+        startDate: "",
+        endDate: "",
+        status: "ACTIVE"
+      });
       await loadVouchers();
     } catch (e: any) {
       toast({
@@ -300,13 +320,15 @@ const AdminVoucher = () => {
                   <TableHead className="font-semibold">Required Points</TableHead>
                   <TableHead className="font-semibold">Status</TableHead>
                   <TableHead className="font-semibold">Description</TableHead>
+                  <TableHead className="font-semibold">Type</TableHead>
+                  <TableHead className="font-semibold">Quantity</TableHead>
                   <TableHead className="font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                       <Loader2 className="inline w-4 h-4 mr-2 animate-spin" />
                       Loading…
                     </TableCell>
@@ -318,22 +340,37 @@ const AdminVoucher = () => {
                   const isExpired = String(v.status).toUpperCase() === "EXPIRED" || (!!v.endDate && v.endDate < now);
                   const statusColor =
                     isExpired ? "bg-amber-100 text-amber-700 border-amber-200"
-                    : String(v.status).toUpperCase() === "ACTIVE" ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                    : "bg-slate-100 text-slate-700 border-slate-200";
+                      : String(v.status).toUpperCase() === "ACTIVE" ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                        : "bg-slate-100 text-slate-700 border-slate-200";
 
                   const mapped = mapVoucher(v); // đảm bảo chắc chắn có id khi mở Edit
 
                   return (
                     <TableRow key={v.id} className="border-border/50 hover:bg-muted/30 transition-colors">
                       <TableCell className="font-semibold">{v.code}</TableCell>
+
                       <TableCell>{v.discountAmount}đ</TableCell>
+
                       <TableCell>{v.requiredPoints}</TableCell>
+
                       <TableCell>
                         <Badge className={`${statusColor} border`}>{String(v.status).toUpperCase()}</Badge>
                       </TableCell>
+
                       <TableCell className="max-w-[280px]">
                         <div className="truncate text-sm">{v.description ?? "—"}</div>
                       </TableCell>
+
+                      {/*Type*/}
+                      <TableCell className="font-semibold">
+                        {v.discountType === "PERCENT" ? "Percent (%)" : "Amount (đ)"}
+                      </TableCell>
+
+                      {/*Quantity*/}
+                      <TableCell className="font-semibold">
+                        {v.quantity ?? 0}
+                      </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm" onClick={() => setEditing(mapped)}>
@@ -351,13 +388,14 @@ const AdminVoucher = () => {
                           </Button>
                         </div>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
 
                 {!loading && !filtered.length && (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                       No vouchers.
                     </TableCell>
                   </TableRow>
@@ -385,14 +423,57 @@ const AdminVoucher = () => {
                 />
               </div>
 
+              {/* DISCOUNT AMOUNT */}
               <div className="space-y-2">
-                <Label>Discount đ</Label>
+                <Label>Discount</Label>
                 <Input
                   type="number"
                   value={String(form.discountAmount ?? 0)}
-                  onChange={(e) => setForm((f) => ({ ...f, discountAmount: Number(e.target.value) }))}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    setForm((f) => ({ ...f, discountAmount: val }));
+                  }}
+                  onBlur={() => {
+                    setForm((f) => {
+                      let val = f.discountAmount ?? 0;
+                      if (f.discountType === "PERCENT") {
+                        if (val < 1) val = 1;
+                        if (val > 99) val = 99;
+                      }
+                      return { ...f, discountAmount: val };
+                    });
+                  }}
                 />
               </div>
+              {/* DISCOUNT TYPE */}
+              <div className="space-y-2">
+                <Label>Discount type</Label>
+                <Select
+                  value={form.discountType ?? "AMOUNT"}
+                  onValueChange={(v: "AMOUNT" | "PERCENT") =>
+                    setForm((f) => ({ ...f, discountType: v }))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AMOUNT">Amount (đ)</SelectItem>
+                    <SelectItem value="PERCENT">Percent (%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* QUANTITY */}
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  value={String(form.quantity ?? 0)}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, quantity: Number(e.target.value) }))
+                  }
+                />
+              </div>
+
 
               <div className="space-y-2">
                 <Label>Required points</Label>
@@ -480,12 +561,53 @@ const AdminVoucher = () => {
                   />
                 </div>
 
+                {/* DISCOUNT AMOUNT */}
                 <div className="space-y-2">
-                  <Label>Discount đ</Label>
+                  <Label>Discount</Label>
                   <Input
                     type="number"
                     value={String(editing.discountAmount ?? 0)}
-                    onChange={(e) => setEditing({ ...editing, discountAmount: Number(e.target.value) })}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      setEditing({ ...editing, discountAmount: val });
+                    }}
+                    onBlur={() => {
+                      let val = editing.discountAmount ?? 0;
+                      if (editing.discountType === "PERCENT") {
+                        if (val < 1) val = 1;
+                        if (val > 99) val = 99;
+                      }
+                      setEditing({ ...editing, discountAmount: val });
+                    }}
+                  />
+                </div>
+
+                {/* DISCOUNT TYPE */}
+                <div className="space-y-2">
+                  <Label>Discount type</Label>
+                  <Select
+                    value={editing.discountType ?? "AMOUNT"}
+                    onValueChange={(v: "AMOUNT" | "PERCENT") =>
+                      setEditing({ ...editing, discountType: v })
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AMOUNT">Amount (đ)</SelectItem>
+                      <SelectItem value="PERCENT">Percent (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* QUANTITY */}
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input
+                    type="number"
+                    value={String(editing.quantity ?? 0)}
+                    onChange={(e) =>
+                      setEditing({ ...editing, quantity: Number(e.target.value) })
+                    }
                   />
                 </div>
 
